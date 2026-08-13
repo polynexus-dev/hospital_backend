@@ -33,4 +33,12 @@ class ServiceRecoveryTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceRecoveryTask
         fields = ["id", "nps_response", "owner", "status", "sla_due_at", "resolution_notes", "resolved_at"]
-        read_only_fields = ["id", "sla_due_at", "resolved_at"]
+        # sla_due_at used to be listed read_only here, but the model field
+        # is required with no default — the only effect was that a POST
+        # with just `nps_response` passed serializer validation and then
+        # crashed with an unhandled IntegrityError/500 at the DB layer
+        # instead of a normal 400. Writable here means DRF's own
+        # required-field check catches a missing value properly, and the
+        # endpoint actually works if a caller does supply one (previously
+        # it never could, by construction).
+        read_only_fields = ["id", "resolved_at"]

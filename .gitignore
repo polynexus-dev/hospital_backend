@@ -12,3 +12,6 @@ __pycache__/
 .antigravity/
 logs/
 media/patient_documents/
+.coverage
+.pytest_cache/
+htmlcov/

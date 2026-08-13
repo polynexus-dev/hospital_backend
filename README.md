@@ -91,7 +91,16 @@ database against it.
   the Role model is the hook point for that when it's prioritized.
 - **Storage**: document vault / call recordings use local disk (`STORAGES["default"]`) in dev. Swap
   to S3 for production by adding `django-storages` and pointing that setting at it.
-- **Providers**: telephony, WhatsApp (AWS End User Messaging), SMS (DLT), email (SES/Brevo), and the
-  HIS connector all default to `stub` (logs instead of sending/fetching) until real credentials and a
-  vendor contract are in place — see `apps/*/adapters.py` and `apps/integrations/connectors.py`.
+- **Providers**: telephony, SMS (DLT), email (SES/Brevo), and the HIS connector all still default to
+  `stub` (logs/returns nothing instead of sending/fetching) until a vendor is chosen and credentials
+  are in place. **WhatsApp now has a real adapter** (`AWSEndUserMessagingWhatsAppProvider`, set
+  `WHATSAPP_PROVIDER=aws` plus the three `WHATSAPP_*` settings once an AWS End User Messaging Social
+  account and WABA phone number exist) — its request/response shape was verified against the boto3
+  SDK's service model, but it has not yet been exercised against a live account. See
+  `apps/*/adapters.py` and `apps/integrations/connectors.py`.
+- **24x7 AI Assistant** (`apps/communications/ai_chatbot.py`): this is a scripted button-flow, not an
+  LLM (`GEMINI_API_KEY` exists in settings but nothing calls it yet). As of this pass it reads real
+  tenant data — actual `Doctor`/`Slot` rows instead of a hardcoded demo list — and a completed booking
+  creates a real `Appointment` via `apps.appointments.services.book_appointment`, the same path the
+  front-desk UI uses. It does not understand free-text queries, only the button options it returns.
 - **Export**: `apps.integrations` ships open CSV export (§13); FHIR R4 resource export is P2/P4 scope.

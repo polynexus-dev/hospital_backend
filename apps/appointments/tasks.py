@@ -22,10 +22,15 @@ def send_appointment_reminders():
     from apps.communications.services import send_appointment_reminder
 
     now = timezone.now()
+    # Slot.date/start_time are naive local wall-clock fields (the hospital's
+    # own timezone), so the comparison window must be computed in local time
+    # too — comparing against raw UTC now() silently misses every
+    # appointment by TIME_ZONE's offset (e.g. 5:30 for Asia/Kolkata).
+    local_now = timezone.localtime(now)
     sent = 0
     for offset_hours in settings.APPOINTMENT_REMINDER_OFFSETS_HOURS:
         field = "reminder_24h_sent_at" if offset_hours == 24 else "reminder_2h_sent_at"
-        window_start = now + timedelta(hours=offset_hours)
+        window_start = local_now + timedelta(hours=offset_hours)
         window_end = window_start + timedelta(minutes=15)
 
         due = Appointment.objects.filter(

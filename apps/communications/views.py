@@ -134,6 +134,7 @@ class InboundWebhookView(APIView):
             prompt=body,
             patient_name=patient.full_name or patient.first_name,
             preferred_language=patient.preferred_language,
+            hospital=patient.hospital,
         )
         outbound_msg = Message.objects.create(
             hospital_id=hospital_id,
@@ -155,9 +156,11 @@ class InboundWebhookView(APIView):
 
 
 class AIChatbotView(APIView):
-    """Direct 24x7 Interactive Hospital Assistant endpoint."""
-
-    permission_classes = [AllowAny]
+    """Direct 24x7 Interactive Hospital Assistant endpoint. Deliberately
+    inherits the project-wide IsAuthenticated default (no AllowAny override)
+    so TenantMiddleware can resolve `request.user.hospital` — without that,
+    a Doctor/Slot query here would run unscoped and leak data across
+    hospitals (see apps.core.tenancy)."""
 
     def post(self, request):
         from .ai_chatbot import process_interactive_chat_action
@@ -165,11 +168,13 @@ class AIChatbotView(APIView):
         action = str(request.data.get("action", request.data.get("prompt", "main_menu"))).strip()
         language = request.data.get("language", "en")
         payload = request.data.get("payload", {})
+        hospital = getattr(request.user, "hospital", None)
 
         result = process_interactive_chat_action(
             action=action,
             payload=payload,
             preferred_language=language,
+            hospital=hospital,
         )
 
         return Response(
@@ -179,6 +184,8 @@ class AIChatbotView(APIView):
                 "options": result["options"],
                 "step": result.get("step", "main_menu"),
                 "confirmed_details": result.get("confirmed_details", None),
+                "requires_input": result.get("requires_input", None),
+                "pending_slot_id": result.get("pending_slot_id", None),
             },
             status=status.HTTP_200_OK,
         )

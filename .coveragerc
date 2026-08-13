@@ -1,0 +1,20 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */tests.py
+    */admin.py
+    */apps.py
+    manage.py
+    */__init__.py
+
+[report]
+skip_empty = True
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+
+[html]
+directory = htmlcov

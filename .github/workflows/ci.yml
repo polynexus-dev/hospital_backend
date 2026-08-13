@@ -1,0 +1,91 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: polynexus
+          POSTGRES_PASSWORD: polynexus
+          POSTGRES_DB: hospital_crm
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-test-secret-key-not-for-production-use
+      DEBUG: "True"
+      DATABASE_URL: postgres://polynexus:polynexus@localhost:5432/hospital_crm
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
+      CACHE_URL: redis://localhost:6379/1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+      - name: Run tests with coverage
+        run: pytest -q --cov --cov-report=term --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: coverage.xml
+
+      - name: Dependency vulnerability scan (pip-audit)
+        # Runs after tests, not blocking merge on its own — a new CVE in an
+        # existing pinned dependency shouldn't silently fail unrelated PRs.
+        # continue-on-error surfaces it in the run summary for a human to
+        # triage rather than gating the merge automatically.
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+        continue-on-error: true
+
+  django-check:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-test-secret-key-not-for-production-use
+      DEBUG: "True"
+      DATABASE_URL: postgres://polynexus:polynexus@localhost:5432/hospital_crm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Django system checks
+        run: python manage.py check --deploy
+        continue-on-error: true # --deploy flags dev-only settings too; informational, not a gate

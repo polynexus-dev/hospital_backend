@@ -17,7 +17,22 @@ from .serializers import (
 
 
 class HospitalTokenObtainPairView(TokenObtainPairView):
+    """Login has no auth to gate it (that's the point), which makes it the
+    default brute-force target — a fixed, tight per-IP rate limit here
+    (see REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["login"] in settings)
+    matters more than the general API throttle every other endpoint gets.
+
+    Deliberately doesn't set `throttle_classes` directly — ScopedRateThrottle
+    is already in the global DEFAULT_THROTTLE_CLASSES (see base.py), and
+    it's a no-op for any view that doesn't declare `throttle_scope`, so
+    listing it here again would just shadow the setting-level default and
+    make it impossible to turn off centrally (config.settings.test does
+    exactly that, to keep the full suite from tripping this same limit —
+    it disables DEFAULT_THROTTLE_CLASSES wholesale, which only works if no
+    view hardcodes its own throttle_classes list)."""
+
     serializer_class = HospitalScopedTokenObtainPairSerializer
+    throttle_scope = "login"
 
 
 class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -38,6 +53,19 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="switch-hospital", permission_classes=[IsAuthenticated])
     def switch_hospital(self, request):
+        """Staff-only. This used to accept any authenticated user and
+        reassign their `hospital` FK to *any* active hospital's id with no
+        further check — since Hospital has no group/ownership concept in
+        the schema, that meant any front-desk user at any hospital could
+        call this with an arbitrary hospital_id and permanently switch
+        themselves into a completely unrelated hospital's tenant, gaining
+        full read/write access to its data through every other endpoint
+        (verified empirically, not theoretical). Restricting to is_staff
+        matches the only other cross-hospital mechanism already in this
+        codebase (the X-Hospital-Id header in TenantMiddleware)."""
+        if not request.user.is_staff:
+            return Response({"detail": "Only staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
+
         hospital_id = request.data.get("hospital_id")
         if not hospital_id:
             return Response({"detail": "hospital_id is required."}, status=status.HTTP_400_BAD_REQUEST)

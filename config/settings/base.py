@@ -180,6 +180,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
+        "apps.core.permissions.RoleBasedModelPermissions",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -188,6 +189,28 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardResultsPagination",
     "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        # No-op for any view that doesn't set `throttle_scope` (e.g.
+        # HospitalTokenObtainPairView's "login" — see that view's
+        # docstring for why it's declared there and not as a per-view
+        # throttle_classes override).
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        # General baseline for the whole API — generous enough that normal
+        # front-desk/telephony usage never notices it.
+        "anon": "60/minute",
+        "user": "300/minute",
+        # HospitalTokenObtainPairView (login) — has no auth to gate it,
+        # which makes it the default brute-force-guessing target; a tight
+        # per-IP ceiling matters far more here than on any authenticated
+        # endpoint. 5/minute stops rapid password guessing without
+        # meaningfully affecting a real user who mistypes their password
+        # once or twice.
+        "login": "5/minute",
+    },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
@@ -227,6 +250,28 @@ CORS_ALLOW_ALL_ORIGINS = True
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
 
+
+# Cache — backs DRF's request throttling (see REST_FRAMEWORK below). Redis,
+# not Django's default LocMemCache: LocMemCache is per-process, so with more
+# than one app-server worker (any real production deployment) each worker
+# would count requests independently and the effective rate limit becomes
+# `configured rate x worker count` — not the hard ceiling it's meant to be.
+# Same Redis instance Celery already requires, separate logical DB (1, not
+# Celery's 0) so cache keys and broker traffic don't collide.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
+        # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
+        # attempting a HELLO handshake (RESP3) on connect, which errors
+        # with "unknown command 'HELLO'" against any Redis server older
+        # than 6.0 (verified against this project's own local dev Redis,
+        # 3.0.504) — RESP2 is a strict subset every version understands,
+        # including whatever a given hospital's ops team ends up running,
+        # so there's no reason to require RESP3 here.
+        "OPTIONS": {"protocol": 2},
+    }
+}
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -293,6 +338,13 @@ PUBLIC_APP_URL = env("PUBLIC_APP_URL", default="http://localhost:3000")
 WHATSAPP_PROVIDER = env("WHATSAPP_PROVIDER", default="stub")
 SMS_PROVIDER = env("SMS_PROVIDER", default="stub")
 EMAIL_PROVIDER = env("EMAIL_PROVIDER", default="stub")
+
+# Only used when WHATSAPP_PROVIDER=aws (AWSEndUserMessagingWhatsAppProvider).
+# AWS credentials themselves come from boto3's standard credential chain
+# (env vars / ~/.aws/credentials / IAM role), not from Django settings.
+WHATSAPP_AWS_REGION = env("WHATSAPP_AWS_REGION", default="ap-south-1")
+WHATSAPP_ORIGINATION_PHONE_NUMBER_ID = env("WHATSAPP_ORIGINATION_PHONE_NUMBER_ID", default="")
+WHATSAPP_META_API_VERSION = env("WHATSAPP_META_API_VERSION", default="v19.0")
 
 # Telephony provider selection — see apps.telephony.adapters.
 TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="stub")

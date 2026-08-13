@@ -35,13 +35,25 @@ class UserManager(BaseUserManager):
 class Role(TimeStampedModel):
     """A named permission set, scoped to a hospital and optionally to a
     department (e.g. "Front Desk Operator", "PRO", "Owner"). Backed by a
-    Django Group so DRF's DjangoModelPermissions / has_perm() work without a
-    parallel permission-checking system."""
+    Django Group so DRF's permission checks (apps.core.permissions.
+    RoleBasedModelPermissions, has_perm()) work without a parallel
+    permission-checking system."""
+
+    class Template(models.TextChoices):
+        OWNER = "owner", "Owner"
+        ADMIN = "admin", "Administrator"
+        DOCTOR = "doctor", "OPD Doctor"
+        FRONT_DESK = "front_desk", "Front Desk"
+        TELEPHONY_OPERATOR = "telephony_operator", "Telephony Operator"
 
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="roles")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="roles")
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    template = models.CharField(
+        max_length=32, choices=Template.choices, blank=True,
+        help_text="Applies a starter permission set on creation only — see apps.accounts.permission_templates. Leave blank for a hand-built role with no default permissions.",
+    )
     group = models.OneToOneField(Group, on_delete=models.CASCADE, related_name="role", editable=False)
 
     class Meta:
@@ -53,9 +65,13 @@ class Role(TimeStampedModel):
         return f"{self.name} ({self.hospital.name})"
 
     def save(self, *args, **kwargs):
-        if not self.group_id:
+        is_new = not self.group_id
+        if is_new:
             self.group = Group.objects.create(name=f"{self.hospital_id}:{self.name}")
         super().save(*args, **kwargs)
+        if is_new and self.template:
+            from .permission_templates import apply_permission_template
+            apply_permission_template(self.group, self.template)
 
     @property
     def permissions(self):
