@@ -9,7 +9,8 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            "id", "first_name", "last_name", "full_name", "date_of_birth", "gender",
+            "id", "uhid", "mrn", "registration_type", "first_name", "last_name", "full_name",
+            "date_of_birth", "gender", "blood_group",
             "mobile", "alternate_mobile", "email", "address", "city",
             "national_id_type", "national_id_number",
             "insurance_provider", "insurance_policy_number", "employer",
@@ -18,12 +19,26 @@ class PatientSerializer(serializers.ModelSerializer):
             "next_recall_due_at", "recall_reason",
             "preferred_language", "is_active", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "uhid", "created_at", "updated_at"]
 
     def validate_guardian(self, guardian):
         if guardian is not None and self.instance is not None and guardian.pk == self.instance.pk:
             raise serializers.ValidationError("A patient cannot be their own guardian.")
         return guardian
+
+
+class PatientCRMSerializer(PatientSerializer):
+    """Same as PatientSerializer minus national_id_type/national_id_number
+    — for roles without patients.access_clinical_detail (CRM templates,
+    see docs/erp/03-rbac-and-roles.md §2c/§3). CRM roles still legitimately
+    need insurance/demographic/contact fields (insurance enquiries,
+    corporate accounts are CRM work); national ID is the one field here
+    with no CRM purpose and real SPDI sensitivity, so it's what this
+    narrower view exists to withhold — not a blanket "hide everything
+    Patient-shaped" cut."""
+
+    class Meta(PatientSerializer.Meta):
+        fields = [f for f in PatientSerializer.Meta.fields if f not in ("national_id_type", "national_id_number")]
 
 
 class PatientLookupSerializer(serializers.ModelSerializer):
@@ -58,7 +73,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         from .models import Prescription
         model = Prescription
         fields = [
-            "id", "patient", "patient_name", "doctor", "doctor_name",
+            "id", "patient", "patient_name", "doctor", "doctor_name", "encounter",
             "diagnosis", "symptoms", "medications", "lab_orders",
             "notes", "created_at",
         ]

@@ -325,3 +325,81 @@ def test_role_crud_and_isolation(auth_client, hospital, other_hospital, other_de
     delete = auth_client.delete(f"/api/v1/roles/{created.id}/")
     assert delete.status_code == 204
     assert not Role.objects.filter(pk=created.id).exists()
+
+
+# --- Role.data_scope / Role.domain (docs/erp/03-rbac-and-roles.md §2d) ----
+
+@pytest.mark.django_db
+def test_role_data_scope_and_domain_default_to_all_and_both(hospital, department):
+    role = Role.objects.create(hospital=hospital, department=department, name="Default Scope Role")
+    assert role.data_scope == Role.DataScope.ALL
+    assert role.domain == Role.Domain.BOTH
+
+
+@pytest.mark.django_db
+def test_role_data_scope_and_domain_are_settable(hospital, department):
+    role = Role.objects.create(
+        hospital=hospital, department=department, name="Nurse-shaped Role",
+        data_scope=Role.DataScope.ASSIGNED_ONLY, domain=Role.Domain.ERP,
+    )
+    role.refresh_from_db()
+    assert role.data_scope == Role.DataScope.ASSIGNED_ONLY
+    assert role.domain == Role.Domain.ERP
+
+
+# --- New CRM role templates (docs/erp/03-rbac-and-roles.md §3) ------------
+
+@pytest.mark.django_db
+def test_crm_executive_template_grants_enquiries_but_not_tpa(hospital, department):
+    from apps.tpa.models import TPACompany
+
+    role = Role.objects.create(hospital=hospital, department=department, name="CRM Exec", template=Role.Template.CRM_EXECUTIVE)
+    crm_user = User.objects.create_user(email="crm-template@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(crm_user, role)
+
+    assert crm_user.has_perm("enquiries.add_enquiry")
+    assert not crm_user.has_perm(f"{TPACompany._meta.app_label}.add_{TPACompany._meta.model_name}")
+
+
+@pytest.mark.django_db
+def test_crm_auditor_template_is_view_only_across_crm_apps(hospital, department):
+    role = Role.objects.create(hospital=hospital, department=department, name="CRM Auditor", template=Role.Template.CRM_AUDITOR)
+    auditor = User.objects.create_user(email="crm-auditor@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(auditor, role)
+
+    assert auditor.has_perm("enquiries.view_enquiry")
+    assert not auditor.has_perm("enquiries.add_enquiry")
+    assert not auditor.has_perm("enquiries.change_enquiry")
+    assert not auditor.has_perm("enquiries.delete_enquiry")
+
+
+@pytest.mark.django_db
+def test_no_crm_template_grants_access_clinical_detail(hospital, department):
+    """The whole point of the capability-permission split (see
+    apps.patients.models.Patient.Meta.permissions) — verify none of the 7
+    CRM templates accidentally got swept into granting it, the exact
+    failure mode a same-named codename almost caused (see
+    apps.accounts.permission_templates' module docstring)."""
+    from apps.accounts.permission_templates import PERMISSION_TEMPLATES
+
+    crm_templates = [
+        Role.Template.CRM_SUPER_ADMIN, Role.Template.CRM_MANAGER, Role.Template.CRM_EXECUTIVE,
+        Role.Template.CALL_CENTRE_EXECUTIVE, Role.Template.MARKETING_MANAGER,
+        Role.Template.CORPORATE_RM, Role.Template.CRM_AUDITOR,
+    ]
+    for i, template in enumerate(crm_templates):
+        role = Role.objects.create(hospital=hospital, department=department, name=f"CRM Template Check {i}", template=template)
+        crm_user = User.objects.create_user(email=f"crm-check-{i}@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+        assign_role(crm_user, role)
+        assert not crm_user.has_perm("patients.access_clinical_detail"), f"{template} should not grant access_clinical_detail"
+
+    assert "extra" not in PERMISSION_TEMPLATES[Role.Template.CRM_SUPER_ADMIN]
+
+
+@pytest.mark.django_db
+def test_doctor_template_grants_access_clinical_detail(hospital, department):
+    role = Role.objects.create(hospital=hospital, department=department, name="Doctor", template=Role.Template.DOCTOR)
+    doctor = User.objects.create_user(email="doctor-template@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(doctor, role)
+
+    assert doctor.has_perm("patients.access_clinical_detail")

@@ -82,6 +82,21 @@ LOCAL_APPS = [
     "apps.referrals",
     "apps.packages",
     "apps.tpa",
+    "apps.facilities",
+    "apps.opd",
+    "apps.ipd",
+    "apps.nursing",
+    "apps.laboratory",
+    "apps.radiology",
+    "apps.pharmacy",
+    "apps.emergency",
+    "apps.ot",
+    "apps.icu",
+    "apps.bloodbank",
+    "apps.finance",
+    "apps.hr",
+    "apps.billing",
+    "apps.inventory",
 ]
 
 
@@ -204,6 +219,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
         "apps.core.permissions.RoleBasedModelPermissions",
+        "apps.core.permissions.ActionPermissionRequired",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",

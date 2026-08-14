@@ -87,11 +87,65 @@ class Patient(TenantScopedModel):
     next_recall_due_at = models.DateTimeField(null=True, blank=True)
     recall_reason = models.CharField(max_length=255, blank=True, help_text="e.g. annual checkup, post-surgery follow-up, chronic-care review")
 
+    class RegistrationType(models.TextChoices):
+        OPD = "opd", "OPD"
+        IPD = "ipd", "IPD"
+        EMERGENCY = "emergency", "Emergency"
+
+    class BloodGroup(models.TextChoices):
+        A_POSITIVE = "a_positive", "A+"
+        A_NEGATIVE = "a_negative", "A-"
+        B_POSITIVE = "b_positive", "B+"
+        B_NEGATIVE = "b_negative", "B-"
+        AB_POSITIVE = "ab_positive", "AB+"
+        AB_NEGATIVE = "ab_negative", "AB-"
+        O_POSITIVE = "o_positive", "O+"
+        O_NEGATIVE = "o_negative", "O-"
+
+    # ERP identity — see docs/erp/02-domain-model.md. uhid is assigned once,
+    # automatically, on first save (see save() below); it is the one
+    # identifier this Patient row keeps for life, shared by every CRM and
+    # ERP app that references this patient (docs/erp/00-overview.md §3 —
+    # one Patient row, not a CRM/ERP duplicate).
+    uhid = models.CharField(max_length=32, unique=True, null=True, blank=True, editable=False)
+    mrn = models.CharField(max_length=64, blank=True, help_text="Legacy/external MRN, for hospitals migrating from another system.")
+    registration_type = models.CharField(max_length=16, choices=RegistrationType.choices, blank=True)
+    blood_group = models.CharField(max_length=16, choices=BloodGroup.choices, blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "mobile"]),
             models.Index(fields=["hospital", "next_recall_due_at"]),
         ]
+        permissions = [
+            # Capability flag, not tied to a CRUD verb — gates whether a
+            # role's serializer includes clinical fields (diagnosis,
+            # prescriptions, national ID) at all, vs. the CRM-safe subset.
+            # See docs/erp/03-rbac-and-roles.md §2c. Codename deliberately
+            # does NOT start with "view_"/"add_"/"change_"/"delete_" — a
+            # permission_templates.py app-level verb sweep (e.g. any role
+            # granted "patients": ["view", ...]) matches by codename
+            # prefix, and "view_clinical_detail" would have been silently
+            # swept into every such grant, including front_desk's.
+            ("access_clinical_detail", "Can access clinical detail on patient records"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.uhid and self.hospital_id:
+            self.uhid = self._generate_uhid()
+        super().save(*args, **kwargs)
+
+    def _generate_uhid(self):
+        from django.db import transaction
+
+        from apps.core.models import Hospital
+
+        with transaction.atomic():
+            hospital = Hospital.objects.select_for_update().get(pk=self.hospital_id)
+            sequence = hospital.next_uhid_sequence
+            hospital.next_uhid_sequence = sequence + 1
+            hospital.save(update_fields=["next_uhid_sequence"])
+        return f"{hospital.slug.upper()}-{sequence:06d}"
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}".strip()
@@ -182,7 +236,12 @@ class Prescription(TenantScopedModel):
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="prescriptions")
     doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    
+    # String FK, not a direct import — apps.opd imports apps.patients
+    # (Patient), so apps.patients importing apps.opd.Encounter back would
+    # be circular. Nullable: pre-Phase-3 prescriptions and any created
+    # outside a formal OPD encounter (phone-in refill, etc.) have none.
+    encounter = models.ForeignKey("opd.Encounter", on_delete=models.SET_NULL, null=True, blank=True, related_name="prescriptions")
+
     diagnosis = models.CharField(max_length=500)
     symptoms = models.TextField(blank=True)
     medications = models.JSONField(default=list, blank=True)  # [{"name": "Paracetamol 500mg", "dosage": "1-0-1", "duration": "5 Days"}]

@@ -331,3 +331,203 @@ def test_auditlog_raw_sql_delete_is_blocked_at_the_database_level(hospital):
             cursor.execute("DELETE FROM core_auditlog WHERE id = %s", [log.pk])
 
     assert AuditLog.objects.filter(pk=log.pk).exists()
+
+
+# --- HospitalGroup / Hospital.group (docs/erp/00-overview.md §2) ----------
+
+@pytest.mark.django_db
+def test_hospital_can_optionally_belong_to_a_hospital_group(hospital, other_hospital):
+    from apps.core.models import HospitalGroup
+
+    group = HospitalGroup.objects.create(name="Polynexus Network")
+    hospital.group = group
+    hospital.save(update_fields=["group"])
+
+    assert group.hospitals.count() == 1
+    assert other_hospital.group_id is None  # ungrouped hospitals are unaffected
+
+
+@pytest.mark.django_db
+def test_deleting_a_hospital_group_does_not_delete_its_hospitals(hospital):
+    """SET_NULL, not CASCADE — HospitalGroup is reporting/ownership
+    metadata only, never a tenant-isolation boundary (see
+    docs/erp/00-overview.md §2). Deleting the group must never delete
+    patient data."""
+    from apps.core.models import HospitalGroup
+
+    group = HospitalGroup.objects.create(name="Temp Group")
+    hospital.group = group
+    hospital.save(update_fields=["group"])
+    hospital_id = hospital.id
+
+    group.delete()
+
+    from apps.core.models import Hospital
+    remaining = Hospital.objects.get(pk=hospital_id)
+    assert remaining.group_id is None
+
+
+# --- Amendment (docs/erp/07-audit-and-security.md §2b) ---------------------
+
+@pytest.mark.django_db
+def test_amendment_can_reference_any_model_via_generic_relation(hospital, department):
+    from django.contrib.contenttypes.models import ContentType
+
+    from apps.core.models import Amendment
+
+    amendment = Amendment.objects.create(
+        hospital=hospital,
+        content_type=ContentType.objects.get_for_model(department),
+        object_id=str(department.pk),
+        field_name="name",
+        previous_value="OPD",
+        corrected_value="OPD (Ground Floor)",
+        reason="Corrected after physical department relocation.",
+    )
+
+    assert amendment.content_object == department
+    assert str(department.pk) == amendment.object_id
+
+
+# --- ActionPermissionRequired (docs/erp/03-rbac-and-roles.md §2a) ---------
+#
+# No real ViewSet declares action_permissions yet in Phase 2 (the first
+# consumers — laboratory.verify_labresult etc. — ship with their models in
+# later phases), so this tests the permission class's own logic in
+# isolation against a minimal fake view, rather than through a live
+# endpoint that doesn't exist yet.
+
+class _FakeUser:
+    def __init__(self, granted_perms):
+        self._granted = set(granted_perms)
+
+    def has_perm(self, perm):
+        return perm in self._granted
+
+
+class _FakeRequest:
+    def __init__(self, user):
+        self.user = user
+
+
+class _FakeView:
+    action = "verify"
+    action_permissions = {"verify": "laboratory.verify_labresult"}
+
+
+def test_action_permission_required_allows_a_user_with_the_named_permission():
+    from apps.core.permissions import ActionPermissionRequired
+
+    request = _FakeRequest(_FakeUser(["laboratory.verify_labresult"]))
+    assert ActionPermissionRequired().has_permission(request, _FakeView()) is True
+
+
+def test_action_permission_required_blocks_a_user_without_the_named_permission():
+    from apps.core.permissions import ActionPermissionRequired
+
+    request = _FakeRequest(_FakeUser([]))
+    assert ActionPermissionRequired().has_permission(request, _FakeView()) is False
+
+
+def test_action_permission_required_is_a_no_op_for_an_action_not_listed():
+    from apps.core.permissions import ActionPermissionRequired
+
+    class OtherActionView:
+        action = "list"
+        action_permissions = {"verify": "laboratory.verify_labresult"}
+
+    request = _FakeRequest(_FakeUser([]))
+    assert ActionPermissionRequired().has_permission(request, OtherActionView()) is True
+
+
+def test_action_permission_required_is_a_no_op_for_a_view_declaring_no_action_permissions():
+    from apps.core.permissions import ActionPermissionRequired
+
+    class PlainViewSet:
+        action = "create"
+
+    request = _FakeRequest(_FakeUser([]))
+    assert ActionPermissionRequired().has_permission(request, PlainViewSet()) is True
+
+
+# --- TenantScopedViewSetMixin.assignment_scope_field (docs/erp/03-rbac-and-roles.md §2b) ---
+#
+# No real ViewSet sets assignment_scope_field yet in Phase 2 (the first
+# consumers — nursing/ipd — ship in Phase 4). Proven here directly against
+# the mixin, using patients.Document.uploaded_by (an existing FK to User)
+# as a stand-in "assigned to" relation, rather than through a live
+# endpoint that doesn't exist yet.
+
+@pytest.mark.django_db
+def test_assignment_scope_field_narrows_queryset_for_an_assigned_only_role(hospital, department, other_department):
+    from contextlib import suppress
+    from types import SimpleNamespace
+
+    from apps.accounts.models import Role, User, assign_role
+    from apps.core.viewsets import TenantScopedViewSetMixin
+    from apps.patients.models import Document, Patient
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Scoped", mobile="9822000001")
+
+    scoped_role = Role.objects.create(hospital=hospital, department=department, name="Scoped Role", data_scope=Role.DataScope.ASSIGNED_ONLY)
+    nurse = User.objects.create_user(email="nurse@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(nurse, scoped_role)
+    other_staff = User.objects.create_user(email="other-staff@test-hospital.example", password="testpass123", hospital=hospital, department=other_department)
+
+    mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=nurse)
+    not_mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=other_staff)
+
+    class ScopedDocumentViewSet(TenantScopedViewSetMixin):
+        queryset = Document.objects.all()
+        assignment_scope_field = "uploaded_by"
+
+    view = ScopedDocumentViewSet()
+    view.request = SimpleNamespace(user=nurse, headers={})
+
+    visible_ids = set(view.get_queryset().values_list("id", flat=True))
+    assert visible_ids == {mine.id}
+    assert not_mine.id not in visible_ids
+
+    with suppress(Exception):
+        mine.delete()
+    with suppress(Exception):
+        not_mine.delete()
+    with suppress(Exception):
+        patient.delete()
+
+
+@pytest.mark.django_db
+def test_assignment_scope_field_is_ignored_for_a_role_with_the_default_all_scope(hospital, department):
+    from contextlib import suppress
+    from types import SimpleNamespace
+
+    from apps.accounts.models import Role, User, assign_role
+    from apps.core.viewsets import TenantScopedViewSetMixin
+    from apps.patients.models import Document, Patient
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Unscoped", mobile="9822000002")
+
+    all_scope_role = Role.objects.create(hospital=hospital, department=department, name="All Scope Role")  # data_scope defaults to "all"
+    doctor = User.objects.create_user(email="doctor@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(doctor, all_scope_role)
+    someone_else = User.objects.create_user(email="someone-else@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+
+    mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=doctor)
+    also_visible = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=someone_else)
+
+    class ScopedDocumentViewSet(TenantScopedViewSetMixin):
+        queryset = Document.objects.all()
+        assignment_scope_field = "uploaded_by"
+
+    view = ScopedDocumentViewSet()
+    view.request = SimpleNamespace(user=doctor, headers={})
+
+    visible_ids = set(view.get_queryset().values_list("id", flat=True))
+    assert visible_ids == {mine.id, also_visible.id}
+
+    with suppress(Exception):
+        mine.delete()
+    with suppress(Exception):
+        also_visible.delete()
+    with suppress(Exception):
+        patient.delete()

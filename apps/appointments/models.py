@@ -6,6 +6,13 @@ from apps.patients.models import Patient
 
 
 class Doctor(TenantScopedModel):
+    # Nullable — a directory entry (used for scheduling/booking) doesn't
+    # require its own login (e.g. a visiting consultant whose slots front
+    # desk manages on their behalf). When set, this is what
+    # apps.opd.Encounter's assignment_scope_field ("doctor__user") matches
+    # against the requesting user for assigned_only-scoped roles — see
+    # docs/erp/03-rbac-and-roles.md §2b.
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="doctor_profile")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="doctors")
     name = models.CharField(max_length=255)
     speciality = models.CharField(max_length=150, blank=True)

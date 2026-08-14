@@ -50,3 +50,49 @@ class RoleBasedModelPermissions(BasePermission):
         model_cls = queryset.model
         permission = f"{model_cls._meta.app_label}.{perm_verb}_{model_cls._meta.model_name}"
         return request.user.has_perm(permission)
+
+
+class ActionPermissionRequired(BasePermission):
+    """For custom @action endpoints that need a specific, named permission
+    beyond the add/change/delete/view Django auto-generates — e.g. "verify"
+    on LabResult, "finalize" on a clinical note, "approve_discount" on a
+    Bill (see docs/erp/03-rbac-and-roles.md §2a). Opt-in per action:
+
+        class LabResultViewSet(viewsets.ModelViewSet):
+            action_permissions = {"verify": "laboratory.verify_labresult"}
+
+            @action(detail=True, methods=["post"])
+            def verify(self, request, pk=None):
+                ...
+
+    A ViewSet (or action) that doesn't declare an entry in
+    `action_permissions` is left alone (returns True) — this only ever
+    adds a check where one is explicitly wired up, matching
+    RoleBasedModelPermissions' existing philosophy of not guessing at
+    authorization for actions it doesn't know about. Registered globally
+    in DEFAULT_PERMISSION_CLASSES precisely because it's a safe no-op
+    everywhere it isn't configured."""
+
+    def has_permission(self, request, view):
+        action_permissions = getattr(view, "action_permissions", None)
+        if not action_permissions:
+            return True
+        required = action_permissions.get(getattr(view, "action", None))
+        if required is None:
+            return True
+        return request.user.has_perm(required)
+
+
+class RequiresClinicalDetailPermission(BasePermission):
+    """Blocks every action on a ViewSet whose entire content is clinical
+    (diagnosis, medications — apps.patients.Prescription today; Encounter/
+    Diagnosis/ClinicalNote once the ERP OPD module ships) for any role
+    without patients.access_clinical_detail. Unlike Patient itself (which
+    has a CRM-safe demographic/contact subset — see
+    apps.patients.views.PatientViewSet.get_serializer_class), there's no
+    partial view of a prescription that makes sense to show a role that
+    shouldn't see clinical content at all, so this gates the whole
+    ViewSet rather than swapping serializers."""
+
+    def has_permission(self, request, view):
+        return request.user.has_perm("patients.access_clinical_detail")

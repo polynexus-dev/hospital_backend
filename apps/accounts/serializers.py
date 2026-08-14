@@ -23,19 +23,22 @@ class RoleSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     role_name = serializers.CharField(source="role.name", read_only=True)
+    role_domain = serializers.CharField(source="role.domain", read_only=True, default=None)
     hospital_name = serializers.CharField(source="hospital.name", read_only=True)
     hospital_address = serializers.CharField(source="hospital.address", read_only=True)
     hospital_city = serializers.CharField(source="hospital.city", read_only=True)
     hospital_state = serializers.CharField(source="hospital.state", read_only=True)
+    hospital_enabled_modules = serializers.ReadOnlyField(source="hospital.enabled_modules")
     available_hospitals = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "email", "phone", "first_name", "last_name",
-            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state",
-            "department", "role", "role_name",
-            "preferred_language", "is_active", "is_staff", "available_hospitals", "date_joined",
+            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state", "hospital_enabled_modules",
+            "department", "role", "role_name", "role_domain",
+            "preferred_language", "is_active", "is_staff", "available_hospitals", "permissions", "date_joined",
         ]
         # `hospital` used to be writable here — perform_create already
         # silently overrides it on create regardless of what's posted, but
@@ -64,6 +67,14 @@ class UserSerializer(serializers.ModelSerializer):
         if obj.hospital_id:
             return list(Hospital.objects.filter(id=obj.hospital_id, is_active=True).values("id", "name", "slug", "city"))
         return []
+
+    def get_permissions(self, obj):
+        """`app_label.codename` strings, from Django's own has_perm()
+        machinery (group permissions + superuser bypass) — the frontend
+        route/nav gate (see Frontend/src/app/ProtectedRoute.tsx) reads
+        this rather than re-deriving access from role_name, so a backend
+        permission change takes effect without a frontend redeploy."""
+        return sorted(obj.get_all_permissions())
 
 
 

@@ -4,7 +4,7 @@ from django.db import migrations
 FORWARD_SQL = """
 CREATE OR REPLACE FUNCTION core_auditlog_block_mutation() RETURNS trigger AS $$
 BEGIN
-    RAISE EXCEPTION 'core_auditlog rows are immutable: % is not permitted (id=%)', TG_OP, OLD.id
+    RAISE EXCEPTION 'core_auditlog rows are immutable: %% is not permitted (id=%%)', TG_OP, OLD.id
         USING ERRCODE = '23514';  -- check_violation, so Django/psycopg surfaces this as
                                    -- IntegrityError (a business-rule violation) rather than
                                    -- the default 'raise_exception' code, which Django maps to

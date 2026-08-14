@@ -342,3 +342,120 @@ def test_doctor_revenue_report_attributes_billing_to_the_completing_doctor(auth_
     row = next(r for r in response.data["rows"] if r["doctor_id"] == doctor.id)
     assert row["completed_appointments"] == 1
     assert row["billed_amount"] == Decimal("3000.00")
+
+
+@pytest.mark.django_db
+def test_opd_snapshot_reflects_todays_check_ins_and_completions(auth_client, hospital, doctor, patient, slot):
+    from apps.appointments.services import check_in, complete, start_consult
+
+    appointment = book_appointment(patient=patient, slot=slot)
+    check_in(appointment)
+
+    response = auth_client.get("/api/v1/reports/opd-snapshot/")
+    assert response.status_code == 200
+    assert response.data["encounters_today"] == 1
+    assert response.data["waiting"] == 1
+    assert response.data["in_consult"] == 0
+    assert response.data["completed_today"] == 0
+
+    start_consult(appointment)
+    complete(appointment)
+
+    response = auth_client.get("/api/v1/reports/opd-snapshot/")
+    assert response.data["waiting"] == 0
+    assert response.data["completed_today"] == 1
+
+
+@pytest.mark.django_db
+def test_opd_snapshot_smoke_with_no_data(auth_client):
+    response = auth_client.get("/api/v1/reports/opd-snapshot/")
+    assert response.status_code == 200
+    assert response.data == {"encounters_today": 0, "waiting": 0, "in_consult": 0, "completed_today": 0}
+
+
+@pytest.mark.django_db
+def test_bed_occupancy_reflects_admissions(auth_client, hospital, doctor, patient):
+    from apps.facilities.models import Bed, Room, Ward
+    from apps.ipd.services import admit_patient
+
+    ward = Ward.objects.create(hospital=hospital, name="General Ward A")
+    room = Room.objects.create(hospital=hospital, ward=ward, room_number="101")
+    bed1 = Bed.objects.create(hospital=hospital, room=room, bed_number="A")
+    Bed.objects.create(hospital=hospital, room=room, bed_number="B")
+
+    response = auth_client.get("/api/v1/reports/bed-occupancy/")
+    assert response.status_code == 200
+    assert response.data == {"total_beds": 2, "occupied_beds": 0, "occupancy_pct": 0}
+
+    admit_patient(hospital=hospital, patient=patient, admitting_doctor=doctor, bed=bed1)
+
+    response = auth_client.get("/api/v1/reports/bed-occupancy/")
+    assert response.data == {"total_beds": 2, "occupied_beds": 1, "occupancy_pct": 50.0}
+
+
+@pytest.mark.django_db
+def test_bed_occupancy_smoke_with_no_beds(auth_client):
+    response = auth_client.get("/api/v1/reports/bed-occupancy/")
+    assert response.status_code == 200
+    assert response.data == {"total_beds": 0, "occupied_beds": 0, "occupancy_pct": 0}
+
+
+@pytest.mark.django_db
+def test_lab_tat_reflects_verified_results_and_pending_orders(auth_client, hospital, patient):
+    from apps.laboratory.models import LabOrder, LabResult, LabTest
+
+    lab_test = LabTest.objects.create(hospital=hospital, name="CBC")
+    order = LabOrder.objects.create(hospital=hospital, patient=patient)
+    order.ordered_tests.add(lab_test)
+
+    response = auth_client.get("/api/v1/reports/lab-tat/")
+    assert response.status_code == 200
+    assert response.data == {"orders_today": 1, "pending_orders": 1, "avg_tat_minutes": None}
+
+    result = LabResult.objects.create(hospital=hospital, lab_order=order, lab_test=lab_test, value="5.0")
+    result.finalize(None)
+    order.status = LabOrder.Status.VERIFIED
+    order.save(update_fields=["status"])
+
+    response = auth_client.get("/api/v1/reports/lab-tat/")
+    assert response.data["orders_today"] == 1
+    assert response.data["pending_orders"] == 0
+    assert response.data["avg_tat_minutes"] is not None
+    assert response.data["avg_tat_minutes"] >= 0
+
+
+@pytest.mark.django_db
+def test_lab_tat_smoke_with_no_data(auth_client):
+    response = auth_client.get("/api/v1/reports/lab-tat/")
+    assert response.status_code == 200
+    assert response.data == {"orders_today": 0, "pending_orders": 0, "avg_tat_minutes": None}
+
+
+@pytest.mark.django_db
+def test_pharmacy_low_stock_flags_medicines_at_or_below_reorder_level(auth_client, hospital):
+    import datetime
+
+    from apps.pharmacy.models import Medicine, MedicineBatch
+
+    low = Medicine.objects.create(hospital=hospital, name="Paracetamol", reorder_level=10)
+    MedicineBatch.objects.create(hospital=hospital, medicine=low, batch_number="B1", expiry_date=datetime.date.today() + datetime.timedelta(days=100), quantity_available=5)
+
+    healthy = Medicine.objects.create(hospital=hospital, name="Ibuprofen", reorder_level=10)
+    MedicineBatch.objects.create(hospital=hospital, medicine=healthy, batch_number="B2", expiry_date=datetime.date.today() + datetime.timedelta(days=100), quantity_available=50)
+
+    untracked = Medicine.objects.create(hospital=hospital, name="Vitamin C", reorder_level=0)
+    MedicineBatch.objects.create(hospital=hospital, medicine=untracked, batch_number="B3", expiry_date=datetime.date.today() + datetime.timedelta(days=100), quantity_available=0)
+
+    response = auth_client.get("/api/v1/reports/pharmacy-low-stock/")
+    assert response.status_code == 200
+    assert response.data["total_medicines"] == 3
+    assert response.data["low_stock_count"] == 1
+    assert response.data["low_stock_medicines"][0]["name"] == "Paracetamol"
+    assert response.data["low_stock_medicines"][0]["available"] == 5
+
+
+@pytest.mark.django_db
+def test_pharmacy_low_stock_smoke_with_no_data(auth_client):
+    response = auth_client.get("/api/v1/reports/pharmacy-low-stock/")
+    assert response.status_code == 200
+    assert response.data == {"total_medicines": 0, "low_stock_count": 0, "low_stock_medicines": []}

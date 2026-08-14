@@ -221,6 +221,111 @@ def reminder_delivery_summary(hospital, start, end):
     return [{"purpose": row["template__purpose"], "channel": row["channel"], "count": row["count"]} for row in rows]
 
 
+def opd_snapshot(hospital):
+    """ERP ops dashboard, OPD metrics only — docs/erp/06-navigation-and-dashboards.md
+    §4. First entry in what becomes a fuller ERP ops dashboard as later
+    phases (IPD bed occupancy, ICU, OT utilization, lab TAT, pharmacy
+    stock) add their own snapshot functions alongside this one — not
+    parameterized by date range like the CRM reports above, "today" is
+    the only view a live ops dashboard needs."""
+    from apps.opd.models import Encounter
+
+    start, end = _today_range()
+    today_appointments = Appointment.objects.filter(hospital=hospital, slot__date=timezone.localdate())
+    return {
+        "encounters_today": Encounter.objects.filter(hospital=hospital, created_at__gte=start, created_at__lt=end).count(),
+        "waiting": today_appointments.filter(status=Appointment.Status.CHECKED_IN).count(),
+        "in_consult": today_appointments.filter(status=Appointment.Status.IN_CONSULT).count(),
+        "completed_today": today_appointments.filter(status=Appointment.Status.COMPLETED, completed_at__gte=start, completed_at__lt=end).count(),
+    }
+
+
+def bed_occupancy_snapshot(hospital):
+    """ERP ops dashboard, bed occupancy (docs/erp/06-navigation-and-dashboards.md
+    §4, Phase 4 addition) — a separate function from opd_snapshot above,
+    not folded into it, since bed occupancy is IPD/facilities data, not
+    OPD; both feed the same growing dashboard section without pretending
+    to be the same concern."""
+    from apps.facilities.models import Bed
+
+    beds = Bed.objects.filter(hospital=hospital)
+    total = beds.count()
+    occupied = beds.filter(status=Bed.Status.OCCUPIED).count()
+    return {
+        "total_beds": total,
+        "occupied_beds": occupied,
+        "occupancy_pct": round(occupied / total * 100, 1) if total else 0,
+    }
+
+
+def icu_occupancy_snapshot(hospital):
+    from apps.icu.models import ICUAdmission
+
+    active_icu = ICUAdmission.objects.filter(hospital=hospital, discharged_at__isnull=True)
+    total_active = active_icu.count()
+    ventilator_active = active_icu.filter(ventilator_required=True).count()
+    return {
+        "active_icu_admissions": total_active,
+        "ventilator_supported": ventilator_active,
+    }
+
+
+def ot_utilization_snapshot(hospital):
+    from apps.ot.models import OTSchedule, SurgeryRequest
+
+    start, end = _today_range()
+    today_schedules = OTSchedule.objects.filter(hospital=hospital, scheduled_start__gte=start, scheduled_start__lt=end)
+    return {
+        "scheduled_surgeries_today": today_schedules.count(),
+        "pending_surgery_requests": SurgeryRequest.objects.filter(hospital=hospital, status=SurgeryRequest.Status.REQUESTED).count(),
+    }
+
+
+def lab_tat_snapshot(hospital):
+    """ERP ops dashboard, lab turnaround time (Phase 5 addition — see
+    opd_snapshot's docstring for why these live as separate functions
+    rather than one combined dashboard query). TAT is measured order->
+    verified-result, the full round trip a clinician actually waits on,
+    not order->first-entered-result."""
+    from apps.laboratory.models import LabOrder, LabResult
+
+    start, end = _today_range()
+    verified_today = LabResult.objects.filter(
+        hospital=hospital, finalized_at__gte=start, finalized_at__lt=end, finalized_at__isnull=False,
+    ).select_related("lab_order")
+
+    tat_minutes = [(r.finalized_at - r.lab_order.ordered_at).total_seconds() / 60 for r in verified_today]
+    avg_tat_minutes = round(sum(tat_minutes) / len(tat_minutes), 1) if tat_minutes else None
+
+    orders = LabOrder.objects.filter(hospital=hospital)
+    return {
+        "orders_today": orders.filter(ordered_at__gte=start, ordered_at__lt=end).count(),
+        "pending_orders": orders.exclude(status=LabOrder.Status.VERIFIED).count(),
+        "avg_tat_minutes": avg_tat_minutes,
+    }
+
+
+def pharmacy_low_stock_snapshot(hospital):
+    """ERP ops dashboard, pharmacy stock (Phase 5 addition). A medicine
+    counts as low stock only when it has a reorder_level set (0 means "not
+    tracked for reordering") and its total across all batches has fallen
+    to or below it — same rule as apps.pharmacy.serializers.MedicineSerializer
+    .total_available, computed here directly for the hospital-wide list
+    rather than round-tripping through every Medicine's serializer."""
+    from apps.pharmacy.models import Medicine
+
+    medicines = Medicine.objects.filter(hospital=hospital, is_active=True).annotate(total_available=Sum("batches__quantity_available"))
+    low_stock = [m for m in medicines if m.reorder_level > 0 and (m.total_available or 0) <= m.reorder_level]
+    return {
+        "total_medicines": medicines.count(),
+        "low_stock_count": len(low_stock),
+        "low_stock_medicines": [
+            {"id": m.id, "name": m.name, "available": m.total_available or 0, "reorder_level": m.reorder_level}
+            for m in sorted(low_stock, key=lambda m: m.total_available or 0)[:10]
+        ],
+    }
+
+
 def render_daily_mis_text(hospital, summary: dict) -> str:
     calls = summary["calls"]
     funnel = summary["enquiry_funnel"]

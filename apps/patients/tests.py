@@ -108,6 +108,96 @@ def test_blank_national_id_and_insurance_policy_number_stay_blank(hospital):
     assert p.insurance_policy_number == ""
 
 
+# --- Patient: UHID (docs/erp/02-domain-model.md) ---------------------------
+
+@pytest.mark.django_db
+def test_patient_gets_a_uhid_assigned_automatically_on_first_save(hospital):
+    p = Patient.objects.create(hospital=hospital, first_name="Auto", mobile="9844000090")
+    assert p.uhid
+    assert p.uhid.startswith(hospital.slug.upper())
+
+
+@pytest.mark.django_db
+def test_patient_uhids_are_sequential_and_unique_within_a_hospital(hospital):
+    first = Patient.objects.create(hospital=hospital, first_name="One", mobile="9844000091")
+    second = Patient.objects.create(hospital=hospital, first_name="Two", mobile="9844000092")
+    assert first.uhid != second.uhid
+    first_seq = int(first.uhid.rsplit("-", 1)[1])
+    second_seq = int(second.uhid.rsplit("-", 1)[1])
+    assert second_seq == first_seq + 1
+
+
+@pytest.mark.django_db
+def test_patient_uhid_is_not_regenerated_on_update(hospital):
+    p = Patient.objects.create(hospital=hospital, first_name="Stable", mobile="9844000093")
+    original_uhid = p.uhid
+    p.city = "Pune"
+    p.save(update_fields=["city"])
+    p.refresh_from_db()
+    assert p.uhid == original_uhid
+
+
+@pytest.mark.django_db
+def test_patient_uhid_sequences_are_independent_per_hospital(hospital, other_hospital):
+    """Two hospitals both minting their first UHID shouldn't collide just
+    because they both start their sequence at 1 — the hospital slug
+    prefix is what keeps them apart."""
+    ours = Patient.objects.create(hospital=hospital, first_name="Ours", mobile="9844000094")
+    theirs = Patient.objects.create(hospital=other_hospital, first_name="Theirs", mobile="9844000095")
+    assert ours.uhid != theirs.uhid
+    assert ours.uhid.startswith(hospital.slug.upper())
+    assert theirs.uhid.startswith(other_hospital.slug.upper())
+
+
+# --- Patient: field-level clinical-detail gating (docs/erp/03-rbac-and-roles.md §2c) ---
+
+@pytest.mark.django_db
+def test_a_role_without_access_clinical_detail_does_not_see_national_id_fields(api_client, hospital, department):
+    """crm_executive is a CRM role template — it can see and edit a
+    Patient row (front-desk/insurance-enquiry work) but should never see
+    national_id_number through this endpoint."""
+    from apps.accounts.models import Role, User, assign_role
+
+    crm_role = Role.objects.create(hospital=hospital, department=department, name="CRM Exec", template=Role.Template.CRM_EXECUTIVE)
+    crm_user = User.objects.create_user(email="crm@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(crm_user, crm_role)
+    api_client.force_authenticate(user=crm_user)
+
+    p = Patient.objects.create(hospital=hospital, first_name="Sensitive", mobile="9844000096", national_id_number="1234-5678-9012")
+
+    response = api_client.get(f"/api/v1/patients/{p.id}/")
+    assert response.status_code == 200
+    assert "national_id_number" not in response.data
+    assert "national_id_type" not in response.data
+    assert response.data["insurance_provider"] == ""  # still present — CRM legitimately needs insurance fields
+
+
+@pytest.mark.django_db
+def test_a_role_with_access_clinical_detail_does_see_national_id_fields(auth_client, hospital):
+    """auth_client's role uses the "admin" template, which the new
+    access_clinical_detail "extra" grant now includes (see
+    apps.accounts.permission_templates)."""
+    p = Patient.objects.create(hospital=hospital, first_name="Sensitive", mobile="9844000089", national_id_number="1234-5678-9012")
+
+    response = auth_client.get(f"/api/v1/patients/{p.id}/")
+
+    assert response.status_code == 200
+    assert response.data["national_id_number"] == "1234-5678-9012"
+
+
+@pytest.mark.django_db
+def test_prescriptions_are_blocked_entirely_for_a_role_without_access_clinical_detail(api_client, hospital, department, patient):
+    from apps.accounts.models import Role, User, assign_role
+
+    crm_role = Role.objects.create(hospital=hospital, department=department, name="CRM Exec", template=Role.Template.CRM_EXECUTIVE)
+    crm_user = User.objects.create_user(email="crm2@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(crm_user, crm_role)
+    api_client.force_authenticate(user=crm_user)
+
+    response = api_client.get("/api/v1/prescriptions/")
+    assert response.status_code == 403
+
+
 # --- Patient: API CRUD --------------------------------------------------
 
 @pytest.mark.django_db

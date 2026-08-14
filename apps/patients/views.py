@@ -7,6 +7,7 @@ from apps.core.viewsets import TenantScopedViewSetMixin
 from .models import Document, Patient
 from .serializers import (
     DocumentSerializer,
+    PatientCRMSerializer,
     PatientLookupSerializer,
     PatientSerializer,
     TimelineEventSerializer,
@@ -18,6 +19,16 @@ class PatientViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     filterset_fields = ["is_active", "gender", "preferred_language"]
     search_fields = ["first_name", "last_name", "mobile", "alternate_mobile", "email"]
+
+    def get_serializer_class(self):
+        # Field-level gating, not record-level — see
+        # docs/erp/03-rbac-and-roles.md §2c. A CRM role can still see and
+        # edit a Patient row (front-desk registration, corporate/insurance
+        # enquiries); it just never sees national_id_number through this
+        # endpoint.
+        if self.request.user.has_perm("patients.access_clinical_detail"):
+            return PatientSerializer
+        return PatientCRMSerializer
 
     @action(detail=False, methods=["get"])
     def lookup(self, request):
@@ -60,11 +71,20 @@ class DocumentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 
 class PrescriptionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
-    """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx)."""
+    """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx). Every field here
+    (diagnosis, medications, lab orders) is clinical content with no
+    CRM-safe partial view — gated by RequiresClinicalDetailPermission
+    rather than a swapped serializer, see docs/erp/03-rbac-and-roles.md
+    §2c and apps.core.permissions.RequiresClinicalDetailPermission."""
+
+    from rest_framework.permissions import IsAuthenticated
+
+    from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDetailPermission, RoleBasedModelPermissions
 
     from .models import Prescription
     from .serializers import PrescriptionSerializer
 
+    permission_classes = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
     serializer_class = PrescriptionSerializer
     queryset = Prescription.objects.all()
     filterset_fields = ["patient", "doctor"]

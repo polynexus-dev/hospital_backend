@@ -95,6 +95,8 @@ def check_in(appointment: Appointment) -> Appointment:
     order regardless of when their slot was booked for. select_for_update
     here mirrors book_appointment's locking so two simultaneous check-ins
     for the same doctor/day can't land on the same token."""
+    from .signals import appointment_checked_in
+
     appointment.status = Appointment.Status.CHECKED_IN
     appointment.checked_in_at = timezone.now()
 
@@ -108,6 +110,7 @@ def check_in(appointment: Appointment) -> Appointment:
         appointment.save(update_fields=["status", "checked_in_at", "queue_token"])
     else:
         appointment.save(update_fields=["status", "checked_in_at"])
+    appointment_checked_in.send(sender=Appointment, appointment=appointment)
     return appointment
 
 

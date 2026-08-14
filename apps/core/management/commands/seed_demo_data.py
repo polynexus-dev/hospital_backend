@@ -18,6 +18,16 @@ from apps.patients.models import Document, Patient, Prescription, TimelineEvent,
 from apps.referrals.models import FieldVisit, ReferralRecord, ReferringDoctor
 from apps.telephony.models import Call, CallbackTask
 from apps.tpa.models import PreAuthRequest, TPACompany
+from apps.emergency.models import EDVisit, Triage
+from apps.ot.models import AnaesthesiaRecord, ConsumableUsage, ImplantUsage, OperativeNote, OTSchedule, PreOpChecklist, SurgeryRequest
+from apps.icu.models import ICUAdmission, ICUDailyProgressNote, VentilatorLog
+from apps.bloodbank.models import BloodUnit, CrossMatchRequest, Donor, Transfusion
+from apps.billing.models import Bill, BillItem, InsuranceClaim, Payment
+from apps.inventory.models import Item, ItemCategory, POItem, PurchaseOrder, StockLevel, StockTransaction
+from apps.finance.models import Expense, Ledger, Receivable
+from apps.hr.models import Attendance, Employee, LeaveRequest, Shift
+from apps.facilities.models import Bed, Room, Ward
+from apps.ipd.models import Admission
 
 
 class Command(BaseCommand):
@@ -63,12 +73,22 @@ class Command(BaseCommand):
         ipd, _ = Department.objects.get_or_create(hospital=hospital, name="IPD", defaults={"code": "IPD"})
 
         # 3. Roles
-        owner_role, _ = Role.objects.get_or_create(hospital=hospital, name="Hospital Owner / Admin")
-        front_desk_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Front Desk Officer")
-        doctor_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="OPD Doctor")
-        operator_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Telephony Operator")
-        tpa_role, _ = Role.objects.get_or_create(hospital=hospital, department=ipd, name="TPA Desk Manager")
-        pro_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Patient Relationship Officer")
+        from apps.accounts.permission_templates import apply_permission_template
+
+        owner_role, _ = Role.objects.get_or_create(
+            hospital=hospital,
+            name="Hospital Owner / Admin",
+            defaults={"template": Role.Template.HOSPITAL_ADMINISTRATOR},
+        )
+        owner_role.template = Role.Template.HOSPITAL_ADMINISTRATOR
+        owner_role.save()
+        apply_permission_template(owner_role.group, Role.Template.HOSPITAL_ADMINISTRATOR)
+
+        front_desk_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Front Desk Officer", defaults={"template": Role.Template.RECEPTIONIST})
+        doctor_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="OPD Doctor", defaults={"template": Role.Template.DOCTOR})
+        operator_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Telephony Operator", defaults={"template": Role.Template.CALL_CENTRE_EXECUTIVE})
+        tpa_role, _ = Role.objects.get_or_create(hospital=hospital, department=ipd, name="TPA Desk Manager", defaults={"template": Role.Template.INSURANCE_TPA_EXECUTIVE})
+        pro_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Patient Relationship Officer", defaults={"template": Role.Template.CRM_EXECUTIVE})
 
         # 4. Demo Users
         def create_or_update_user(email, first_name, last_name, dept=None, role=None, is_staff=False, is_super=False, lang="en"):
@@ -84,15 +104,17 @@ class Command(BaseCommand):
                     "preferred_language": lang,
                 },
             )
+            user.is_staff = is_staff
+            user.is_superuser = is_super
             if created or not user.check_password(password):
                 user.set_password(password)
-                user.save()
+            user.save()
             if role:
                 assign_role(user, role)
             return user
 
         saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True)
-        group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True)
+        group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True, is_super=True)
         owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
         admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
         frontdesk_user = create_or_update_user("frontdesk@demo-hospital.example", "Priya", "Sharma (Reception)", dept=opd, role=front_desk_role, lang="mr")
@@ -990,16 +1012,257 @@ class Command(BaseCommand):
                 "approved_at": timezone.now() - datetime.timedelta(days=1),
             },
         )
-        PreAuthRequest.objects.get_or_create(
+        # 19. Emergency, OT, ICU, Blood Bank, Billing, Inventory, Finance, HR Demo Data
+        ed_visit, _ = EDVisit.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            defaults={"chief_complaint": "Severe Acute Chest Pain & Shortness of Breath", "status": EDVisit.Status.TRIAGED},
+        )
+        Triage.objects.get_or_create(
+            hospital=hospital,
+            ed_visit=ed_visit,
+            defaults={
+                "triage_category": Triage.Category.RESUSCITATION,
+                "vitals_summary": "BP 85/55 mmHg, HR 115 bpm, SpO2 86%, Temp 98.6F",
+                "triaged_by": doctor_user,
+            },
+        )
+
+        surg_req, _ = SurgeryRequest.objects.get_or_create(
             hospital=hospital,
             patient=p2,
-            tpa_company=tpa2,
+            defaults={"proposed_procedure": "Right Total Knee Replacement (TKR)", "status": SurgeryRequest.Status.SCHEDULED},
+        )
+        PreOpChecklist.objects.get_or_create(
+            hospital=hospital,
+            surgery_request=surg_req,
+            defaults={"consent_obtained": True, "fasting_confirmed": True, "site_marked": True},
+        )
+        now_dt = timezone.now()
+        ot_sched, _ = OTSchedule.objects.get_or_create(
+            hospital=hospital,
+            surgery_request=surg_req,
             defaults={
-                "policy_number": "POL-HDFC-554433",
-                "claim_amount": 120000.00,
-                "status": "pending",
-                "checklist": {"id_proof": True, "doctor_prescription": True, "discharge_summary": False},
+                "operation_theatre_room": "OT Suite 1",
+                "surgeon": doc_sharma,
+                "scheduled_start": now_dt,
+                "scheduled_end": now_dt + datetime.timedelta(hours=2),
             },
+        )
+        op_note, _ = OperativeNote.objects.get_or_create(
+            hospital=hospital,
+            ot_schedule=ot_sched,
+            defaults={
+                "procedure_performed": "Right Total Knee Arthroplasty with cemented implant",
+                "findings": "Grade 4 Kellgren-Lawrence Osteoarthritis with bone-on-bone friction",
+                "surgeon": doc_sharma,
+                "started_at": now_dt,
+                "ended_at": now_dt + datetime.timedelta(hours=2),
+            },
+        )
+        AnaesthesiaRecord.objects.get_or_create(
+            hospital=hospital,
+            ot_schedule=ot_sched,
+            defaults={
+                "anaesthesia_type": "Combined Spinal Epidural (CSE)",
+                "intra_op_notes": "Hemodynamics stable. 500ml Ringer Lactate infused.",
+                "anaesthetist": doctor_user,
+            },
+        )
+        ConsumableUsage.objects.get_or_create(hospital=hospital, ot_schedule=ot_sched, item_name="Vicryl 2-0 Sutures", defaults={"quantity": 4})
+        ImplantUsage.objects.get_or_create(
+            hospital=hospital,
+            ot_schedule=ot_sched,
+            implant_name="Titanium Knee Joint Prosthesis",
+            defaults={"serial_number": "SN-TKR-2026-8812", "quantity": 1},
+        )
+
+        ward, _ = Ward.objects.get_or_create(hospital=hospital, name="ICU Ward")
+        room, _ = Room.objects.get_or_create(hospital=hospital, ward=ward, room_number="ICU-101")
+        bed, _ = Bed.objects.get_or_create(hospital=hospital, room=room, bed_number="ICU-BED-01")
+        admission, _ = Admission.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            defaults={
+                "admitting_doctor": doc_kulkarni,
+                "bed": bed,
+                "admission_type": Admission.AdmissionType.EMERGENCY,
+                "status": Admission.Status.ADMITTED,
+                "admission_diagnosis": "Acute Myocardial Infarction / Post-Cardiac Arrest",
+            },
+        )
+        icu_adm, _ = ICUAdmission.objects.get_or_create(
+            hospital=hospital,
+            admission=admission,
+            defaults={"bed": bed, "ventilator_required": True},
+        )
+        VentilatorLog.objects.get_or_create(
+            hospital=hospital,
+            icu_admission=icu_adm,
+            defaults={"mode": "AC/VC", "ventilator_settings": {"PEEP": 8, "FiO2": 50, "TV": 450}},
+        )
+        ICUDailyProgressNote.objects.get_or_create(
+            hospital=hospital,
+            icu_admission=icu_adm,
+            defaults={"doctor": doc_kulkarni, "note": "Patient stable on low dose vasopressors. ABG normal."},
+        )
+
+        donor, _ = Donor.objects.get_or_create(
+            hospital=hospital,
+            name="Rajesh Kumar (Voluntary)",
+            defaults={"blood_group": "O+", "phone": "+919876543210"},
+        )
+        today_date = timezone.localdate()
+        b_unit, _ = BloodUnit.objects.get_or_create(
+            hospital=hospital,
+            donor=donor,
+            blood_group="O+",
+            component=BloodUnit.Component.PRBC,
+            defaults={
+                "collection_date": today_date - datetime.timedelta(days=5),
+                "expiry_date": today_date + datetime.timedelta(days=30),
+                "status": BloodUnit.Status.AVAILABLE,
+            },
+        )
+        CrossMatchRequest.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            blood_group_required="O+",
+            component=BloodUnit.Component.PRBC,
+            defaults={"status": CrossMatchRequest.Status.MATCHED, "requested_by": doctor_user},
+        )
+        Transfusion.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            blood_unit=b_unit,
+            defaults={"admission": admission, "issued_by": doctor_user, "reaction_notes": "Uneventful transfusion. Vitals normal."},
+        )
+
+        bill, _ = Bill.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            defaults={
+                "admission": admission,
+                "total_amount": 25000.00,
+                "discount_amount": 2000.00,
+                "net_amount": 23000.00,
+                "status": Bill.Status.PARTIALLY_PAID,
+            },
+        )
+        BillItem.objects.get_or_create(bill=bill, description="ICU Bed Charge (2 Days)", defaults={"quantity": 2, "unit_price": 5000.00, "total_price": 10000.00})
+        BillItem.objects.get_or_create(bill=bill, description="Ventilator Monitoring", defaults={"quantity": 2, "unit_price": 4000.00, "total_price": 8000.00})
+        BillItem.objects.get_or_create(bill=bill, description="Emergency Triage & Consultation", defaults={"quantity": 1, "unit_price": 7000.00, "total_price": 7000.00})
+        Payment.objects.get_or_create(
+            hospital=hospital,
+            bill=bill,
+            defaults={"amount": 10000.00, "payment_method": Payment.PaymentMethod.UPI, "transaction_id": "UPI/9988221100"},
+        )
+        InsuranceClaim.objects.get_or_create(
+            hospital=hospital,
+            bill=bill,
+            defaults={
+                "insurance_company": "Star Health Insurance",
+                "policy_number": "POL-STAR-998877",
+                "claimed_amount": 23000.00,
+                "approved_amount": 20000.00,
+                "status": InsuranceClaim.Status.APPROVED,
+            },
+        )
+
+        cat_surg, _ = ItemCategory.objects.get_or_create(hospital=hospital, name="Surgical Consumables", defaults={"code": "SURG"})
+        item_mask, _ = Item.objects.get_or_create(
+            hospital=hospital,
+            code="MSK-N95",
+            defaults={"category": cat_surg, "name": "N95 Surgical Mask Respirator", "unit_of_measure": "pcs", "min_stock_level": 50},
+        )
+        StockLevel.objects.get_or_create(
+            hospital=hospital,
+            item=item_mask,
+            batch_number="BAT-2026-N95",
+            defaults={"quantity_on_hand": 500, "unit_cost": 30.00, "expiry_date": today_date + datetime.timedelta(days=365)},
+        )
+        po, _ = PurchaseOrder.objects.get_or_create(
+            hospital=hospital,
+            po_number="PO-2026-0801",
+            defaults={"vendor_name": "MedTech Supplies Corp", "status": PurchaseOrder.Status.RECEIVED},
+        )
+        POItem.objects.get_or_create(purchase_order=po, item=item_mask, defaults={"ordered_quantity": 1000, "received_quantity": 1000, "unit_cost": 25.00})
+        StockTransaction.objects.get_or_create(
+            hospital=hospital,
+            item=item_mask,
+            transaction_type=StockTransaction.TransactionType.RECEIPT,
+            defaults={"quantity": 1000, "reference": "PO-2026-0801 Receipt"},
+        )
+
+        exp, _ = Expense.objects.get_or_create(
+            hospital=hospital,
+            category="Surgical Supplies Procurement",
+            defaults={"amount": 25000.00, "paid_to": "MedTech Supplies Corp", "paid_by": owner_user, "approved_by": owner_user},
+        )
+        Ledger.objects.get_or_create(
+            hospital=hospital,
+            reference_type="Expense",
+            reference_id=str(exp.id),
+            defaults={"entry_type": Ledger.EntryType.EXPENSE, "category": exp.category, "amount": exp.amount},
+        )
+        Receivable.objects.get_or_create(
+            hospital=hospital,
+            source_type=Receivable.SourceType.INSURANCE_CLAIM,
+            source_id=str(bill.id),
+            defaults={"amount": 20000.00, "due_date": today_date + datetime.timedelta(days=15), "status": Receivable.Status.PENDING},
+        )
+
+        emp_doc, _ = Employee.objects.get_or_create(
+            hospital=hospital,
+            employee_code="EMP-DR-001",
+            defaults={"user": doctor_user, "department": opd, "designation": "Senior Consultant Physician", "employment_type": Employee.EmploymentType.PERMANENT},
+        )
+        Attendance.objects.get_or_create(
+            hospital=hospital,
+            employee=emp_doc,
+            date=today_date,
+            defaults={"status": Attendance.Status.PRESENT},
+        )
+        LeaveRequest.objects.get_or_create(
+            hospital=hospital,
+            employee=emp_doc,
+            leave_type="Casual Leave",
+            start_date=today_date + datetime.timedelta(days=7),
+            end_date=today_date + datetime.timedelta(days=8),
+            defaults={"status": LeaveRequest.Status.APPROVED, "approved_by": owner_user},
+        )
+        # 20. Seed Multi-Branch Demo Data for Kothrud & Wakad Branches
+        pk1, _ = Patient.objects.get_or_create(
+            hospital=h_kothrud,
+            first_name="Vikram",
+            last_name="Joshi",
+            mobile="+919811223344",
+            defaults={"gender": "M", "city": "Pune"},
+        )
+        pk2, _ = Patient.objects.get_or_create(
+            hospital=h_kothrud,
+            first_name="Sunita",
+            last_name="Kulkarni",
+            mobile="+919822334455",
+            defaults={"gender": "F", "city": "Pune"},
+        )
+        Bill.objects.get_or_create(
+            hospital=h_kothrud,
+            patient=pk1,
+            defaults={"total_amount": 15000.00, "discount_amount": 1000.00, "net_amount": 14000.00, "status": Bill.Status.PAID},
+        )
+
+        pw1, _ = Patient.objects.get_or_create(
+            hospital=h_wakad,
+            first_name="Anand",
+            last_name="Shinde",
+            mobile="+919833445566",
+            defaults={"gender": "M", "city": "Wakad"},
+        )
+        Bill.objects.get_or_create(
+            hospital=h_wakad,
+            patient=pw1,
+            defaults={"total_amount": 32000.00, "discount_amount": 2000.00, "net_amount": 30000.00, "status": Bill.Status.PARTIALLY_PAID},
         )
 
         # Print success table
