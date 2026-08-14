@@ -60,6 +60,54 @@ def test_patient_model_update_and_delete(patient):
     assert not Patient.objects.filter(pk=patient_id).exists()
 
 
+# --- Patient: national_id_number / insurance_policy_number are encrypted at rest ---
+
+@pytest.mark.django_db
+def test_national_id_and_insurance_policy_number_round_trip_through_the_orm(hospital):
+    """apps.core.encryption.EncryptedTextField should be invisible from the
+    ORM's point of view — what you write is what you read back."""
+    p = Patient.objects.create(
+        hospital=hospital, first_name="Encrypted", mobile="9844000099",
+        national_id_number="1234-5678-9012", insurance_policy_number="POL-STAR-998877",
+    )
+    p.refresh_from_db()
+    assert p.national_id_number == "1234-5678-9012"
+    assert p.insurance_policy_number == "POL-STAR-998877"
+
+
+@pytest.mark.django_db
+def test_national_id_and_insurance_policy_number_are_ciphertext_in_the_database(hospital):
+    """The whole point of C2's fix (see docs/SECURITY_COMPLIANCE.md) — a raw
+    row read (backup, replica, dbshell) must not see plaintext PII."""
+    from django.db import connection
+
+    p = Patient.objects.create(
+        hospital=hospital, first_name="Encrypted", mobile="9844000098",
+        national_id_number="1234-5678-9012", insurance_policy_number="POL-STAR-998877",
+    )
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT national_id_number, insurance_policy_number FROM patients_patient WHERE id = %s",
+            [p.id],
+        )
+        raw_national_id, raw_policy_number = cur.fetchone()
+    assert raw_national_id != "1234-5678-9012"
+    assert raw_policy_number != "POL-STAR-998877"
+    assert "1234-5678-9012" not in raw_national_id
+    assert "POL-STAR-998877" not in raw_policy_number
+
+
+@pytest.mark.django_db
+def test_blank_national_id_and_insurance_policy_number_stay_blank(hospital):
+    """Empty values shouldn't be encrypted into a non-empty ciphertext blob
+    — that would make "no ID on file" indistinguishable from "has an ID"
+    at the storage layer, and waste a Fernet token on nothing."""
+    p = Patient.objects.create(hospital=hospital, first_name="NoId", mobile="9844000097")
+    p.refresh_from_db()
+    assert p.national_id_number == ""
+    assert p.insurance_policy_number == ""
+
+
 # --- Patient: API CRUD --------------------------------------------------
 
 @pytest.mark.django_db
@@ -177,6 +225,28 @@ def test_document_api_create_requires_multipart_file(auth_client, hospital, user
 @pytest.mark.django_db
 def test_document_api_create_without_file_returns_400(auth_client, patient):
     response = auth_client.post("/api/v1/documents/", {"patient": patient.id}, format="multipart")
+    assert response.status_code == 400
+    assert "file" in response.data
+
+
+@pytest.mark.django_db
+def test_document_api_rejects_a_disallowed_file_extension(auth_client, patient):
+    upload = SimpleUploadedFile("payload.exe", b"MZ fake executable content", content_type="application/octet-stream")
+
+    response = auth_client.post("/api/v1/documents/", {"patient": patient.id, "category": "report", "file": upload}, format="multipart")
+
+    assert response.status_code == 400
+    assert "file" in response.data
+
+
+@pytest.mark.django_db
+def test_document_api_rejects_a_file_over_the_size_limit(auth_client, patient):
+    from apps.patients.models import MAX_DOCUMENT_SIZE_BYTES
+
+    oversized = SimpleUploadedFile("report.pdf", b"x" * (MAX_DOCUMENT_SIZE_BYTES + 1), content_type="application/pdf")
+
+    response = auth_client.post("/api/v1/documents/", {"patient": patient.id, "category": "report", "file": oversized}, format="multipart")
+
     assert response.status_code == 400
     assert "file" in response.data
 

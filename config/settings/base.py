@@ -19,6 +19,28 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 
+# Key(s) for apps.core.encryption.EncryptedTextField (Aadhaar/PAN, insurance
+# policy numbers on Patient — see docs/SECURITY_COMPLIANCE.md finding C2).
+# A list, not a single key, so a key can be rotated by adding a new one
+# without losing the ability to decrypt rows written under an old one — the
+# first key is used for new writes, every key is tried on read.
+#
+# This default is a fixed, publicly-visible-in-this-repo placeholder — same
+# reasoning as SECRET_KEY above — and prod.py refuses to boot on it.
+INSECURE_DEV_FIELD_ENCRYPTION_KEY = "BBmuajpTCVZ3-ipNWvktB4oH2E94T_wb2YrDTVX6IoI="
+FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=[INSECURE_DEV_FIELD_ENCRYPTION_KEY])
+
+# HMAC key for apps.core.encryption.compute_blind_index() — deterministic
+# exact-match lookup alongside an EncryptedTextField (e.g.
+# PreAuthRequest.policy_number_lookup), for fields that need search but
+# can't expose plaintext at rest. Not rotatable via a list the way
+# FIELD_ENCRYPTION_KEYS is — changing this key changes every hash it
+# produces, so rotating it means recomputing every existing lookup column
+# in one pass, not gradually. Same insecure-placeholder-in-repo /
+# fail-closed-in-prod pattern as SECRET_KEY and FIELD_ENCRYPTION_KEYS.
+INSECURE_DEV_BLIND_INDEX_KEY = "79bba20118d39806042130385b486531af8d8069a51976294eb4cc7c5a206469"
+BLIND_INDEX_KEY = env("BLIND_INDEX_KEY", default=INSECURE_DEV_BLIND_INDEX_KEY)
+
 DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
@@ -38,6 +60,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
     "corsheaders",
@@ -244,7 +267,12 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://127.0.0.1:5173",
     ],
 )
-CORS_ALLOW_ALL_ORIGINS = True
+# Deliberately NOT setting CORS_ALLOW_ALL_ORIGINS = True — that overrides
+# CORS_ALLOWED_ORIGINS entirely (django-cors-headers sends
+# Access-Control-Allow-Origin: * regardless of the allow-list) and would
+# let any website make cross-origin browser requests against the API,
+# including in production. Add a deployment's real frontend origin(s) to
+# CORS_ALLOWED_ORIGINS via the env var instead of widening this.
 
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")

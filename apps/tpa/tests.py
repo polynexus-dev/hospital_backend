@@ -149,6 +149,81 @@ def test_pre_auth_request_model_delete(tpa_company, patient):
     assert not PreAuthRequest.objects.filter(pk=request_id).exists()
 
 
+# --- PreAuthRequest.policy_number: encrypted at rest, exact-match searchable ---
+
+@pytest.mark.django_db
+def test_policy_number_is_ciphertext_in_the_database(tpa_company, patient):
+    """The whole point of C2's fix (see docs/SECURITY_COMPLIANCE.md) — a raw
+    row read (backup, replica, dbshell) must not see a plaintext policy
+    number linked to a named patient's claim."""
+    from django.db import connection
+
+    request = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-SECRET-1", claim_amount=Decimal("1000.00"))
+    with connection.cursor() as cur:
+        cur.execute("SELECT policy_number FROM tpa_preauthrequest WHERE id = %s", [request.id])
+        raw_policy_number = cur.fetchone()[0]
+    assert raw_policy_number != "POL-SECRET-1"
+    assert "POL-SECRET-1" not in raw_policy_number
+    _teardown(request)
+
+
+@pytest.mark.django_db
+def test_policy_number_lookup_is_recomputed_when_policy_number_changes(tpa_company, patient):
+    from apps.core.encryption import compute_blind_index
+
+    request = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-OLD", claim_amount=Decimal("1000.00"))
+    assert request.policy_number_lookup == compute_blind_index("POL-OLD")
+
+    request.policy_number = "POL-NEW"
+    request.save()
+    request.refresh_from_db()
+    assert request.policy_number_lookup == compute_blind_index("POL-NEW")
+    _teardown(request)
+
+
+@pytest.mark.django_db
+def test_pre_auth_request_api_search_by_exact_policy_number(auth_client, tpa_company, patient):
+    """search_fields can't cover an encrypted column (see apps/tpa/views.py)
+    — ?policy_number= does an exact-match lookup via the blind-index
+    companion column instead."""
+    match = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-FINDME", claim_amount=Decimal("1000.00"))
+    other = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-OTHER", claim_amount=Decimal("1000.00"))
+
+    response = auth_client.get("/api/v1/tpa/pre-auth/", {"policy_number": "POL-FINDME"})
+
+    assert response.status_code == 200
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids == [match.id]
+    _teardown(match)
+    _teardown(other)
+
+
+@pytest.mark.django_db
+def test_pre_auth_request_api_search_by_policy_number_is_case_and_whitespace_insensitive(auth_client, tpa_company, patient):
+    match = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-MixedCase", claim_amount=Decimal("1000.00"))
+
+    response = auth_client.get("/api/v1/tpa/pre-auth/", {"policy_number": "  pol-mixedcase  "})
+
+    assert response.status_code == 200
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids == [match.id]
+    _teardown(match)
+
+
+@pytest.mark.django_db
+def test_pre_auth_request_api_search_by_policy_number_is_exact_not_substring(auth_client, tpa_company, patient):
+    """The documented trade-off of moving off DRF SearchFilter (icontains)
+    onto a blind index (exact match only) — a partial policy number
+    shouldn't match."""
+    request = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="POL-FINDME-FULL", claim_amount=Decimal("1000.00"))
+
+    response = auth_client.get("/api/v1/tpa/pre-auth/", {"policy_number": "FINDME"})
+
+    assert response.status_code == 200
+    assert response.data["results"] == []
+    _teardown(request)
+
+
 # --- TPACompanyViewSet: API-level CRUD -------------------------------------
 
 

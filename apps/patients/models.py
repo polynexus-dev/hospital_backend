@@ -1,9 +1,27 @@
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from apps.core.encryption import EncryptedTextField
 from apps.core.models import TenantScopedModel
+
+# Patient documents (reports, prescriptions, ID proofs, consent forms) are
+# clinical/PII records — restrict uploads to the file types this app
+# actually needs to display/preview, and cap size so a single upload can't
+# exhaust disk on the shared media volume.
+ALLOWED_DOCUMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "doc", "docx"]
+MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def validate_document_size(file):
+    if file.size > MAX_DOCUMENT_SIZE_BYTES:
+        raise ValidationError(
+            f"File is too large ({file.size / (1024 * 1024):.1f} MB) — "
+            f"maximum allowed size is {MAX_DOCUMENT_SIZE_BYTES // (1024 * 1024)} MB."
+        )
 
 
 class Patient(TenantScopedModel):
@@ -31,10 +49,15 @@ class Patient(TenantScopedModel):
     city = models.CharField(max_length=120, blank=True)
 
     national_id_type = models.CharField(max_length=32, blank=True, help_text="e.g. Aadhaar, PAN, Passport")
-    national_id_number = models.CharField(max_length=64, blank=True)
+    # Encrypted at rest (apps.core.encryption) — Aadhaar/PAN/Passport
+    # numbers are sensitive personal data under the DPDP Act / SPDI Rules.
+    # Not filterable/searchable as a result — never add this to a
+    # filterset_fields/search_fields list.
+    national_id_number = EncryptedTextField(blank=True)
 
     insurance_provider = models.CharField(max_length=150, blank=True)
-    insurance_policy_number = models.CharField(max_length=100, blank=True)
+    # Encrypted at rest — same reasoning as national_id_number above.
+    insurance_policy_number = EncryptedTextField(blank=True)
     employer = models.CharField(max_length=150, blank=True)
 
     attendant_name = models.CharField(max_length=150, blank=True)
@@ -90,7 +113,13 @@ class Document(TenantScopedModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="documents")
     category = models.CharField(max_length=32, choices=Category.choices, default=Category.OTHER)
     title = models.CharField(max_length=255, blank=True)
-    file = models.FileField(upload_to="patient_documents/%Y/%m/")
+    file = models.FileField(
+        upload_to="patient_documents/%Y/%m/",
+        validators=[
+            FileExtensionValidator(allowed_extensions=ALLOWED_DOCUMENT_EXTENSIONS),
+            validate_document_size,
+        ],
+    )
     notes = models.TextField(blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 

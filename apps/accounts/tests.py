@@ -109,6 +109,23 @@ def test_token_refresh_returns_a_new_access_token(api_client, hospital, departme
     assert "access" in response.data
 
 
+@pytest.mark.django_db
+def test_logout_blacklists_the_refresh_token_so_it_can_no_longer_be_used(api_client, hospital, department):
+    """Requires rest_framework_simplejwt.token_blacklist in INSTALLED_APPS —
+    without it BLACKLIST_AFTER_ROTATION is a silent no-op and a
+    stolen/leaked refresh token stays valid for its full lifetime even
+    after logout."""
+    User.objects.create_user(email="logout-test@test-hospital.example", password="correct-horse-1", hospital=hospital, department=department)
+    login = api_client.post("/api/v1/auth/login/", {"email": "logout-test@test-hospital.example", "password": "correct-horse-1"}, format="json")
+    refresh_token = login.data["refresh"]
+
+    logout = api_client.post("/api/v1/auth/logout/", {"refresh": refresh_token}, format="json")
+    assert logout.status_code == 200
+
+    reuse_attempt = api_client.post("/api/v1/auth/refresh/", {"refresh": refresh_token}, format="json")
+    assert reuse_attempt.status_code == 401
+
+
 # --- Users API: CRUD, isolation, and real gotchas ------------------------
 
 @pytest.mark.django_db

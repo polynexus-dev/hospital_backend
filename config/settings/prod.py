@@ -16,6 +16,17 @@ DEBUG = False
 if not SECRET_KEY or "change-me" in SECRET_KEY or "insecure" in SECRET_KEY:  # noqa: F405
     raise RuntimeError("SECRET_KEY is still a placeholder — set a real SECRET_KEY in the production environment before starting.")
 
+# Same reasoning as SECRET_KEY above: base.py's FIELD_ENCRYPTION_KEYS falls
+# back to a fixed, checked-into-this-repo placeholder so local dev works
+# with no .env at all. Reaching production on that default would mean every
+# deployment that forgot to set a real key encrypts patient PII with a key
+# anyone can read straight out of version control.
+if not FIELD_ENCRYPTION_KEYS or INSECURE_DEV_FIELD_ENCRYPTION_KEY in FIELD_ENCRYPTION_KEYS:  # noqa: F405
+    raise RuntimeError("FIELD_ENCRYPTION_KEYS is still the placeholder (or unset) — set real key(s) in the production environment before starting.")
+
+if not BLIND_INDEX_KEY or BLIND_INDEX_KEY == INSECURE_DEV_BLIND_INDEX_KEY:  # noqa: F405
+    raise RuntimeError("BLIND_INDEX_KEY is still the placeholder (or unset) — set a real key in the production environment before starting.")
+
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)  # noqa: F405
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
