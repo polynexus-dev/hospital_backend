@@ -30,6 +30,10 @@ class Hospital(TimeStampedModel):
     is_active = models.BooleanField(default=True)
     google_review_url = models.URLField(blank=True, help_text="Where NPS promoters get routed (§10).")
     owner_mis_whatsapp_number = models.CharField(max_length=20, blank=True, help_text="Where the daily WhatsApp MIS is sent (§12).")
+    lead_webhook_token = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False,
+        help_text="Secret used in the inbound lead-capture webhook URL (website forms, Meta/Google lead ads). Regenerate to revoke.",
+    )
 
     class Meta:
         ordering = ["name"]

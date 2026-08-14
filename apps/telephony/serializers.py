@@ -8,7 +8,7 @@ class CallSerializer(serializers.ModelSerializer):
         model = Call
         fields = [
             "id", "direction", "status", "from_number", "to_number",
-            "patient", "department", "operator",
+            "patient", "enquiry", "department", "operator",
             "started_at", "answered_at", "ended_at", "duration_seconds",
             "recording_url", "consent_recorded", "ivr_path", "call_reason", "notes",
             "provider_name", "provider_call_id", "created_at",

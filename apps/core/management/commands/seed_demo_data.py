@@ -1,22 +1,27 @@
 import datetime
+import uuid
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import Role, User, assign_role
-from apps.appointments.models import Appointment, Doctor, Slot, SlotTemplate
+from apps.appointments.models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
 from apps.appointments.services import generate_slots
-from apps.automation.models import EscalationRule, Task
-from apps.communications.models import Channel, Message, Template
+from apps.automation.models import EscalationRule, Task, Workflow, WorkflowRun, WorkflowStep
+from apps.communications.models import Channel, ConsentOptOut, Message, Template, Thread
 from apps.core.models import Department, Hospital
 from apps.enquiries.models import Enquiry
 from apps.feedback.models import Complaint, FeedbackRequest, NPSResponse, ServiceRecoveryTask
-from apps.patients.models import Document, Patient, TimelineEvent
+from apps.integrations.models import HISBillingRecord, HISVisit
+from apps.packages.models import CampRegistration, Campaign, HealthPackage
+from apps.patients.models import Document, Patient, Prescription, TimelineEvent, record_timeline_event
+from apps.referrals.models import FieldVisit, ReferralRecord, ReferringDoctor
 from apps.telephony.models import Call, CallbackTask
+from apps.tpa.models import PreAuthRequest, TPACompany
 
 
 class Command(BaseCommand):
-    help = "Seeds comprehensive demo data for Hospital CRM (Owner, Front Desk, Doctor, Operator users, Patients, Appointments, Calls, Enquiries, NPS, & Messages)."
+    help = "Seeds 100% comprehensive demo data for ALL Hospital CRM modules (Users, Patients, Inbox/Threads, Prescriptions, HIS Visits/Bills, Workflows, Waitlists, Telephony, NPS, TPA, Packages, Referrals)."
 
     def add_arguments(self, parser):
         parser.add_argument("--admin-password", default="changeme123", help="Password for all seeded demo users.")
@@ -25,7 +30,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         password = options["admin_password"]
 
-        # 1. Hospital Tenant
+        self.stdout.write("Seeding data across all modules...")
+
+        # 1. Hospital Tenant & Branches
         hospital, _ = Hospital.objects.get_or_create(
             slug="demo-hospital",
             defaults={
@@ -39,100 +46,58 @@ class Command(BaseCommand):
             },
         )
 
+        h_kothrud, _ = Hospital.objects.get_or_create(
+            slug="polynexus-kothrud",
+            defaults={"name": "Polynexus Hospital (Kothrud Branch)", "city": "Pune", "state": "Maharashtra"},
+        )
+        h_wakad, _ = Hospital.objects.get_or_create(
+            slug="polynexus-wakad",
+            defaults={"name": "Polynexus Hospital (Wakad Branch)", "city": "Pune", "state": "Maharashtra"},
+        )
+
         # 2. Departments
         opd, _ = Department.objects.get_or_create(hospital=hospital, name="OPD", defaults={"code": "OPD"})
         cardiology, _ = Department.objects.get_or_create(hospital=hospital, name="Cardiology", defaults={"code": "CARD"})
         ortho, _ = Department.objects.get_or_create(hospital=hospital, name="Orthopedics", defaults={"code": "ORTHO"})
         diag, _ = Department.objects.get_or_create(hospital=hospital, name="Diagnostics", defaults={"code": "DIAG"})
+        ipd, _ = Department.objects.get_or_create(hospital=hospital, name="IPD", defaults={"code": "IPD"})
 
         # 3. Roles
         owner_role, _ = Role.objects.get_or_create(hospital=hospital, name="Hospital Owner / Admin")
         front_desk_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Front Desk Officer")
         doctor_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="OPD Doctor")
         operator_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Telephony Operator")
+        tpa_role, _ = Role.objects.get_or_create(hospital=hospital, department=ipd, name="TPA Desk Manager")
+        pro_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Patient Relationship Officer")
 
         # 4. Demo Users
-        # Owner User
-        owner_user, created = User.objects.get_or_create(
-            email="owner@demo-hospital.example",
-            defaults={
-                "hospital": hospital,
-                "is_staff": True,
-                "is_superuser": True,
-                "first_name": "Vikram",
-                "last_name": "Patil (Owner)",
-                "preferred_language": "mr",
-            },
-        )
-        if created or not owner_user.check_password(password):
-            owner_user.set_password(password)
-            owner_user.save()
-        assign_role(owner_user, owner_role)
+        def create_or_update_user(email, first_name, last_name, dept=None, role=None, is_staff=False, is_super=False, lang="en"):
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "hospital": hospital,
+                    "department": dept,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "is_staff": is_staff,
+                    "is_superuser": is_super,
+                    "preferred_language": lang,
+                },
+            )
+            if created or not user.check_password(password):
+                user.set_password(password)
+                user.save()
+            if role:
+                assign_role(user, role)
+            return user
 
-        # Superuser Admin
-        admin_user, created = User.objects.get_or_create(
-            email="admin@demo-hospital.example",
-            defaults={
-                "hospital": hospital,
-                "is_staff": True,
-                "is_superuser": True,
-                "first_name": "System",
-                "last_name": "Admin",
-                "preferred_language": "en",
-            },
-        )
-        if created or not admin_user.check_password(password):
-            admin_user.set_password(password)
-            admin_user.save()
-        assign_role(admin_user, owner_role)
-
-        # Front Desk User
-        frontdesk_user, created = User.objects.get_or_create(
-            email="frontdesk@demo-hospital.example",
-            defaults={
-                "hospital": hospital,
-                "department": opd,
-                "first_name": "Priya",
-                "last_name": "Sharma (Reception)",
-                "preferred_language": "mr",
-            },
-        )
-        if created or not frontdesk_user.check_password(password):
-            frontdesk_user.set_password(password)
-            frontdesk_user.save()
-        assign_role(frontdesk_user, front_desk_role)
-
-        # Doctor User
-        doctor_user, created = User.objects.get_or_create(
-            email="doctor@demo-hospital.example",
-            defaults={
-                "hospital": hospital,
-                "department": opd,
-                "first_name": "Dr. Ramesh",
-                "last_name": "Kulkarni",
-                "preferred_language": "mr",
-            },
-        )
-        if created or not doctor_user.check_password(password):
-            doctor_user.set_password(password)
-            doctor_user.save()
-        assign_role(doctor_user, doctor_role)
-
-        # Telephony Operator User
-        operator_user, created = User.objects.get_or_create(
-            email="operator@demo-hospital.example",
-            defaults={
-                "hospital": hospital,
-                "department": opd,
-                "first_name": "Amit",
-                "last_name": "Deshmukh (Call Center)",
-                "preferred_language": "hi",
-            },
-        )
-        if created or not operator_user.check_password(password):
-            operator_user.set_password(password)
-            operator_user.save()
-        assign_role(operator_user, operator_role)
+        saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True)
+        group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True)
+        owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
+        admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
+        frontdesk_user = create_or_update_user("frontdesk@demo-hospital.example", "Priya", "Sharma (Reception)", dept=opd, role=front_desk_role, lang="mr")
+        doctor_user = create_or_update_user("doctor@demo-hospital.example", "Dr. Ramesh", "Kulkarni", dept=opd, role=doctor_role, lang="mr")
+        operator_user = create_or_update_user("operator@demo-hospital.example", "Amit", "Deshmukh (Call Center)", dept=opd, role=operator_role, lang="hi")
 
         # 5. Doctors
         doc_kulkarni, _ = Doctor.objects.get_or_create(
@@ -162,7 +127,7 @@ class Command(BaseCommand):
                 )
                 generate_slots(tmpl, weeks_ahead=2)
 
-        # 7. Patients & Timeline / Vault
+        # 7. Patients & Profiles
         p1, _ = Patient.objects.get_or_create(
             hospital=hospital,
             mobile="9823012345",
@@ -172,10 +137,18 @@ class Command(BaseCommand):
                 "gender": "female",
                 "email": "asha.patil@example.com",
                 "city": "Pune",
+                "address": "Flat 402, Shivajinagar, Pune",
                 "preferred_language": "mr",
                 "insurance_provider": "Star Health Insurance",
+                "insurance_policy_number": "POL-STAR-998877",
+                "national_id_type": "Aadhaar",
+                "national_id_number": "1234-5678-9012",
+                "attendant_name": "Suresh Patil",
+                "attendant_phone": "9823011111",
+                "attendant_relation": "husband",
             },
         )
+
         p2, _ = Patient.objects.get_or_create(
             hospital=hospital,
             mobile="9823023456",
@@ -185,10 +158,15 @@ class Command(BaseCommand):
                 "gender": "male",
                 "email": "ramesh.d@example.com",
                 "city": "Mumbai",
+                "address": "B-12, Dadar West, Mumbai",
                 "preferred_language": "hi",
                 "insurance_provider": "HDFC ERGO Health",
+                "insurance_policy_number": "POL-HDFC-554433",
+                "national_id_type": "PAN",
+                "national_id_number": "ABCDE1234F",
             },
         )
+
         p3, _ = Patient.objects.get_or_create(
             hospital=hospital,
             mobile="9823034567",
@@ -196,10 +174,12 @@ class Command(BaseCommand):
                 "first_name": "Sunita",
                 "last_name": "Pawar",
                 "gender": "female",
+                "email": "sunita.pawar@example.com",
                 "city": "Satara",
                 "preferred_language": "mr",
             },
         )
+
         p4, _ = Patient.objects.get_or_create(
             hospital=hospital,
             mobile="9823045678",
@@ -207,26 +187,379 @@ class Command(BaseCommand):
                 "first_name": "Rahul",
                 "last_name": "Shinde",
                 "gender": "male",
+                "email": "rahul.shinde@example.com",
                 "city": "Pimpri-Chinchwad",
                 "preferred_language": "en",
             },
         )
 
-        TimelineEvent.objects.get_or_create(
+        p5, _ = Patient.objects.get_or_create(
             hospital=hospital,
-            patient=p1,
-            summary="Registered as new OPD patient via Call Screen-pop",
-            defaults={"event_type": "note", "occurred_at": timezone.now() - datetime.timedelta(days=2)},
+            mobile="9823056789",
+            defaults={
+                "first_name": "Sanjay",
+                "last_name": "Jagtap",
+                "gender": "male",
+                "email": "sanjay.jagtap@example.com",
+                "city": "Pune",
+                "preferred_language": "mr",
+            },
         )
 
-        Document.objects.get_or_create(
+        # 8. Patient Document Vault & e-Prescriptions (Phase 1/2)
+        doc1, _ = Document.objects.get_or_create(
             hospital=hospital,
             patient=p1,
-            title="Blood Test Report - Complete Blood Count",
-            defaults={"category": "report", "notes": "Hemoglobin 13.2 g/dL, Normal WBC count."},
+            title="Blood Test Report - Complete Blood Count (CBC)",
+            defaults={"category": "report", "notes": "Hemoglobin 13.2 g/dL, Normal WBC & Platelets.", "uploaded_by": frontdesk_user},
         )
 
-        # 8. Enquiries (Lead Pipeline)
+        doc2, _ = Document.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            title="Aadhaar ID Card Scan",
+            defaults={"category": "id_proof", "notes": "Verified at front desk check-in.", "uploaded_by": frontdesk_user},
+        )
+
+        doc3, _ = Document.objects.get_or_create(
+            hospital=hospital,
+            patient=p2,
+            title="ECG Graph Report & Lipid Profile",
+            defaults={"category": "report", "notes": "Mild T-wave inversion in V4-V6. Elevated LDL cholesterol.", "uploaded_by": frontdesk_user},
+        )
+
+        # Prescriptions
+        rx1, _ = Prescription.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            diagnosis="Hypertension & Mild Upper Respiratory Infection",
+            defaults={
+                "doctor": doctor_user,
+                "symptoms": "Headache, mild dry cough, blood pressure 140/90 mmHg",
+                "medications": [
+                    {"name": "Tab Telmisartan 40mg", "dosage": "1-0-0", "duration": "30 Days"},
+                    {"name": "Tab Paracetamol 650mg", "dosage": "1-0-1", "duration": "5 Days"},
+                    {"name": "Syp Benadryl 10ml", "dosage": "0-0-1", "duration": "5 Days"},
+                ],
+                "lab_orders": ["Repeat BP after 14 days", "Serum Creatinine"],
+                "notes": "Reduce salt intake in daily diet. Walk 30 mins daily.",
+            },
+        )
+
+        rx2, _ = Prescription.objects.get_or_create(
+            hospital=hospital,
+            patient=p2,
+            diagnosis="Suspected Coronary Artery Disease / Angina",
+            defaults={
+                "doctor": doctor_user,
+                "symptoms": "Exertional chest discomfort, dyspnea on walking 500m",
+                "medications": [
+                    {"name": "Tab Aspirin 75mg", "dosage": "0-1-0", "duration": "30 Days"},
+                    {"name": "Tab Atorvastatin 20mg", "dosage": "0-0-1", "duration": "30 Days"},
+                    {"name": "Tab Metoprolol 25mg", "dosage": "1-0-0", "duration": "30 Days"},
+                ],
+                "lab_orders": ["2D Echo", "TMT (Treadmill Test)", "Lipid Profile"],
+                "notes": "Referred to Dr. Anjali Joshi for Echo & TMT evaluation.",
+            },
+        )
+
+        rx3, _ = Prescription.objects.get_or_create(
+            hospital=hospital,
+            patient=p3,
+            diagnosis="Bilateral Osteoarthritis Knee (Grade II)",
+            defaults={
+                "doctor": doctor_user,
+                "symptoms": "Bilateral knee joint pain, morning stiffness for 20 mins",
+                "medications": [
+                    {"name": "Tab Aceclofenac 100mg + Paracetamol", "dosage": "1-0-1", "duration": "7 Days"},
+                    {"name": "Cap Diacerein 50mg", "dosage": "0-0-1", "duration": "30 Days"},
+                    {"name": "Sachet Collagen Peptides", "dosage": "1-0-0", "duration": "30 Days"},
+                ],
+                "lab_orders": ["X-Ray Both Knees AP & Lateral Standing"],
+                "notes": "Physiotherapy exercises for quadriceps strengthening advised.",
+            },
+        )
+
+        # Timeline events
+        record_timeline_event(patient=p1, event_type="note", summary="Registered patient via Call Screen-Pop", occurred_at=timezone.now() - datetime.timedelta(days=3), created_by=operator_user)
+        record_timeline_event(patient=p1, event_type="document", summary="Uploaded Diagnostic Report: Blood Test CBC", occurred_at=timezone.now() - datetime.timedelta(days=2), source=doc1, created_by=frontdesk_user)
+        record_timeline_event(patient=p1, event_type="appointment", summary="Completed OPD Consultation with Dr. Ramesh Kulkarni", occurred_at=timezone.now() - datetime.timedelta(days=1), created_by=doctor_user)
+
+        # 9. Appointments & Waitlists
+        slots = list(Slot.objects.filter(hospital=hospital, is_blocked=False, appointment__isnull=True)[:10])
+        if len(slots) >= 4:
+            # Appt 1: Checked In
+            Appointment.objects.get_or_create(
+                hospital=hospital,
+                slot=slots[0],
+                defaults={
+                    "patient": p1,
+                    "doctor": slots[0].doctor,
+                    "status": "checked_in",
+                    "source": "crm",
+                    "reason": "Follow-up BP Check & Prescription Renewal",
+                    "booked_by": frontdesk_user,
+                    "registration_token": uuid.uuid4().hex,
+                    "checked_in_at": timezone.now() - datetime.timedelta(minutes=20),
+                },
+            )
+
+            # Appt 2: Confirmed
+            Appointment.objects.get_or_create(
+                hospital=hospital,
+                slot=slots[1],
+                defaults={
+                    "patient": p2,
+                    "doctor": doc_joshi,
+                    "status": "confirmed",
+                    "source": "whatsapp",
+                    "reason": "Cardiology Echo & TMT Evaluation",
+                    "booked_by": frontdesk_user,
+                    "registration_token": uuid.uuid4().hex,
+                },
+            )
+
+            # Appt 3: Completed
+            Appointment.objects.get_or_create(
+                hospital=hospital,
+                slot=slots[2],
+                defaults={
+                    "patient": p3,
+                    "doctor": doc_sharma,
+                    "status": "completed",
+                    "source": "crm",
+                    "reason": "Knee Joint Pain Consultation",
+                    "booked_by": frontdesk_user,
+                    "registration_token": uuid.uuid4().hex,
+                    "completed_at": timezone.now() - datetime.timedelta(hours=3),
+                },
+            )
+
+            # Appt 4: No Show
+            Appointment.objects.get_or_create(
+                hospital=hospital,
+                slot=slots[3],
+                defaults={
+                    "patient": p4,
+                    "doctor": doc_kulkarni,
+                    "status": "no_show",
+                    "source": "website",
+                    "reason": "General Health Checkup",
+                    "booked_by": frontdesk_user,
+                    "registration_token": uuid.uuid4().hex,
+                    "no_show_at": timezone.now() - datetime.timedelta(hours=2),
+                },
+            )
+
+        # Waitlist entries
+        Waitlist.objects.get_or_create(
+            hospital=hospital,
+            patient=p3,
+            doctor=doc_joshi,
+            defaults={
+                "department": cardiology,
+                "preferred_date": timezone.now().date() + datetime.timedelta(days=2),
+                "status": "waiting",
+                "notes": "Patient requested urgent morning slot with Dr. Anjali Joshi if cancellation occurs.",
+            },
+        )
+        Waitlist.objects.get_or_create(
+            hospital=hospital,
+            patient=p4,
+            doctor=doc_sharma,
+            defaults={
+                "department": ortho,
+                "preferred_date": timezone.now().date() + datetime.timedelta(days=1),
+                "status": "waiting",
+                "notes": "Waitlisted for knee pain consult.",
+            },
+        )
+
+        # 10. Communication Templates, Consent, Inbox Threads & Messages
+        # Templates
+        tmpl_rem24, _ = Template.objects.get_or_create(
+            hospital=hospital,
+            purpose="appointment_reminder_24h",
+            channel="whatsapp",
+            language="mr",
+            defaults={
+                "name": "OPD Appointment Reminder (24 Hours - Marathi)",
+                "subject": "Appointment Confirmation Reminder",
+                "body": "नमस्कार {patient_name}, तुमचे {doctor_name} यांच्याशी {date} रोजी सकाळी {time} वाजता appointment बुक आहे. कृपया १० मिनिटे आधी या.",
+                "is_active": True,
+            },
+        )
+        tmpl_rem24_en, _ = Template.objects.get_or_create(
+            hospital=hospital,
+            purpose="appointment_reminder_24h",
+            channel="whatsapp",
+            language="en",
+            defaults={
+                "name": "OPD Appointment Reminder (24 Hours - English)",
+                "subject": "Appointment Confirmation",
+                "body": "Dear {patient_name}, your appointment with {doctor_name} is scheduled on {date} at {time}. Please arrive 10 mins early.",
+                "is_active": True,
+            },
+        )
+        tmpl_nps, _ = Template.objects.get_or_create(
+            hospital=hospital,
+            purpose="feedback_request",
+            channel="sms",
+            language="en",
+            defaults={
+                "name": "Post-OPD NPS Survey Link",
+                "subject": "Hospital Visit Feedback",
+                "body": "Hi {patient_name}, thank you for visiting Polynexus Hospital! Please rate your experience: {feedback_link}",
+                "is_active": True,
+            },
+        )
+
+        # Consent Opt-Out ledger
+        ConsentOptOut.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            channel="whatsapp",
+            defaults={"purpose": "transactional", "is_opted_out": False, "recorded_by": frontdesk_user},
+        )
+        ConsentOptOut.objects.get_or_create(
+            hospital=hospital,
+            patient=p2,
+            channel="sms",
+            defaults={"purpose": "marketing", "is_opted_out": True, "recorded_by": frontdesk_user},
+        )
+
+        # Unified Inbox Threads
+        thread_p1_wa, _ = Thread.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            channel="whatsapp",
+            defaults={
+                "owner": frontdesk_user,
+                "status": "open",
+                "last_message_at": timezone.now() - datetime.timedelta(minutes=15),
+                "last_inbound_at": timezone.now() - datetime.timedelta(minutes=15),
+                "sla_due_at": timezone.now() + datetime.timedelta(minutes=45),
+            },
+        )
+        thread_p2_wa, _ = Thread.objects.get_or_create(
+            hospital=hospital,
+            patient=p2,
+            channel="whatsapp",
+            defaults={
+                "owner": operator_user,
+                "status": "open",
+                "last_message_at": timezone.now() - datetime.timedelta(hours=2),
+                "last_inbound_at": timezone.now() - datetime.timedelta(hours=2),
+            },
+        )
+        thread_p5_wa, _ = Thread.objects.get_or_create(
+            hospital=hospital,
+            patient=p5,
+            channel="whatsapp",
+            defaults={
+                "owner": frontdesk_user,
+                "status": "open",
+                "last_message_at": timezone.now() - datetime.timedelta(hours=4),
+                "last_inbound_at": timezone.now() - datetime.timedelta(hours=4),
+            },
+        )
+        thread_p3_sms, _ = Thread.objects.get_or_create(
+            hospital=hospital,
+            patient=p3,
+            channel="sms",
+            defaults={
+                "owner": frontdesk_user,
+                "status": "closed",
+                "last_message_at": timezone.now() - datetime.timedelta(days=1),
+            },
+        )
+
+        # Messages in Inbox Threads (Multi-turn conversations)
+        # Thread 1: Asha Patil (WhatsApp)
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            body="Hi Asha Patil, your OPD appointment with Dr. Ramesh Kulkarni is confirmed for tomorrow at 10:00 AM.",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "outbound",
+                "status": "delivered",
+                "template": tmpl_rem24,
+                "sent_by": frontdesk_user,
+                "provider_message_id": "WAMID-1001",
+                "sent_at": timezone.now() - datetime.timedelta(hours=24),
+                "delivered_at": timezone.now() - datetime.timedelta(hours=24),
+            },
+        )
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            body="Thank you! Will arrive 10 minutes early. Do I need to bring my previous blood test reports?",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "inbound",
+                "status": "received",
+                "is_read": True,
+                "provider_message_id": "WAMID-1002",
+                "sent_at": timezone.now() - datetime.timedelta(hours=23),
+            },
+        )
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            body="Yes, please bring your latest CBC blood test report or show it on the app.",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "outbound",
+                "status": "read",
+                "sent_by": frontdesk_user,
+                "provider_message_id": "WAMID-1003",
+                "sent_at": timezone.now() - datetime.timedelta(hours=22),
+            },
+        )
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p1,
+            body="Got it! I am currently at the reception desk.",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "inbound",
+                "status": "received",
+                "is_read": False,  # Drives unread counter in Inbox
+                "provider_message_id": "WAMID-1004",
+                "sent_at": timezone.now() - datetime.timedelta(minutes=15),
+            },
+        )
+
+        # Thread 2: Sanjay Jagtap (WhatsApp - Lead Enquiry)
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p5,
+            body="Hello, what are the charges for ECG and Cardiology consultation with Dr. Anjali Joshi?",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "inbound",
+                "status": "received",
+                "is_read": False,
+                "provider_message_id": "WAMID-2001",
+                "sent_at": timezone.now() - datetime.timedelta(hours=4),
+            },
+        )
+        Message.objects.get_or_create(
+            hospital=hospital,
+            patient=p5,
+            body="Hello Sanjay! ECG consultation package is ₹750. Dr. Anjali Joshi is available Mon/Wed/Fri 9am-1pm.",
+            defaults={
+                "channel": "whatsapp",
+                "direction": "outbound",
+                "status": "delivered",
+                "sent_by": frontdesk_user,
+                "provider_message_id": "WAMID-2002",
+                "sent_at": timezone.now() - datetime.timedelta(hours=3),
+            },
+        )
+
+        # 11. Enquiries & Lead Pipeline
         Enquiry.objects.get_or_create(
             hospital=hospital,
             mobile="9823012345",
@@ -239,24 +572,41 @@ class Command(BaseCommand):
                 "urgency": "normal",
                 "stage": "scheduled",
                 "assigned_to": frontdesk_user,
+                "notes": "Inquired via IVR, booked OPD appointment.",
             },
         )
         Enquiry.objects.get_or_create(
             hospital=hospital,
             mobile="9823056789",
             defaults={
+                "patient": p5,
                 "name": "Sanjay Jagtap",
                 "source": "whatsapp",
                 "department": cardiology,
                 "service_requested": "ECG & Cardiology Consultation",
                 "urgency": "high",
                 "stage": "new",
-                "notes": "Patient inquiring about chest tightness on WhatsApp.",
+                "assigned_to": operator_user,
+                "notes": "Patient inquiring about chest tightness on WhatsApp. Priority lead.",
+            },
+        )
+        Enquiry.objects.get_or_create(
+            hospital=hospital,
+            mobile="9890887766",
+            defaults={
+                "name": "Mahesh Deshpande",
+                "source": "website",
+                "department": ortho,
+                "service_requested": "Knee Replacement Consultation",
+                "urgency": "normal",
+                "stage": "contacted",
+                "assigned_to": frontdesk_user,
+                "notes": "Submitted contact form on hospital landing page.",
             },
         )
 
-        # 9. Telephony & Callback Tasks (RNR Queue)
-        call_answered, _ = Call.objects.get_or_create(
+        # 12. Telephony & Callback Tasks (RNR Queue)
+        call1, _ = Call.objects.get_or_create(
             hospital=hospital,
             from_number="9823012345",
             defaults={
@@ -268,11 +618,12 @@ class Command(BaseCommand):
                 "operator": operator_user,
                 "started_at": timezone.now() - datetime.timedelta(hours=5),
                 "duration_seconds": 142,
-                "call_reason": "OPD Appointment Inquiry",
+                "call_reason": "OPD Appointment Inquiry & Timing Confirmation",
+                "ivr_path": "Main Menu > OPD > Operator",
             },
         )
 
-        call_missed, _ = Call.objects.get_or_create(
+        call2, _ = Call.objects.get_or_create(
             hospital=hospital,
             from_number="9890998877",
             defaults={
@@ -281,6 +632,7 @@ class Command(BaseCommand):
                 "to_number": "020-27123456",
                 "started_at": timezone.now() - datetime.timedelta(hours=1),
                 "duration_seconds": 0,
+                "ivr_path": "Main Menu > Ring No Reason",
             },
         )
 
@@ -288,58 +640,17 @@ class Command(BaseCommand):
             hospital=hospital,
             phone_number="9890998877",
             defaults={
-                "call": call_missed,
+                "call": call2,
                 "department": opd,
                 "owner": operator_user,
                 "status": "pending",
-                "sla_due_at": timezone.now() + datetime.timedelta(minutes=30),
-                "notes": "Unanswered inbound call from main IVR.",
+                "attempt_count": 1,
+                "sla_due_at": timezone.now() + datetime.timedelta(minutes=15),
+                "notes": "Unanswered inbound call from main IVR lines during peak hours.",
             },
         )
 
-        # 10. OPD Appointments
-        available_slot = Slot.objects.filter(hospital=hospital, is_blocked=False, appointment__isnull=True).first()
-        if available_slot:
-            import uuid
-            Appointment.objects.get_or_create(
-                hospital=hospital,
-                slot=available_slot,
-                defaults={
-                    "patient": p1,
-                    "doctor": available_slot.doctor,
-                    "status": "checked_in",
-                    "source": "crm",
-                    "reason": "Routine OPD Consultation",
-                    "booked_by": frontdesk_user,
-                    "registration_token": uuid.uuid4().hex,
-                },
-            )
-
-
-        # 11. Omnichannel Messages (Inbox)
-        Message.objects.get_or_create(
-            hospital=hospital,
-            patient=p1,
-            body="Hi Asha Patil, your OPD appointment with Dr. Ramesh Kulkarni is confirmed.",
-            defaults={
-                "channel": "whatsapp",
-                "direction": "outbound",
-                "status": "delivered",
-                "sent_by": frontdesk_user,
-            },
-        )
-        Message.objects.get_or_create(
-            hospital=hospital,
-            patient=p1,
-            body="Thank you! Will arrive 10 minutes early.",
-            defaults={
-                "channel": "whatsapp",
-                "direction": "inbound",
-                "status": "received",
-            },
-        )
-
-        # 12. Feedback, NPS & Complaints
+        # 13. Feedback, NPS Responses, Complaints & Service Recovery
         nps_req1, _ = FeedbackRequest.objects.get_or_create(
             hospital=hospital,
             patient=p1,
@@ -354,11 +665,10 @@ class Command(BaseCommand):
                 "department": opd,
                 "score": 10,
                 "category": "promoter",
-                "comment": "Excellent experience with Dr. Kulkarni and front desk staff!",
+                "comment": "Excellent experience with Dr. Ramesh Kulkarni and front desk staff!",
             },
         )
 
-        # Detractor response & service recovery
         nps_req2, _ = FeedbackRequest.objects.get_or_create(
             hospital=hospital,
             patient=p3,
@@ -373,18 +683,18 @@ class Command(BaseCommand):
                 "department": ortho,
                 "score": 4,
                 "category": "detractor",
-                "comment": "Long waiting time at the reception before OPD consultation.",
+                "comment": "Long waiting time at the reception before OPD consultation. Took 45 mins past slot time.",
             },
         )
 
-        ServiceRecoveryTask.objects.get_or_create(
+        srv_task, _ = ServiceRecoveryTask.objects.get_or_create(
             hospital=hospital,
             nps_response=nps_detractor,
             defaults={
                 "owner": frontdesk_user,
                 "status": "pending",
                 "sla_due_at": timezone.now() + datetime.timedelta(hours=24),
-                "resolution_notes": "",
+                "resolution_notes": "Assigned to Priya Sharma to call patient, offer priority queue pass for next visit & issue apology voucher.",
             },
         )
 
@@ -400,16 +710,83 @@ class Command(BaseCommand):
             },
         )
 
-        # 13. Automation Tasks & Escalation Rules
+        # 14. Phase 2 Visual Workflow Builder & Automation Engine
+        wf1, _ = Workflow.objects.get_or_create(
+            hospital=hospital,
+            name="Missed Call Auto-WhatsApp Responder Workflow",
+            defaults={
+                "description": "Triggered when an inbound call is missed. Sends an instant WhatsApp message with self-booking link.",
+                "trigger_type": "missed_call",
+                "is_active": True,
+                "created_by": admin_user,
+            },
+        )
+        WorkflowStep.objects.get_or_create(
+            workflow=wf1,
+            order=1,
+            defaults={
+                "step_type": "trigger",
+                "action_type": "create_task",
+                "title": "When Inbound Call Status == Missed",
+                "config": {"event": "call_missed"},
+            },
+        )
+        WorkflowStep.objects.get_or_create(
+            workflow=wf1,
+            order=2,
+            defaults={
+                "step_type": "action",
+                "action_type": "send_whatsapp",
+                "title": "Send Auto-Apology & Booking Link via WhatsApp",
+                "config": {"template": "missed_call_auto_reply"},
+            },
+        )
+
+        wf2, _ = Workflow.objects.get_or_create(
+            hospital=hospital,
+            name="NPS Detractor Immediate SLA Escalation",
+            defaults={
+                "description": "Fires when an NPS score <= 6 is recorded. Auto-creates Service Recovery Task with 24h SLA.",
+                "trigger_type": "nps_detractor",
+                "is_active": True,
+                "created_by": admin_user,
+            },
+        )
+
+        WorkflowRun.objects.get_or_create(
+            hospital=hospital,
+            workflow=wf1,
+            trigger_event="call_missed_event_9890998877",
+            defaults={
+                "status": "success",
+                "context": {"from_number": "9890998877", "duration": 0},
+                "log_output": ["Trigger fired: missed call detected", "WhatsApp template 'missed_call_auto_reply' sent", "CallbackTask #1 created in queue"],
+            },
+        )
+
+        # Automation Tasks & Escalation Rules
         Task.objects.get_or_create(
             hospital=hospital,
-            title="Follow-up call with no-show patient",
+            title="Follow-up call with no-show patient (Rahul Shinde)",
             defaults={
-                "description": "Call Ramesh Deshmukh to reschedule missed OPD slot",
+                "description": "Call Rahul Shinde to reschedule missed OPD slot with Dr. Ramesh Kulkarni.",
                 "status": "pending",
                 "priority": "high",
                 "due_at": timezone.now() + datetime.timedelta(hours=4),
                 "owner": frontdesk_user,
+                "department": opd,
+            },
+        )
+        Task.objects.get_or_create(
+            hospital=hospital,
+            title="Verify TPA Pre-Auth documents for Ramesh Deshmukh",
+            defaults={
+                "description": "Verify HDFC ERGO insurance card and doctor prescription before submitting claim.",
+                "status": "in_progress",
+                "priority": "normal",
+                "due_at": timezone.now() + datetime.timedelta(hours=12),
+                "owner": frontdesk_user,
+                "department": ipd,
             },
         )
 
@@ -420,12 +797,63 @@ class Command(BaseCommand):
                 "applies_to": "callback_task",
                 "department": opd,
                 "escalate_after_minutes": 15,
+                "escalate_to": owner_user,
                 "is_active": True,
             },
         )
 
-        # 14. Phase 3: Referral Doctor CRM
-        from apps.referrals.models import FieldVisit, ReferralRecord, ReferringDoctor
+        # 15. HIS Integrations (Visit & Billing Cache)
+        HISVisit.objects.get_or_create(
+            hospital=hospital,
+            external_visit_id="HIS-VISIT-1001",
+            defaults={
+                "patient": p1,
+                "visit_type": "opd",
+                "visit_date": timezone.now() - datetime.timedelta(days=1),
+                "department_name": "General Medicine",
+                "doctor_name": "Dr. Ramesh Kulkarni",
+                "raw_payload": {"his_code": "GEN-01", "vitals": {"bp": "140/90", "pulse": 78}},
+            },
+        )
+        HISVisit.objects.get_or_create(
+            hospital=hospital,
+            external_visit_id="HIS-VISIT-1002",
+            defaults={
+                "patient": p2,
+                "visit_type": "ipd",
+                "visit_date": timezone.now() - datetime.timedelta(days=5),
+                "department_name": "Cardiology",
+                "doctor_name": "Dr. Anjali Joshi",
+                "raw_payload": {"room_no": "ICU-04", "admission_type": "emergency"},
+            },
+        )
+
+        HISBillingRecord.objects.get_or_create(
+            hospital=hospital,
+            external_bill_id="HIS-BILL-5001",
+            defaults={
+                "patient": p1,
+                "bill_date": timezone.now().date() - datetime.timedelta(days=1),
+                "total_amount": 500.00,
+                "paid_amount": 500.00,
+                "status": "paid",
+                "raw_payload": {"payment_mode": "UPI / PhonePe"},
+            },
+        )
+        HISBillingRecord.objects.get_or_create(
+            hospital=hospital,
+            external_bill_id="HIS-BILL-5002",
+            defaults={
+                "patient": p2,
+                "bill_date": timezone.now().date() - datetime.timedelta(days=5),
+                "total_amount": 45000.00,
+                "paid_amount": 20000.00,
+                "status": "partial",
+                "raw_payload": {"tpa_claim_pending": True, "cash_deposit": 20000.00},
+            },
+        )
+
+        # 16. Referral Doctor CRM
         ref_doc1, _ = ReferringDoctor.objects.get_or_create(
             hospital=hospital,
             name="Dr. Milind Soman",
@@ -436,7 +864,7 @@ class Command(BaseCommand):
                 "email": "dr.soman@example.com",
                 "city": "Pune",
                 "tier": "gold",
-                "notes": "Top referring practitioner for Cardiology and General Surgery",
+                "notes": "Top referring practitioner for Cardiology and General Surgery.",
             },
         )
         ref_doc2, _ = ReferringDoctor.objects.get_or_create(
@@ -470,12 +898,11 @@ class Command(BaseCommand):
             defaults={
                 "visited_by": owner_user,
                 "notes": "Discussed monthly referral statement and handed over Diwali greeting brochure.",
-                "outcome": "Promised 5+ new patient referrals this month",
+                "outcome": "Promised 5+ new patient referrals this month.",
             },
         )
 
-        # 15. Phase 3: Health Packages & Campaigns
-        from apps.packages.models import CampRegistration, Campaign, HealthPackage
+        # 17. Health Packages & Campaigns
         pkg1, _ = HealthPackage.objects.get_or_create(
             hospital=hospital,
             code="PKG-CARD-01",
@@ -524,8 +951,7 @@ class Command(BaseCommand):
             },
         )
 
-        # 16. Phase 3: TPA / Pre-Authorization Desk
-        from apps.tpa.models import PreAuthRequest, TPACompany
+        # 18. TPA / Pre-Authorization Desk
         tpa1, _ = TPACompany.objects.get_or_create(
             hospital=hospital,
             code="TPA-STAR-01",
@@ -538,6 +964,19 @@ class Command(BaseCommand):
                 "avg_tat_days": 2,
             },
         )
+        tpa2, _ = TPACompany.objects.get_or_create(
+            hospital=hospital,
+            code="TPA-HDFC-01",
+            defaults={
+                "name": "HDFC ERGO Health TPA Desk",
+                "contact_person": "Ms. Ritu Roy",
+                "phone": "020-25678911",
+                "email": "claims@hdfcergo.example",
+                "claim_submission_email": "preauth@hdfcergo.example",
+                "avg_tat_days": 1,
+            },
+        )
+
         PreAuthRequest.objects.get_or_create(
             hospital=hospital,
             patient=p1,
@@ -551,47 +990,21 @@ class Command(BaseCommand):
                 "approved_at": timezone.now() - datetime.timedelta(days=1),
             },
         )
-
-        # 17. Seed Multi-Branch Hospital Chain & SaaS Super Admin Accounts
-        saas_owner, _ = User.objects.get_or_create(
-            email="saas_owner@hospital-crm.com",
+        PreAuthRequest.objects.get_or_create(
+            hospital=hospital,
+            patient=p2,
+            tpa_company=tpa2,
             defaults={
-                "first_name": "SaaS Platform",
-                "last_name": "Super Admin",
-                "is_staff": True,
-                "is_superuser": True,
-                "is_active": True,
+                "policy_number": "POL-HDFC-554433",
+                "claim_amount": 120000.00,
+                "status": "pending",
+                "checklist": {"id_proof": True, "doctor_prescription": True, "discharge_summary": False},
             },
         )
-        saas_owner.set_password("changeme123")
-        saas_owner.save()
-
-        # Single Hospital Chain Owner managing all 3 Polynexus Branches
-        h_baner = hospital
-        h_kothrud, _ = Hospital.objects.get_or_create(
-            slug="polynexus-kothrud",
-            defaults={"name": "Polynexus Hospital (Kothrud Branch)", "city": "Pune", "state": "Maharashtra"},
-        )
-        h_wakad, _ = Hospital.objects.get_or_create(
-            slug="polynexus-wakad",
-            defaults={"name": "Polynexus Hospital (Wakad Branch)", "city": "Pune", "state": "Maharashtra"},
-        )
-
-        group_owner, _ = User.objects.get_or_create(
-            email="group_owner@polynexus.com",
-            defaults={
-                "first_name": "Dr. Vikram",
-                "last_name": "Pol (Group Owner)",
-                "hospital": h_baner,
-                "role": owner_role,
-            },
-        )
-        group_owner.set_password("changeme123")
-        group_owner.save()
 
         # Print success table
         self.stdout.write(self.style.SUCCESS("\n========================================================"))
-        self.stdout.write(self.style.SUCCESS("Successfully Seeded Demo SaaS & Multi-Branch Accounts!"))
+        self.stdout.write(self.style.SUCCESS("Successfully Seeded 100% Comprehensive Data in ALL Modules!"))
         self.stdout.write(self.style.SUCCESS("========================================================\n"))
         self.stdout.write(f"Password for all accounts: {password}\n")
         self.stdout.write("1. SAAS PLATFORM OWNER (Software Vendor):")
@@ -605,5 +1018,3 @@ class Command(BaseCommand):
         self.stdout.write("   • Front Desk     : frontdesk@demo-hospital.example")
         self.stdout.write("   • OPD Doctor     : doctor@demo-hospital.example")
         self.stdout.write("   • Telephony Op.  : operator@demo-hospital.example\n")
-
-

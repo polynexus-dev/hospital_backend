@@ -8,6 +8,7 @@ class HospitalAdmin(admin.ModelAdmin):
     list_display = ("name", "city", "state", "is_on_premise", "is_active", "created_at")
     search_fields = ("name", "slug", "city")
     prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ("lead_webhook_token",)
 
 
 @admin.register(Department)

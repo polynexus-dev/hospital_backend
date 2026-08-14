@@ -12,7 +12,7 @@ class DocumentInline(admin.TabularInline):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ["full_name", "mobile", "hospital", "city", "preferred_language", "is_active"]
+    list_display = ["full_name", "mobile", "hospital", "city", "guardian", "next_recall_due_at", "preferred_language", "is_active"]
     list_filter = ["hospital", "gender", "preferred_language", "is_active"]
     search_fields = ["first_name", "last_name", "mobile", "alternate_mobile", "email"]
     inlines = [DocumentInline]

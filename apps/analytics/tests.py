@@ -309,3 +309,36 @@ def test_reminder_delivery_summary_report_smoke_with_no_data(auth_client):
     response = auth_client.get("/api/v1/reports/reminder-delivery/")
     assert response.status_code == 200
     assert response.data == {"rows": []}
+
+
+@pytest.mark.django_db
+def test_doctor_revenue_report_smoke_with_no_data(auth_client):
+    response = auth_client.get("/api/v1/reports/doctor-revenue/")
+    assert response.status_code == 200
+    assert response.data["rows"] == []
+    assert "note" in response.data
+
+
+@pytest.mark.django_db
+def test_doctor_revenue_report_attributes_billing_to_the_completing_doctor(auth_client, hospital, patient, department):
+    doctor = Doctor.objects.create(hospital=hospital, department=department, name="Rao")
+    slot = Slot.objects.create(
+        hospital=hospital, doctor=doctor, date=timezone.localdate(),
+        start_time=datetime.time(10, 0), end_time=datetime.time(10, 15),
+    )
+    appointment = book_appointment(patient=patient, slot=slot)
+    appointment.status = Appointment.Status.COMPLETED
+    appointment.completed_at = timezone.now()
+    appointment.save(update_fields=["status", "completed_at"])
+
+    HISBillingRecord.objects.create(
+        hospital=hospital, patient=patient, external_bill_id="BILL-DR-1",
+        bill_date=timezone.localdate(), total_amount=Decimal("3000.00"), status=HISBillingRecord.Status.PAID,
+    )
+
+    response = auth_client.get("/api/v1/reports/doctor-revenue/")
+
+    assert response.status_code == 200
+    row = next(r for r in response.data["rows"] if r["doctor_id"] == doctor.id)
+    assert row["completed_appointments"] == 1
+    assert row["billed_amount"] == Decimal("3000.00")

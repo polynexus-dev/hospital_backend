@@ -2,12 +2,12 @@ import secrets
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.utils import timezone
 
 from apps.patients.models import record_timeline_event
 
-from .models import Appointment, Slot, SlotTemplate, Waitlist
+from .models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
 
 WEEKS_TO_GENERATE_AHEAD = 4
 
@@ -87,11 +87,70 @@ def reschedule_appointment(appointment: Appointment, *, new_slot: Slot, changed_
     return new_appointment
 
 
+@transaction.atomic
 def check_in(appointment: Appointment) -> Appointment:
+    """Checking in also assigns the walk-in-style OPD queue token — the
+    "now serving #N" number front desk/waiting-room displays use, distinct
+    from the pre-booked slot time so same-day check-ins queue in arrival
+    order regardless of when their slot was booked for. select_for_update
+    here mirrors book_appointment's locking so two simultaneous check-ins
+    for the same doctor/day can't land on the same token."""
     appointment.status = Appointment.Status.CHECKED_IN
     appointment.checked_in_at = timezone.now()
-    appointment.save(update_fields=["status", "checked_in_at"])
+
+    if appointment.queue_token is None:
+        todays_tokens = (
+            Appointment.objects.select_for_update()
+            .filter(doctor=appointment.doctor, slot__date=appointment.slot.date, queue_token__isnull=False)
+            .aggregate(highest=Max("queue_token"))
+        )
+        appointment.queue_token = (todays_tokens["highest"] or 0) + 1
+        appointment.save(update_fields=["status", "checked_in_at", "queue_token"])
+    else:
+        appointment.save(update_fields=["status", "checked_in_at"])
     return appointment
+
+
+def doctor_queue(doctor: Doctor, date) -> dict:
+    """Front-desk/waiting-room queue view for a doctor on a given date:
+    who's checked in and waiting, who's currently in consult (now serving),
+    ordered by queue token / arrival."""
+    appointments = (
+        Appointment.objects.filter(doctor=doctor, slot__date=date, queue_token__isnull=False)
+        .select_related("patient", "slot")
+        .order_by("queue_token")
+    )
+    now_serving = appointments.filter(status=Appointment.Status.IN_CONSULT).first()
+    waiting = appointments.filter(status=Appointment.Status.CHECKED_IN)
+    return {"now_serving": now_serving, "waiting": list(waiting)}
+
+
+@transaction.atomic
+def block_doctor_slots(doctor: Doctor, *, start_date, end_date, reason: str = "") -> dict:
+    """Bulk-blocks a doctor's slots over a date range (leave, OT block,
+    conference) in one call instead of one row at a time. Only touches
+    currently-unbooked slots — already-booked ones are left alone and
+    counted separately so front desk knows how many patients still need a
+    manual reschedule/callback."""
+    slots = Slot.objects.select_for_update().filter(doctor=doctor, date__gte=start_date, date__lte=end_date)
+    bookable = slots.select_related("appointment").filter(is_blocked=False)
+
+    blocked_ids, booked_ids = [], []
+    for slot in bookable:
+        if slot.is_booked:
+            booked_ids.append(slot.id)
+        else:
+            blocked_ids.append(slot.id)
+
+    Slot.objects.filter(id__in=blocked_ids).update(is_blocked=True, blocked_reason=reason)
+    return {"blocked": len(blocked_ids), "skipped_already_booked": len(booked_ids), "booked_slot_ids": booked_ids}
+
+
+def unblock_doctor_slots(doctor: Doctor, *, start_date, end_date) -> int:
+    """Reverses block_doctor_slots — e.g. a doctor's leave is cancelled."""
+    return Slot.objects.filter(
+        doctor=doctor, date__gte=start_date, date__lte=end_date, is_blocked=True
+    ).update(is_blocked=False, blocked_reason="")
 
 
 def start_consult(appointment: Appointment) -> Appointment:

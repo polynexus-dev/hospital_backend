@@ -83,6 +83,7 @@ class Workflow(TenantScopedModel):
         ENQUIRY_STAGE_CHANGED = "enquiry_stage_changed", "Enquiry Stage Changed"
         APPOINTMENT_NO_SHOW = "appointment_no_show", "Appointment No-Show"
         NPS_DETRACTOR = "nps_detractor", "NPS Detractor Rating Received"
+        PATIENT_RECALL_DUE = "patient_recall_due", "Patient Recall Due (scheduled)"
 
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)

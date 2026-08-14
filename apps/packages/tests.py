@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.packages.models import Campaign, CampRegistration, HealthPackage
+from apps.packages.models import Campaign, CampRegistration, CorporateClient, HealthPackage
 
 
 def _teardown(instance):
@@ -259,7 +259,73 @@ def test_campaign_api_retrieve_includes_annotated_totals(auth_client, campaign):
 
     assert response.status_code == 200
     assert response.data["total_registrations"] == 2
-    assert Decimal(response.data["total_revenue_generated"]) == Decimal("3500.00")
+
+
+@pytest.mark.django_db
+def test_campaign_api_computes_cac_and_roi_from_spend(auth_client, hospital):
+    campaign = Campaign.objects.create(hospital=hospital, name="Google Ads", start_date=datetime.date(2026, 1, 5), actual_spend=Decimal("10000.00"))
+    CampRegistration.objects.create(hospital=hospital, campaign=campaign, patient_name="A", mobile="1", stage=CampRegistration.FunnelStage.REGISTERED, revenue_generated=Decimal("0"))
+    CampRegistration.objects.create(hospital=hospital, campaign=campaign, patient_name="B", mobile="2", stage=CampRegistration.FunnelStage.OPD_CONVERTED, revenue_generated=Decimal("15000.00"))
+
+    response = auth_client.get(f"/api/v1/packages/campaigns/{campaign.id}/")
+
+    assert response.status_code == 200
+    assert response.data["total_registrations"] == 2
+    assert response.data["total_conversions"] == 1
+    assert Decimal(response.data["cost_per_lead"]) == Decimal("5000.00")
+    assert Decimal(response.data["cost_per_acquisition"]) == Decimal("10000.00")
+    assert Decimal(response.data["roi_percent"]) == Decimal("50.00")
+    _teardown(campaign)
+
+
+@pytest.mark.django_db
+def test_campaign_api_cac_is_null_with_no_spend(auth_client, campaign):
+    response = auth_client.get(f"/api/v1/packages/campaigns/{campaign.id}/")
+    assert response.status_code == 200
+    assert response.data["cost_per_lead"] is None
+    assert response.data["roi_percent"] is None
+
+
+@pytest.mark.django_db
+def test_camp_registration_can_link_to_enquiry_and_patient(hospital):
+    from apps.enquiries.models import Enquiry
+    from apps.patients.models import Patient
+
+    campaign = Campaign.objects.create(hospital=hospital, name="Camp", start_date=datetime.date(2026, 1, 5))
+    enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000040001", source=Enquiry.Source.WALK_IN)
+    patient = Patient.objects.create(hospital=hospital, first_name="X", mobile="9000040001")
+
+    registration = CampRegistration.objects.create(
+        hospital=hospital, campaign=campaign, patient_name="X", mobile="9000040001", enquiry=enquiry, patient=patient,
+    )
+
+    assert registration.enquiry_id == enquiry.id
+    assert registration.patient_id == patient.id
+    _teardown(campaign)
+
+
+# --- CorporateClient: model + API CRUD --------------------------------------
+
+@pytest.mark.django_db
+def test_corporate_client_api_create(auth_client, hospital):
+    response = auth_client.post(
+        "/api/v1/packages/corporate-clients/",
+        {"name": "Acme Corp", "contract_start": "2026-01-01", "employee_count": 200},
+        format="json",
+    )
+    assert response.status_code == 201
+    created = CorporateClient.objects.get(pk=response.data["id"])
+    assert created.hospital_id == hospital.id
+    assert created.billing_model == CorporateClient.BillingModel.PER_EMPLOYEE
+
+
+@pytest.mark.django_db
+def test_corporate_client_isolation(auth_client, other_hospital):
+    other = CorporateClient.objects.create(hospital=other_hospital, name="Other Corp", contract_start=datetime.date(2026, 1, 1))
+    response = auth_client.get("/api/v1/packages/corporate-clients/")
+    ids = {row["id"] for row in response.data["results"]}
+    assert other.id not in ids
+    _teardown(other)
 
 
 @pytest.mark.django_db

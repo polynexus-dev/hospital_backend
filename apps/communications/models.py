@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import TenantScopedModel
+from apps.enquiries.models import Enquiry
 from apps.patients.models import Patient
 
 
@@ -82,7 +83,11 @@ class Message(TenantScopedModel):
         FAILED = "failed", "Failed"
         RECEIVED = "received", "Received"
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="messages")
+    # Nullable so a pre-conversion lead (Enquiry) can have a message thread
+    # before it becomes a Patient — exactly one of patient/enquiry is set,
+    # enforced by the has_patient_or_enquiry constraint below.
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, null=True, blank=True, related_name="messages")
+    enquiry = models.ForeignKey(Enquiry, on_delete=models.CASCADE, null=True, blank=True, related_name="messages")
     channel = models.CharField(max_length=16, choices=Channel.choices)
     direction = models.CharField(max_length=16, choices=Direction.choices)
     template = models.ForeignKey(Template, on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
@@ -104,10 +109,17 @@ class Message(TenantScopedModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["hospital", "patient", "-created_at"]),
+            models.Index(fields=["hospital", "enquiry", "-created_at"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(patient__isnull=False) | models.Q(enquiry__isnull=False),
+                name="message_has_patient_or_enquiry",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.get_channel_display()} {self.get_direction_display()} to {self.patient}"
+        return f"{self.get_channel_display()} {self.get_direction_display()} to {self.patient or self.enquiry}"
 
 
 class Thread(TenantScopedModel):
@@ -118,7 +130,8 @@ class Thread(TenantScopedModel):
         OPEN = "open", "Open"
         CLOSED = "closed", "Closed"
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="message_threads")
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, null=True, blank=True, related_name="message_threads")
+    enquiry = models.ForeignKey(Enquiry, on_delete=models.CASCADE, null=True, blank=True, related_name="message_threads")
     channel = models.CharField(max_length=16, choices=Channel.choices)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="message_threads")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
@@ -129,8 +142,13 @@ class Thread(TenantScopedModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["hospital", "patient", "channel"], name="unique_thread_per_patient_channel"),
+            models.UniqueConstraint(fields=["hospital", "enquiry", "channel"], name="unique_thread_per_enquiry_channel"),
+            models.CheckConstraint(
+                condition=models.Q(patient__isnull=False) | models.Q(enquiry__isnull=False),
+                name="thread_has_patient_or_enquiry",
+            ),
         ]
         ordering = ["-last_message_at"]
 
     def __str__(self):
-        return f"{self.patient} {self.get_channel_display()} thread"
+        return f"{self.patient or self.enquiry} {self.get_channel_display()} thread"

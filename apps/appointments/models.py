@@ -54,6 +54,7 @@ class Slot(TenantScopedModel):
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_blocked = models.BooleanField(default=False, help_text="Manually blocked (leave, procedure, etc.), not bookable.")
+    blocked_reason = models.CharField(max_length=255, blank=True, help_text="e.g. doctor on leave, OT block.")
 
     class Meta:
         ordering = ["date", "start_time"]
@@ -104,6 +105,12 @@ class Appointment(TenantScopedModel):
     consent_captured_at = models.DateTimeField(null=True, blank=True)
 
     registration_token = models.CharField(max_length=128, unique=True, blank=True)
+
+    # Walk-in / front-desk OPD queue display ("now serving #12") — assigned
+    # sequentially per doctor per day at check-in, distinct from the
+    # pre-booked slot time so same-day walk-ins queue naturally behind
+    # earlier check-ins regardless of their booked slot time.
+    queue_token = models.PositiveIntegerField(null=True, blank=True)
 
     reminder_24h_sent_at = models.DateTimeField(null=True, blank=True)
     reminder_2h_sent_at = models.DateTimeField(null=True, blank=True)

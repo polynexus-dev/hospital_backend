@@ -148,6 +148,65 @@ def revenue_by_source(hospital, start, end):
     }
 
 
+def doctor_revenue(hospital, start, end):
+    """Doctor-wise revenue for the window — same patient+bill-date
+    approximation as revenue_by_source (there is no direct
+    appointment↔bill link from the HIS feed): a completed appointment
+    credits its doctor with every HIS bill dated on/after that
+    appointment's completion, up to the patient's *next* completed
+    appointment with a different doctor (so a bill isn't double-counted
+    across doctors when a patient sees more than one)."""
+    appointments = (
+        Appointment.objects.filter(
+            hospital=hospital, status=Appointment.Status.COMPLETED, completed_at__range=(start, end)
+        )
+        .select_related("doctor")
+        .order_by("patient_id", "completed_at")
+    )
+
+    # patient_id -> ordered list of (doctor_id, doctor_name, completed_at)
+    by_patient = {}
+    for appt in appointments:
+        by_patient.setdefault(appt.patient_id, []).append((appt.doctor_id, appt.doctor.name, appt.completed_at))
+
+    revenue_by_doctor = {}
+    volume_by_doctor = {}
+    for patient_id, visits in by_patient.items():
+        bills = list(
+            HISBillingRecord.objects.filter(hospital=hospital, patient_id=patient_id).order_by("bill_date").values("bill_date", "total_amount")
+        )
+        for i, (doctor_id, doctor_name, completed_at) in enumerate(visits):
+            window_end = visits[i + 1][2].date() if i + 1 < len(visits) else None
+            for bill in bills:
+                if bill["bill_date"] < completed_at.date():
+                    continue
+                if window_end is not None and bill["bill_date"] >= window_end:
+                    continue
+                key = (doctor_id, doctor_name)
+                revenue_by_doctor[key] = revenue_by_doctor.get(key, Decimal("0")) + bill["total_amount"]
+            volume_by_doctor[(doctor_id, doctor_name)] = volume_by_doctor.get((doctor_id, doctor_name), 0) + 1
+
+    rows = [
+        {
+            "doctor_id": doctor_id,
+            "doctor_name": doctor_name,
+            "completed_appointments": volume_by_doctor.get((doctor_id, doctor_name), 0),
+            "billed_amount": revenue,
+        }
+        for (doctor_id, doctor_name), revenue in revenue_by_doctor.items()
+    ]
+    # Doctors with completed appointments but no matched bills still count as volume.
+    for key, count in volume_by_doctor.items():
+        if key not in revenue_by_doctor:
+            doctor_id, doctor_name = key
+            rows.append({"doctor_id": doctor_id, "doctor_name": doctor_name, "completed_appointments": count, "billed_amount": Decimal("0")})
+
+    return {
+        "rows": sorted(rows, key=lambda r: r["billed_amount"], reverse=True),
+        "note": "billed_amount is attributed via patient + bill-date windows between visits, not a direct appointment-bill link — treat it as an approximation, not a reconciled revenue figure.",
+    }
+
+
 def reminder_delivery_summary(hospital, start, end):
     """§5/§12 (extension) — delivery counts for the automated appointment
     reminder sends, grouped by template purpose (24h / 2h before) and

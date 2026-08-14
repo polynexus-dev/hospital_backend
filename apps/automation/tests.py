@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 
 from apps.automation.engine import execute_workflow
 from apps.automation.models import EscalationRule, Task, Workflow, WorkflowRun, WorkflowStep
+from apps.automation.tasks import sweep_patient_recalls
+from apps.patients.models import Patient
 
 
 # --- Task: model + API CRUD, claim/complete actions -------------------------
@@ -60,6 +65,40 @@ def test_task_isolation(auth_client, other_hospital):
     assert auth_client.get(f"/api/v1/tasks/{theirs.id}/").status_code == 404
     assert auth_client.post(f"/api/v1/tasks/{theirs.id}/claim/").status_code == 404
     assert auth_client.delete(f"/api/v1/tasks/{theirs.id}/").status_code == 404
+
+
+# --- sweep_patient_recalls: scheduled recall trigger -----------------------
+
+@pytest.mark.django_db
+def test_sweep_patient_recalls_creates_task_and_clears_due_date(hospital):
+    patient = Patient.objects.create(
+        hospital=hospital, first_name="Overdue", mobile="9000030001",
+        next_recall_due_at=timezone.now() - timedelta(days=1), recall_reason="Annual checkup",
+    )
+    not_due = Patient.objects.create(
+        hospital=hospital, first_name="NotDue", mobile="9000030002",
+        next_recall_due_at=timezone.now() + timedelta(days=30),
+    )
+
+    created = sweep_patient_recalls()
+
+    assert created == 1
+    task = Task.objects.get(hospital=hospital, title__startswith="Recall due:")
+    assert task.description == "Annual checkup"
+    patient.refresh_from_db()
+    assert patient.next_recall_due_at is None
+    not_due.refresh_from_db()
+    assert not_due.next_recall_due_at is not None
+
+
+@pytest.mark.django_db
+def test_sweep_patient_recalls_fires_matching_workflow(hospital):
+    workflow = Workflow.objects.create(hospital=hospital, name="Recall nudge", trigger_type=Workflow.TriggerType.PATIENT_RECALL_DUE)
+    Patient.objects.create(hospital=hospital, first_name="Due", mobile="9000030003", next_recall_due_at=timezone.now() - timedelta(hours=1))
+
+    sweep_patient_recalls()
+
+    assert WorkflowRun.objects.filter(workflow=workflow).exists()
 
 
 # --- EscalationRule: model + API CRUD ---------------------------------------

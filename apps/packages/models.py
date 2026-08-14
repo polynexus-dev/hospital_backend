@@ -1,5 +1,7 @@
 from django.db import models
 from apps.core.models import TenantScopedModel
+from apps.enquiries.models import Enquiry
+from apps.patients.models import Patient
 
 
 class HealthPackage(TenantScopedModel):
@@ -59,6 +61,43 @@ class Campaign(TenantScopedModel):
         return self.name
 
 
+class CorporateClient(TenantScopedModel):
+    """Corporate wellness / employee health-checkup contract — the actual
+    commercial agreement (roster size, discount tier, validity window) a
+    `Campaign` of type CORPORATE_TIEUP sells against. Kept as its own model
+    rather than fields on Campaign because one corporate relationship
+    typically spans multiple campaigns/years."""
+
+    class BillingModel(models.TextChoices):
+        PER_EMPLOYEE = "per_employee", "Per employee checkup"
+        FLAT_ANNUAL = "flat_annual", "Flat annual contract"
+        CREDIT_LINE = "credit_line", "Pre-paid credit line"
+
+    name = models.CharField(max_length=200)
+    contact_person = models.CharField(max_length=150, blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
+    contact_email = models.EmailField(blank=True)
+
+    campaign = models.ForeignKey(Campaign, on_delete=models.SET_NULL, null=True, blank=True, related_name="corporate_clients")
+    billing_model = models.CharField(max_length=16, choices=BillingModel.choices, default=BillingModel.PER_EMPLOYEE)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+
+    contract_start = models.DateField()
+    contract_end = models.DateField(null=True, blank=True)
+    employee_count = models.PositiveIntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class CampRegistration(TenantScopedModel):
     """Camp registration funnel (Registered ➔ Attended ➔ OPD ➔ IPD)."""
 
@@ -73,6 +112,13 @@ class CampRegistration(TenantScopedModel):
     mobile = models.CharField(max_length=32)
     stage = models.CharField(max_length=24, choices=FunnelStage.choices, default=FunnelStage.REGISTERED)
     revenue_generated = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    # Links the camp attendee to the CRM lead/patient record it became, so
+    # campaign spend can actually be traced through to a real conversion
+    # instead of stopping at a free-text name/mobile.
+    enquiry = models.ForeignKey(Enquiry, on_delete=models.SET_NULL, null=True, blank=True, related_name="camp_registrations")
+    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True, related_name="camp_registrations")
+    corporate_client = models.ForeignKey(CorporateClient, on_delete=models.SET_NULL, null=True, blank=True, related_name="camp_registrations")
 
     registered_at = models.DateTimeField(auto_now_add=True)
 

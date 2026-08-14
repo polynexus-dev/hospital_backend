@@ -5,7 +5,7 @@ from .models import Call, CallbackTask, IVRRoute
 
 @admin.register(Call)
 class CallAdmin(admin.ModelAdmin):
-    list_display = ["from_number", "to_number", "direction", "status", "department", "operator", "started_at", "duration_seconds"]
+    list_display = ["from_number", "to_number", "direction", "status", "patient", "enquiry", "department", "operator", "started_at", "duration_seconds"]
     list_filter = ["hospital", "direction", "status", "department"]
     search_fields = ["from_number", "to_number", "provider_call_id"]
 

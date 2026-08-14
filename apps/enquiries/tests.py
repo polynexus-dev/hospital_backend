@@ -3,7 +3,7 @@ import io
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from apps.enquiries.models import Enquiry, EnquiryStageChange
+from apps.enquiries.models import Enquiry, EnquiryAssignmentChange, EnquiryStageChange
 from apps.enquiries.services import assign_enquiry, find_duplicates
 
 
@@ -126,18 +126,121 @@ def test_move_stage_action_is_a_noop_for_the_same_stage(auth_client, hospital):
 def test_lose_action_sets_lost_reason_and_moves_to_lost_stage(auth_client, hospital):
     enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000088888", source=Enquiry.Source.OTHER)
 
-    response = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/lose/", {"lost_reason": "Chose another hospital"}, format="json")
+    response = auth_client.post(
+        f"/api/v1/enquiries/{enquiry.id}/lose/",
+        {"lost_reason": Enquiry.LostReason.WENT_ELSEWHERE, "lost_notes": "Chose another hospital"},
+        format="json",
+    )
 
     assert response.status_code == 200
     enquiry.refresh_from_db()
     assert enquiry.stage == Enquiry.Stage.LOST
-    assert enquiry.lost_reason == "Chose another hospital"
+    assert enquiry.lost_reason == Enquiry.LostReason.WENT_ELSEWHERE
+    assert enquiry.lost_notes == "Chose another hospital"
 
 
 @pytest.mark.django_db
 def test_lose_action_requires_lost_reason(auth_client, hospital):
     enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000099999", source=Enquiry.Source.OTHER)
     response = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/lose/", {}, format="json")
+    assert response.status_code == 400
+
+
+# --- reassign: manual ownership change is logged --------------------------
+
+@pytest.mark.django_db
+def test_reassign_action_changes_owner_and_logs_assignment_change(auth_client, hospital, department, user):
+    from apps.accounts.models import Role, User, assign_role
+
+    other_role = Role.objects.create(hospital=hospital, department=department, name="Other Front Desk", template=Role.Template.ADMIN)
+    other_owner = User.objects.create_user(email="other-owner@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(other_owner, other_role)
+
+    enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000010001", source=Enquiry.Source.OTHER, assigned_to=user)
+
+    response = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/reassign/", {"owner": other_owner.id, "reason": "on leave"}, format="json")
+
+    assert response.status_code == 200
+    enquiry.refresh_from_db()
+    assert enquiry.assigned_to_id == other_owner.id
+    change = EnquiryAssignmentChange.objects.get(enquiry=enquiry)
+    assert change.from_owner_id == user.id
+    assert change.to_owner_id == other_owner.id
+    assert change.reason == "on leave"
+
+
+@pytest.mark.django_db
+def test_reassign_action_rejects_owner_from_another_hospital(auth_client, hospital, other_user):
+    enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000010002", source=Enquiry.Source.OTHER)
+    response = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/reassign/", {"owner": other_user.id}, format="json")
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_assign_enquiry_logs_an_assignment_change(hospital, department, user):
+    enquiry = Enquiry.objects.create(hospital=hospital, name="Ravi Kumar", mobile="9123456781", source=Enquiry.Source.WALK_IN, department=department)
+    assign_enquiry(enquiry)
+    change = EnquiryAssignmentChange.objects.get(enquiry=enquiry)
+    assert change.from_owner_id is None
+    assert change.to_owner_id == user.id
+
+
+# --- merge: duplicate consolidation ----------------------------------------
+
+@pytest.mark.django_db
+def test_merge_action_consolidates_duplicate_into_primary(auth_client, hospital):
+    primary = Enquiry.objects.create(hospital=hospital, name="Asha Patil", mobile="9876500001", source=Enquiry.Source.WEBSITE, notes="Primary notes")
+    duplicate = Enquiry.objects.create(hospital=hospital, name="Asha P.", mobile="9111100002", source=Enquiry.Source.IVR, notes="Called about OPD")
+
+    response = auth_client.post(f"/api/v1/enquiries/{duplicate.id}/merge/", {"primary_id": primary.id}, format="json")
+
+    assert response.status_code == 200
+    duplicate.refresh_from_db()
+    assert duplicate.duplicate_of_id == primary.id
+    assert duplicate.stage == Enquiry.Stage.LOST
+    assert duplicate.lost_reason == Enquiry.LostReason.DUPLICATE
+    primary.refresh_from_db()
+    assert "Called about OPD" in primary.notes
+
+
+@pytest.mark.django_db
+def test_merge_action_rejects_cross_hospital_merge(auth_client, hospital, other_hospital):
+    primary = Enquiry.objects.create(hospital=other_hospital, name="Elsewhere", mobile="9000010003", source=Enquiry.Source.WEBSITE)
+    duplicate = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000010004", source=Enquiry.Source.OTHER)
+
+    response = auth_client.post(f"/api/v1/enquiries/{duplicate.id}/merge/", {"primary_id": primary.id}, format="json")
+    assert response.status_code == 400
+
+
+# --- lead-capture webhook ----------------------------------------------------
+
+@pytest.mark.django_db
+def test_lead_webhook_creates_enquiry_for_valid_token(api_client, hospital):
+    payload = {
+        "name": "Website Lead", "mobile": "9000020001", "source": "website",
+        "utm_source": "google", "utm_medium": "cpc", "utm_campaign": "cardiology-launch",
+    }
+    response = api_client.post(f"/api/v1/enquiries/lead-webhook/{hospital.lead_webhook_token}/", payload, format="json")
+
+    assert response.status_code == 201
+    enquiry = Enquiry.objects.get(pk=response.data["id"])
+    assert enquiry.hospital_id == hospital.id
+    assert enquiry.utm_source == "google"
+    assert enquiry.utm_campaign == "cardiology-launch"
+
+
+@pytest.mark.django_db
+def test_lead_webhook_rejects_unknown_token(api_client):
+    response = api_client.post(
+        "/api/v1/enquiries/lead-webhook/00000000-0000-0000-0000-000000000000/",
+        {"name": "X", "mobile": "9000020002"}, format="json",
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_lead_webhook_requires_name_and_mobile(api_client, hospital):
+    response = api_client.post(f"/api/v1/enquiries/lead-webhook/{hospital.lead_webhook_token}/", {"name": "X"}, format="json")
     assert response.status_code == 400
 
 

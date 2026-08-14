@@ -41,7 +41,7 @@ class MessageViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
     serializer_class = MessageSerializer
     queryset = Message.objects.all()
-    filterset_fields = ["patient", "channel", "direction", "status"]
+    filterset_fields = ["patient", "enquiry", "channel", "direction", "status"]
 
     @action(detail=False, methods=["post"])
     def send(self, request):
@@ -81,8 +81,9 @@ class ThreadViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):
         thread = self.get_object()
+        scope = {"patient": thread.patient} if thread.patient_id else {"enquiry": thread.enquiry}
         Message.objects.filter(
-            patient=thread.patient, channel=thread.channel, direction=Message.Direction.INBOUND, is_read=False
+            channel=thread.channel, direction=Message.Direction.INBOUND, is_read=False, **scope
         ).update(is_read=True)
         return Response(ThreadSerializer(thread).data)
 

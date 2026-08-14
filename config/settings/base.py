@@ -308,6 +308,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.automation.tasks.escalate_overdue_tasks",
         "schedule": 900.0,
     },
+    # Retention — preventive-care / follow-up recall sweep, once daily.
+    "sweep-patient-recalls": {
+        "task": "apps.automation.tasks.sweep_patient_recalls",
+        "schedule": crontab(hour=8, minute=0),
+    },
     # §1/§12 — owner's daily WhatsApp MIS, evening dispatch.
     "send-daily-mis-to-owners": {
         "task": "apps.analytics.tasks.send_daily_mis_to_owners",

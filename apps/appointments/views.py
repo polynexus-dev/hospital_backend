@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -12,7 +14,9 @@ from apps.patients.models import Patient
 from .models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
 from .serializers import (
     AppointmentSerializer,
+    BlockDoctorSlotsSerializer,
     BookAppointmentSerializer,
+    DoctorQueueSerializer,
     DoctorSerializer,
     GenerateSlotsSerializer,
     RescheduleAppointmentSerializer,
@@ -22,14 +26,17 @@ from .serializers import (
 )
 from .services import (
     SlotUnavailable,
+    block_doctor_slots,
     book_appointment,
     cancel,
     check_in,
     complete,
+    doctor_queue,
     generate_slots,
     mark_no_show,
     reschedule_appointment,
     start_consult,
+    unblock_doctor_slots,
 )
 
 
@@ -38,6 +45,31 @@ class DoctorViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     filterset_fields = ["department", "is_active"]
     search_fields = ["name", "speciality"]
+
+    @action(detail=True, methods=["post"], url_path="block-leave")
+    def block_leave(self, request, pk=None):
+        doctor = self.get_object()
+        serializer = BlockDoctorSlotsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = block_doctor_slots(doctor, **serializer.validated_data)
+        return Response(result)
+
+    @action(detail=True, methods=["post"], url_path="unblock-leave")
+    def unblock_leave(self, request, pk=None):
+        doctor = self.get_object()
+        serializer = BlockDoctorSlotsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        unblocked = unblock_doctor_slots(
+            doctor, start_date=serializer.validated_data["start_date"], end_date=serializer.validated_data["end_date"]
+        )
+        return Response({"unblocked": unblocked})
+
+    @action(detail=True, methods=["get"])
+    def queue(self, request, pk=None):
+        doctor = self.get_object()
+        date_param = request.query_params.get("date")
+        date = datetime.strptime(date_param, "%Y-%m-%d").date() if date_param else timezone.localdate()
+        return Response(DoctorQueueSerializer(doctor_queue(doctor, date)).data)
 
 
 class SlotTemplateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):

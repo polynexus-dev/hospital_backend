@@ -1,8 +1,8 @@
 from rest_framework import viewsets
 from apps.core.viewsets import TenantScopedViewSetMixin
 
-from .models import PreAuthRequest, TPACompany
-from .serializers import PreAuthRequestSerializer, TPACompanySerializer
+from .models import Claim, PreAuthRequest, TPACompany
+from .serializers import ClaimSerializer, PreAuthRequestSerializer, TPACompanySerializer
 
 
 class TPACompanyViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -17,3 +17,10 @@ class PreAuthRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     queryset = PreAuthRequest.objects.all()
     filterset_fields = ["tpa_company", "status", "patient"]
     search_fields = ["policy_number"]
+
+
+class ClaimViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    serializer_class = ClaimSerializer
+    queryset = Claim.objects.all()
+    filterset_fields = ["tpa_company", "status", "patient", "preauth_request"]
+    search_fields = ["claim_number"]

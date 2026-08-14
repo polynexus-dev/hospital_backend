@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 
 from apps.patients.models import Patient
-from apps.tpa.models import PreAuthRequest, TPACompany
+from apps.tpa.models import Claim, PreAuthRequest, TPACompany
 
 
 def _teardown(instance):
@@ -357,3 +357,50 @@ def test_create_still_stamps_the_requesting_users_hospital(auth_client, hospital
     assert response.status_code == 201
     created = TPACompany.objects.get(pk=response.data["id"])
     assert created.hospital_id == hospital.id
+
+
+# --- Claim: post-auth settlement tracking -----------------------------------
+
+@pytest.mark.django_db
+def test_claim_model_create_with_required_fields_only(hospital, patient, tpa_company):
+    claim = Claim.objects.create(hospital=hospital, patient=patient, tpa_company=tpa_company, billed_amount=Decimal("50000.00"))
+    assert claim.status == Claim.Status.SUBMITTED
+    assert claim.settled_amount == Decimal("0.00")
+    assert claim.outstanding_amount == Decimal("50000.00")
+    _teardown(claim)
+
+
+@pytest.mark.django_db
+def test_claim_can_link_back_to_its_preauth_request(hospital, patient, tpa_company):
+    preauth = PreAuthRequest.objects.create(hospital=hospital, patient=patient, tpa_company=tpa_company, policy_number="POL1", claim_amount=Decimal("50000.00"), status=PreAuthRequest.Status.APPROVED)
+    claim = Claim.objects.create(hospital=hospital, patient=patient, tpa_company=tpa_company, preauth_request=preauth, billed_amount=Decimal("50000.00"))
+    assert claim.preauth_request_id == preauth.id
+    _teardown(claim)
+    _teardown(preauth)
+
+
+@pytest.mark.django_db
+def test_claim_api_create_and_settle(auth_client, hospital, patient, tpa_company):
+    create = auth_client.post(
+        "/api/v1/tpa/claims/",
+        {"patient": patient.id, "tpa_company": tpa_company.id, "billed_amount": "50000.00", "claim_number": "CLM001"},
+        format="json",
+    )
+    assert create.status_code == 201
+    claim_id = create.data["id"]
+
+    settle = auth_client.patch(
+        f"/api/v1/tpa/claims/{claim_id}/",
+        {"status": Claim.Status.PARTIALLY_SETTLED, "settled_amount": "35000.00"},
+        format="json",
+    )
+    assert settle.status_code == 200
+    assert Decimal(settle.data["outstanding_amount"]) == Decimal("15000.00")
+
+
+@pytest.mark.django_db
+def test_claim_isolation(auth_client, other_tpa_company, other_patient):
+    theirs = Claim.objects.create(hospital=other_tpa_company.hospital, patient=other_patient, tpa_company=other_tpa_company, billed_amount=Decimal("1"))
+    response = auth_client.get(f"/api/v1/tpa/claims/{theirs.id}/")
+    assert response.status_code == 404
+    _teardown(theirs)

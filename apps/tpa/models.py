@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from apps.core.models import TenantScopedModel
 from apps.patients.models import Patient
@@ -50,3 +52,43 @@ class PreAuthRequest(TenantScopedModel):
 
     def __str__(self):
         return f"PreAuth #{self.id}: {self.patient.full_name} ({self.tpa_company.name})"
+
+
+class Claim(TenantScopedModel):
+    """Post-treatment claim submission and settlement tracking — the
+    continuation PreAuthRequest deliberately stops short of: pre-auth only
+    covers the pre-treatment approval, not what the insurer actually pays
+    out afterwards. Optionally linked back to the PreAuthRequest that
+    preceded it, but not required (cashless emergency admissions can skip
+    pre-auth and go straight to a claim)."""
+
+    class Status(models.TextChoices):
+        SUBMITTED = "submitted", "Claim Submitted"
+        UNDER_REVIEW = "under_review", "Under Review"
+        SETTLED = "settled", "Settled"
+        PARTIALLY_SETTLED = "partially_settled", "Partially Settled"
+        REJECTED = "rejected", "Rejected"
+
+    preauth_request = models.ForeignKey(PreAuthRequest, on_delete=models.SET_NULL, null=True, blank=True, related_name="claims")
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="claims")
+    tpa_company = models.ForeignKey(TPACompany, on_delete=models.CASCADE, related_name="claims")
+
+    claim_number = models.CharField(max_length=100, blank=True)
+    billed_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    settled_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.SUBMITTED)
+    rejection_reason = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-submitted_at"]
+
+    @property
+    def outstanding_amount(self):
+        return self.billed_amount - self.settled_amount
+
+    def __str__(self):
+        return f"Claim #{self.id}: {self.patient.full_name} ({self.tpa_company.name})"

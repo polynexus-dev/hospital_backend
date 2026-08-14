@@ -18,6 +18,6 @@ class ConsentOptOutAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ["patient", "channel", "direction", "status", "created_at"]
+    list_display = ["patient", "enquiry", "channel", "direction", "status", "created_at"]
     list_filter = ["hospital", "channel", "direction", "status"]
     search_fields = ["patient__first_name", "patient__last_name", "body"]

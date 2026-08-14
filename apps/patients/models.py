@@ -50,9 +50,24 @@ class Patient(TenantScopedModel):
 
     is_active = models.BooleanField(default=True)
 
+    # Household linking — e.g. a parent as the primary contact for a minor,
+    # or a family sharing one phone number under one main contact.
+    guardian = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="dependents",
+        help_text="Primary contact/household head for this patient, if any.",
+    )
+    relationship_to_guardian = models.CharField(max_length=50, blank=True, help_text="e.g. child, spouse, parent")
+
+    # Preventive-care / follow-up recall (§ retention) — swept by
+    # apps.automation.tasks.sweep_patient_recalls, which creates a Task and
+    # fires the patient_recall_due workflow trigger once this falls due.
+    next_recall_due_at = models.DateTimeField(null=True, blank=True)
+    recall_reason = models.CharField(max_length=255, blank=True, help_text="e.g. annual checkup, post-surgery follow-up, chronic-care review")
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "mobile"]),
+            models.Index(fields=["hospital", "next_recall_due_at"]),
         ]
 
     def __str__(self):

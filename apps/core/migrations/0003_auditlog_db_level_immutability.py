@@ -30,6 +30,16 @@ DROP FUNCTION IF EXISTS core_auditlog_block_mutation();
 """
 
 
+def apply_postgres_triggers(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(FORWARD_SQL)
+
+
+def reverse_postgres_triggers(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(REVERSE_SQL)
+
+
 class Migration(migrations.Migration):
     """AuditLog.save()/delete() already refuse updates/deletes at the
     Django ORM layer — but that only holds for code that goes through the
@@ -40,15 +50,14 @@ class Migration(migrations.Migration):
     trigger, so it holds regardless of what's issuing the query.
 
     Postgres-specific (this project's stated production database — see
-    Backend/README.md and DATABASE_URL in .env.example); intentionally not
-    written to be portable to sqlite, which apps.core.tests/manual scripts
-    use via USE_SQLITE=True for quick one-off checks, not the real test
-    suite."""
+    Backend/README.md and DATABASE_URL in .env.example); conditionally
+    skipped on SQLite for local development and unit testing."""
 
     dependencies = [
         ("core", "0002_hospital_google_review_url_and_more"),
     ]
 
     operations = [
-        migrations.RunSQL(sql=FORWARD_SQL, reverse_sql=REVERSE_SQL),
+        migrations.RunPython(apply_postgres_triggers, reverse_postgres_triggers),
     ]
+

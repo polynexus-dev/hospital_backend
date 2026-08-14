@@ -22,7 +22,7 @@ class SlotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Slot
-        fields = ["id", "doctor", "date", "start_time", "end_time", "is_blocked", "is_booked"]
+        fields = ["id", "doctor", "date", "start_time", "end_time", "is_blocked", "blocked_reason", "is_booked"]
         read_only_fields = ["id", "is_booked"]
 
 
@@ -31,13 +31,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = [
             "id", "patient", "doctor", "slot", "status", "source", "reason",
-            "consent_captured", "consent_captured_at", "registration_token",
+            "consent_captured", "consent_captured_at", "registration_token", "queue_token",
             "reminder_24h_sent_at", "reminder_2h_sent_at",
             "checked_in_at", "completed_at", "cancelled_at", "no_show_at",
             "rescheduled_from", "booked_by", "created_at",
         ]
         read_only_fields = [
-            "id", "status", "registration_token", "reminder_24h_sent_at", "reminder_2h_sent_at",
+            "id", "status", "registration_token", "queue_token", "reminder_24h_sent_at", "reminder_2h_sent_at",
             "checked_in_at", "completed_at", "cancelled_at", "no_show_at",
             "rescheduled_from", "booked_by", "created_at",
         ]
@@ -66,3 +66,19 @@ class RescheduleAppointmentSerializer(serializers.Serializer):
 
 class GenerateSlotsSerializer(serializers.Serializer):
     weeks_ahead = serializers.IntegerField(default=4, min_value=1, max_value=12)
+
+
+class BlockDoctorSlotsSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if attrs["end_date"] < attrs["start_date"]:
+            raise serializers.ValidationError("end_date must be on or after start_date.")
+        return attrs
+
+
+class DoctorQueueSerializer(serializers.Serializer):
+    now_serving = AppointmentSerializer(allow_null=True)
+    waiting = AppointmentSerializer(many=True)

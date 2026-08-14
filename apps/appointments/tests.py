@@ -6,7 +6,14 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from apps.appointments.models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
-from apps.appointments.services import SlotUnavailable, book_appointment
+from apps.appointments.services import (
+    SlotUnavailable,
+    block_doctor_slots,
+    book_appointment,
+    check_in,
+    doctor_queue,
+    unblock_doctor_slots,
+)
 from apps.appointments.tasks import send_appointment_reminders
 from apps.patients.models import Patient
 
@@ -71,6 +78,90 @@ def test_reminder_task_sends_and_stamps_appointments_in_the_24h_window(hospital,
     appointment.refresh_from_db()
     assert appointment.reminder_24h_sent_at is not None
     assert appointment.reminder_2h_sent_at is None
+
+
+# --- OPD queue token on check-in -------------------------------------------
+
+@pytest.mark.django_db
+def test_check_in_assigns_sequential_queue_tokens_per_doctor_per_day(hospital, doctor, patient):
+    day = datetime.date.today() + datetime.timedelta(days=1)
+    patient2 = Patient.objects.create(hospital=hospital, first_name="Rekha", mobile="9988776657")
+
+    slot1 = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 0), end_time=datetime.time(9, 15))
+    slot2 = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 15), end_time=datetime.time(9, 30))
+
+    appt1 = book_appointment(patient=patient, slot=slot1)
+    appt2 = book_appointment(patient=patient2, slot=slot2)
+
+    check_in(appt2)  # arrives first, despite the later slot time
+    check_in(appt1)
+
+    appt1.refresh_from_db()
+    appt2.refresh_from_db()
+    assert appt2.queue_token == 1
+    assert appt1.queue_token == 2
+
+
+@pytest.mark.django_db
+def test_doctor_queue_reports_now_serving_and_waiting(hospital, doctor, patient):
+    day = datetime.date.today() + datetime.timedelta(days=1)
+    patient2 = Patient.objects.create(hospital=hospital, first_name="Rekha", mobile="9988776658")
+    slot1 = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 0), end_time=datetime.time(9, 15))
+    slot2 = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 15), end_time=datetime.time(9, 30))
+
+    appt1 = check_in(book_appointment(patient=patient, slot=slot1))
+    appt2 = check_in(book_appointment(patient=patient2, slot=slot2))
+    appt1.status = Appointment.Status.IN_CONSULT
+    appt1.save(update_fields=["status"])
+
+    result = doctor_queue(doctor, day)
+    assert result["now_serving"].id == appt1.id
+    assert [a.id for a in result["waiting"]] == [appt2.id]
+
+
+# --- bulk doctor-leave blocking ---------------------------------------------
+
+@pytest.mark.django_db
+def test_block_doctor_slots_blocks_unbooked_and_skips_booked(hospital, doctor, patient):
+    day = datetime.date.today() + datetime.timedelta(days=2)
+    free_slot = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 0), end_time=datetime.time(9, 15))
+    booked_slot = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 15), end_time=datetime.time(9, 30))
+    book_appointment(patient=patient, slot=booked_slot)
+
+    result = block_doctor_slots(doctor, start_date=day, end_date=day, reason="On leave")
+
+    assert result["blocked"] == 1
+    assert result["skipped_already_booked"] == 1
+    free_slot.refresh_from_db()
+    booked_slot.refresh_from_db()
+    assert free_slot.is_blocked is True
+    assert free_slot.blocked_reason == "On leave"
+    assert booked_slot.is_blocked is False
+
+
+@pytest.mark.django_db
+def test_unblock_doctor_slots_reverses_block(hospital, doctor):
+    day = datetime.date.today() + datetime.timedelta(days=3)
+    slot = Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 0), end_time=datetime.time(9, 15))
+    block_doctor_slots(doctor, start_date=day, end_date=day, reason="Leave")
+
+    unblocked = unblock_doctor_slots(doctor, start_date=day, end_date=day)
+
+    assert unblocked == 1
+    slot.refresh_from_db()
+    assert slot.is_blocked is False
+    assert slot.blocked_reason == ""
+
+
+@pytest.mark.django_db
+def test_block_leave_action_via_api(auth_client, hospital, doctor):
+    day = (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+    Slot.objects.create(hospital=hospital, doctor=doctor, date=day, start_time=datetime.time(9, 0), end_time=datetime.time(9, 15))
+
+    response = auth_client.post(f"/api/v1/doctors/{doctor.id}/block-leave/", {"start_date": day, "end_date": day, "reason": "Conference"}, format="json")
+
+    assert response.status_code == 200
+    assert response.data["blocked"] == 1
 
 
 # --- Doctor: API CRUD + isolation -----------------------------------------

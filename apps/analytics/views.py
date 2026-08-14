@@ -62,6 +62,11 @@ class RevenueBySourceView(BaseReportView):
         return services.revenue_by_source(hospital, start, end)
 
 
+class DoctorRevenueView(BaseReportView):
+    def build_report(self, hospital, start, end):
+        return services.doctor_revenue(hospital, start, end)
+
+
 class ReminderDeliverySummaryView(BaseReportView):
     def build_report(self, hospital, start, end):
         return {"rows": services.reminder_delivery_summary(hospital, start, end)}

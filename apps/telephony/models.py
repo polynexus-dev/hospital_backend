@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import Department, TenantScopedModel
+from apps.enquiries.models import Enquiry
 from apps.patients.models import Patient
 
 
@@ -50,6 +51,9 @@ class Call(TenantScopedModel):
     to_number = models.CharField(max_length=32, blank=True)
 
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True, related_name="calls")
+    # Pre-conversion lead this call belongs to — lets the enquiry pipeline
+    # show call history for a caller who hasn't become a Patient yet.
+    enquiry = models.ForeignKey(Enquiry, on_delete=models.SET_NULL, null=True, blank=True, related_name="calls")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="calls")
     operator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="handled_calls")
 

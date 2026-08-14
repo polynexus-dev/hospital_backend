@@ -14,9 +14,16 @@ class PatientSerializer(serializers.ModelSerializer):
             "national_id_type", "national_id_number",
             "insurance_provider", "insurance_policy_number", "employer",
             "attendant_name", "attendant_phone", "attendant_relation", "referring_doctor_name",
+            "guardian", "relationship_to_guardian",
+            "next_recall_due_at", "recall_reason",
             "preferred_language", "is_active", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_guardian(self, guardian):
+        if guardian is not None and self.instance is not None and guardian.pk == self.instance.pk:
+            raise serializers.ValidationError("A patient cannot be their own guardian.")
+        return guardian
 
 
 class PatientLookupSerializer(serializers.ModelSerializer):
