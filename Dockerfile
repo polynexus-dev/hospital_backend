@@ -21,7 +21,7 @@ RUN SECRET_KEY=build-time-dummy-secret-key-for-collectstatic-only \
 
 RUN chmod +x /app/docker-entrypoint.sh
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 
 EXPOSE 8000
 
