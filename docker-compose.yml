@@ -46,6 +46,7 @@ services:
 
   celery-worker:
     build: .
+    entrypoint: []
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
@@ -60,9 +61,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_started
 
   celery-beat:
     build: .
+    entrypoint: []
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app
@@ -77,6 +81,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_started
 
 volumes:
   postgres_data:
