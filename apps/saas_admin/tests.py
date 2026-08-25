@@ -71,19 +71,105 @@ def test_saas_admin_invoice_mark_paid_action(saas_admin_client, hospital, subscr
 
 
 @pytest.mark.django_db
-def test_invoice_number_uniqueness_is_scoped_per_hospital(hospital, other_hospital, subscription):
+def test_saas_admin_can_download_invoice_pdf(saas_admin_client, hospital, subscription):
+    invoice = TenantInvoice.objects.create(
+        hospital=hospital, subscription=subscription, invoice_number="INV-0002",
+        billing_period_start=date(2026, 1, 1), billing_period_end=date(2026, 1, 31),
+        amount=999, due_date=date(2026, 2, 5),
+    )
+    response = saas_admin_client.get(f"/api/v1/saas-admin/invoices/{invoice.id}/download/")
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    assert response["Content-Disposition"] == f'attachment; filename="{invoice.invoice_number}.pdf"'
+    body = b"".join(response.streaming_content) if response.streaming else response.content
+    assert body.startswith(b"%PDF")
+    assert len(body) > 500
+
+
+@pytest.mark.django_db
+def test_regular_user_cannot_download_invoice_pdf(auth_client, hospital, subscription):
+    invoice = TenantInvoice.objects.create(
+        hospital=hospital, subscription=subscription, invoice_number="INV-0003",
+        billing_period_start=date(2026, 1, 1), billing_period_end=date(2026, 1, 31),
+        amount=999, due_date=date(2026, 2, 5),
+    )
+    response = auth_client.get(f"/api/v1/saas-admin/invoices/{invoice.id}/download/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_invoice_number_is_globally_unique_across_hospitals(hospital, other_hospital):
+    """Invoice numbers come from one platform-wide FY sequence (Indian
+    financial year, generate_invoice_number), not a per-hospital one — a
+    real invoice ledger numbers consecutively across every customer, not
+    per-customer. A raw duplicate insert (bypassing the generator) must
+    still be rejected at the DB level."""
+    from django.db import IntegrityError
+
     TenantInvoice.objects.create(
-        hospital=hospital, invoice_number="INV-0001",
+        hospital=hospital, invoice_number="INV-2025-26-00001",
         billing_period_start=date(2026, 1, 1), billing_period_end=date(2026, 1, 31),
         amount=100, due_date=date(2026, 2, 5),
     )
-    # Same invoice_number, different hospital — must not collide.
-    TenantInvoice.objects.create(
-        hospital=other_hospital, invoice_number="INV-0001",
-        billing_period_start=date(2026, 1, 1), billing_period_end=date(2026, 1, 31),
-        amount=200, due_date=date(2026, 2, 5),
-    )
-    assert TenantInvoice.objects.filter(invoice_number="INV-0001").count() == 2
+    with pytest.raises(IntegrityError):
+        TenantInvoice.objects.create(
+            hospital=other_hospital, invoice_number="INV-2025-26-00001",
+            billing_period_start=date(2026, 1, 1), billing_period_end=date(2026, 1, 31),
+            amount=200, due_date=date(2026, 2, 5),
+        )
+
+
+# --- generate_invoice_number / current_financial_year --------------------
+
+@pytest.mark.django_db
+def test_generate_invoice_number_format_and_sequence():
+    from apps.saas_admin.services import generate_invoice_number
+
+    first = generate_invoice_number(today=date(2026, 6, 15))
+    second = generate_invoice_number(today=date(2026, 6, 15))
+
+    assert first.startswith("INV-2026-27-")
+    assert first == "INV-2026-27-00001"
+    assert second == "INV-2026-27-00002"
+
+
+def test_current_financial_year_boundary():
+    from apps.saas_admin.services import current_financial_year
+
+    assert current_financial_year(date(2026, 3, 31)) == "2025-26"  # last day of FY 2025-26
+    assert current_financial_year(date(2026, 4, 1)) == "2026-27"   # FY rolls over on 1 April
+    assert current_financial_year(date(2026, 12, 25)) == "2026-27"
+
+
+@pytest.mark.django_db
+def test_generate_invoice_number_resets_across_financial_years():
+    from apps.saas_admin.services import generate_invoice_number
+
+    last_of_fy = generate_invoice_number(today=date(2026, 3, 31))
+    first_of_next_fy = generate_invoice_number(today=date(2026, 4, 1))
+
+    assert last_of_fy == "INV-2025-26-00001"
+    assert first_of_next_fy == "INV-2026-27-00001"  # independent counter, not continuing 00002
+
+
+@pytest.mark.django_db
+def test_saas_admin_create_invoice_ignores_client_supplied_invoice_number(saas_admin_client, hospital, subscription):
+    """invoice_number is read-only on the serializer — the server always
+    generates it (TenantInvoiceViewSet.perform_create), regardless of
+    whatever the client sends."""
+    response = saas_admin_client.post("/api/v1/saas-admin/invoices/", {
+        "hospital": str(hospital.id), "subscription": subscription.id,
+        "invoice_number": "CLIENT-SUPPLIED-VALUE",
+        "billing_period_start": "2026-01-01", "billing_period_end": "2026-01-31",
+        "amount": "999.00", "due_date": "2026-02-05",
+    }, format="json")
+
+    assert response.status_code == 201
+    assert response.data["invoice_number"] != "CLIENT-SUPPLIED-VALUE"
+    assert response.data["invoice_number"].startswith("INV-")
+    invoice = TenantInvoice.objects.get(pk=response.data["id"])
+    assert invoice.invoice_number == response.data["invoice_number"]
 
 
 # --- SupportTicket: hospital-side create, SaaS-side triage --------------

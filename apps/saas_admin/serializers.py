@@ -27,7 +27,10 @@ class TenantInvoiceSerializer(serializers.ModelSerializer):
             "due_date", "paid_at", "payment_receipt", "notes",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "paid_at", "created_at", "updated_at"]
+        # invoice_number is server-generated only — see
+        # apps.saas_admin.services.generate_invoice_number and
+        # TenantInvoiceViewSet.perform_create.
+        read_only_fields = ["id", "invoice_number", "paid_at", "created_at", "updated_at"]
 
 
 class TenantUsageSnapshotSerializer(serializers.ModelSerializer):

@@ -3,9 +3,44 @@ views.py the same way apps.analytics.services is (a view's job is
 request/response shape, not the query itself), and unit-testable without
 going through DRF."""
 
+from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 
 from apps.core.models import ALL_MODULE_KEYS, Hospital
+
+
+def current_financial_year(today=None):
+    """Indian financial year: 1 Apr - 31 Mar, written "2025-26" for the
+    year starting April 2025. `today` is injectable for tests; defaults
+    to the server's local date (TIME_ZONE=Asia/Kolkata — see
+    config/settings/base.py)."""
+    today = today or timezone.localdate()
+    start_year = today.year if today.month >= 4 else today.year - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"
+
+
+def generate_invoice_number(today=None):
+    """Atomically issues the next INV-<FY>-NNNNN number, gapless and
+    globally unique — same race-safety pattern as
+    apps.patients.Patient._generate_uhid (select_for_update() on a
+    per-key counter row, incremented inside one transaction). Two-step
+    rather than one `select_for_update().get_or_create()` call because
+    the *first* invoice of a new financial year has no row to lock yet —
+    get_or_create() already handles that creation race internally
+    (it catches the IntegrityError a concurrent first-caller would hit
+    and re-fetches), then the select_for_update().get() right after
+    takes the lock for the actual increment it needs."""
+    from .models import InvoiceSequence
+
+    fy = current_financial_year(today)
+    with transaction.atomic():
+        InvoiceSequence.objects.get_or_create(financial_year=fy)
+        sequence = InvoiceSequence.objects.select_for_update().get(financial_year=fy)
+        number = sequence.next_number
+        sequence.next_number = number + 1
+        sequence.save(update_fields=["next_number"])
+    return f"INV-{fy}-{number:05d}"
 
 
 def platform_analytics_snapshot():

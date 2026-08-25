@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -13,6 +14,7 @@ from apps.core.viewsets import TenantScopedViewSetMixin
 
 from . import services
 from .models import SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .pdf import render_invoice_pdf
 from .serializers import (
     SaaSSupportTicketSerializer,
     SupportTicketSerializer,
@@ -39,6 +41,9 @@ class TenantInvoiceViewSet(viewsets.ModelViewSet):
     queryset = TenantInvoice.objects.all()
     filterset_fields = ["hospital", "status"]
 
+    def perform_create(self, serializer):
+        serializer.save(invoice_number=services.generate_invoice_number())
+
     @action(detail=True, methods=["post"], url_path="mark-paid")
     def mark_paid(self, request, pk=None):
         invoice = self.get_object()
@@ -46,6 +51,14 @@ class TenantInvoiceViewSet(viewsets.ModelViewSet):
         invoice.paid_at = timezone.now()
         invoice.save(update_fields=["status", "paid_at"])
         return Response(TenantInvoiceSerializer(invoice).data)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        invoice = self.get_object()
+        pdf_bytes = render_invoice_pdf(invoice)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+        return response
 
 
 class TenantUsageSnapshotViewSet(viewsets.ReadOnlyModelViewSet):

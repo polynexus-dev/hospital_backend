@@ -46,6 +46,23 @@ class TenantSubscription(TimeStampedModel):
         return f"{self.hospital.name} — {self.get_tier_display()} ({self.get_status_display()})"
 
 
+class InvoiceSequence(models.Model):
+    """Backs the atomic, gapless invoice_number generation in
+    apps.saas_admin.services.generate_invoice_number() — one row per
+    Indian financial year (Apr-Mar), incremented under
+    select_for_update() the same way apps.patients.Patient._generate_uhid
+    locks Hospital.next_uhid_sequence. Not a TenantScopedModel/
+    TimeStampedModel: this is the platform's own numbering ledger
+    (INV-2025-26-00001, ...), shared across every hospital's invoices,
+    not owned by any one tenant."""
+
+    financial_year = models.CharField(max_length=9, unique=True, help_text='e.g. "2025-26"')
+    next_number = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"FY {self.financial_year} — next {self.next_number}"
+
+
 class TenantInvoice(TimeStampedModel):
     """A single SaaS billing-period invoice for one hospital. Not a
     TenantScopedModel for the same reason as TenantSubscription above —
@@ -59,7 +76,12 @@ class TenantInvoice(TimeStampedModel):
 
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="invoices")
     subscription = models.ForeignKey(TenantSubscription, on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices")
-    invoice_number = models.CharField(max_length=64)
+    # Server-generated only — see apps.saas_admin.services.generate_invoice_number
+    # and TenantInvoiceViewSet.perform_create. Globally unique (not just
+    # per-hospital) because the FY sequence itself is global, matching
+    # how a real invoice ledger numbers consecutively across every
+    # customer, not per-customer.
+    invoice_number = models.CharField(max_length=32, unique=True, editable=False)
     billing_period_start = models.DateField()
     billing_period_end = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -71,9 +93,6 @@ class TenantInvoice(TimeStampedModel):
 
     class Meta:
         ordering = ["-billing_period_start"]
-        constraints = [
-            models.UniqueConstraint(fields=["hospital", "invoice_number"], name="unique_tenantinvoice_number_per_hospital"),
-        ]
         indexes = [models.Index(fields=["hospital", "status"])]
 
     def __str__(self):
