@@ -97,6 +97,7 @@ LOCAL_APPS = [
     "apps.hr",
     "apps.billing",
     "apps.inventory",
+    "apps.saas_admin",
 ]
 
 
@@ -205,6 +206,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
+        "apps.core.permissions.HospitalActive",
         "apps.core.permissions.RoleBasedModelPermissions",
         "apps.core.permissions.ActionPermissionRequired",
     ),
@@ -351,6 +353,15 @@ CELERY_BEAT_SCHEDULE = {
     "sync-his-data": {
         "task": "apps.integrations.tasks.sync_all_hospitals_his_data",
         "schedule": 3600.0,  # hourly
+    },
+    # SaaS admin — monthly per-tenant usage metering (active staff,
+    # patient registrations, bills generated, storage) for the platform
+    # usage/billing dashboard. Runs early on the 1st for the month that
+    # just ended — see apps.saas_admin.tasks for why it's computed once
+    # rather than derived on-demand.
+    "compute-monthly-tenant-usage": {
+        "task": "apps.saas_admin.tasks.compute_monthly_tenant_usage",
+        "schedule": crontab(hour=3, minute=0, day_of_month=1),
     },
 }
 

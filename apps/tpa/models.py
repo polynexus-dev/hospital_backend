@@ -98,6 +98,7 @@ class Claim(TenantScopedModel):
 
     class Meta:
         ordering = ["-submitted_at"]
+        indexes = [models.Index(fields=["hospital", "status"])]
 
     @property
     def outstanding_amount(self):

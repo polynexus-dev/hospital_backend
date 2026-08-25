@@ -70,12 +70,19 @@ class LabOrder(TenantScopedModel):
 class SampleCollection(TenantScopedModel):
     lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name="sample_collections")
     sample_type = models.CharField(max_length=100, help_text="e.g. Blood, Urine, Swab")
-    barcode = models.CharField(max_length=64, unique=True)
+    # Not globally unique=True — barcode is free-text/user-supplied (no
+    # per-hospital namespacing like Patient.uhid gets from the hospital
+    # slug), so a global constraint would wrongly stop two different
+    # hospitals both labelling a sample "BC-0001".
+    barcode = models.CharField(max_length=64)
     collected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     collected_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-collected_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["hospital", "barcode"], name="unique_samplecollection_barcode_per_hospital"),
+        ]
 
     def __str__(self):
         return f"{self.sample_type} ({self.barcode})"

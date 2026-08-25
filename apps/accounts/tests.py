@@ -172,14 +172,31 @@ def test_users_list_is_scoped_to_the_authenticated_users_hospital(auth_client, h
 
 
 @pytest.mark.django_db
-def test_staff_user_sees_every_hospitals_users(api_client, staff_user, other_hospital, other_department):
+def test_staff_user_with_x_hospital_id_header_sees_that_hospitals_users(api_client, staff_user, other_hospital, other_department):
+    """Matches TenantScopedViewSetMixin's own rule (apps/core/viewsets.py)
+    — staff needs the X-Hospital-Id header to see another hospital's rows.
+    UserViewSet/RoleViewSet used to broaden to every hospital for any
+    is_staff user with no header at all; fixed for consistency with every
+    other staff-aware view in the codebase (see next test)."""
     User.objects.create_user(email="other-hospital-staff2@example.com", password="testpass123", hospital=other_hospital, department=other_department)
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/users/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
+
+    emails = {row["email"] for row in response.data["results"]}
+    assert "other-hospital-staff2@example.com" in emails
+
+
+@pytest.mark.django_db
+def test_staff_user_without_header_sees_only_their_own_hospitals_users(api_client, staff_user, hospital, other_hospital, other_department):
+    User.objects.create_user(email="other-hospital-staff3@example.com", password="testpass123", hospital=other_hospital, department=other_department)
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/users/")
 
     emails = {row["email"] for row in response.data["results"]}
-    assert "other-hospital-staff2@example.com" in emails
+    assert "other-hospital-staff3@example.com" not in emails
+    assert staff_user.email in emails
 
 
 @pytest.mark.django_db

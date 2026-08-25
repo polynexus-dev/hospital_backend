@@ -17,6 +17,9 @@ class ICUAdmission(TenantScopedModel):
 
     class Meta:
         ordering = ["-admitted_at"]
+        # No `status` field here (unlike ipd.Admission) — "currently in
+        # ICU" is discharged_at IS NULL, the field this index targets.
+        indexes = [models.Index(fields=["hospital", "discharged_at"])]
 
     def __str__(self):
         return f"ICU Admission for {self.admission.patient} (Bed: {self.bed.bed_number})"

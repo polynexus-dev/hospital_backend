@@ -142,6 +142,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_saas_admin = models.BooleanField(
+        default=False,
+        help_text=(
+            "Master SaaS Admin / platform owner — manages tenants, subscriptions, billing, "
+            "and support tickets across every hospital (apps.saas_admin, apps.core.permissions.IsSaaSAdmin). "
+            "Narrower than is_staff (which every SaaS admin also gets — see save() below): plenty of "
+            "is_staff platform-ops accounts don't need to see cross-tenant billing/revenue data."
+        ),
+    )
     is_2fa_enabled = models.BooleanField(default=False)
     allowed_ip_ranges = models.JSONField(default=list, blank=True, help_text="CIDR ranges this user may log in from; empty = unrestricted.")
 
@@ -158,6 +167,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        # A SaaS admin always gets every existing is_staff capability
+        # (X-Hospital-Id cross-hospital override, switch_hospital,
+        # IsAdminUser-gated views) for free — see
+        # apps.core.permissions.IsSaaSAdmin's docstring for why this is
+        # the deliberate design (is_saas_admin only ever adds capability
+        # on top of is_staff, so nothing already gated on is_staff needed
+        # to change).
+        if self.is_saas_admin:
+            self.is_staff = True
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None and "is_staff" not in update_fields:
+                kwargs["update_fields"] = list(update_fields) + ["is_staff"]
+        super().save(*args, **kwargs)
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email

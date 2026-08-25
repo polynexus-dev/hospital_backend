@@ -96,3 +96,44 @@ class RequiresClinicalDetailPermission(BasePermission):
 
     def has_permission(self, request, view):
         return request.user.has_perm("patients.access_clinical_detail")
+
+
+class IsSaaSAdmin(BasePermission):
+    """Gates the platform-management surface (apps.saas_admin) — tenant
+    subscriptions/invoices/usage, cross-tenant support-ticket resolution,
+    platform analytics. Deliberately narrower than IsAdminUser/is_staff:
+    is_staff already means "this account gets the existing cross-hospital
+    X-Hospital-Id override" (TenantScopedViewSetMixin, UserViewSet.
+    switch_hospital) and pre-dates this permission, but seeing platform
+    billing/revenue data is a step beyond that. User.is_saas_admin forces
+    is_staff=True on save() (apps.accounts.models.User.save), so a SaaS
+    admin keeps every existing is_staff capability for free — this class
+    only ever narrows further, it never has to replace an is_staff check
+    anywhere else in the codebase."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and (user.is_superuser or getattr(user, "is_saas_admin", False)))
+
+
+class HospitalActive(BasePermission):
+    """Global, always-on: 403s any request from a user whose hospital has
+    been suspended (Hospital.is_active=False via HospitalViewSet.
+    toggle_status), closing the gap where suspending a tenant updated the
+    flag but nothing actually checked it on the request path (every
+    TenantScopedViewSetMixin-based ViewSet and the hand-rolled
+    UserViewSet/RoleViewSet equivalents only ever filtered by hospital_id,
+    never by hospital.is_active). Staff/SaaS-admins are exempt — they're
+    the ones who need to keep working *inside* a suspended hospital (via
+    X-Hospital-Id) to investigate or reactivate it. A user with no
+    hospital at all (staff-only accounts) is also exempt — there's nothing
+    to be suspended."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return True  # not this permission's job — IsAuthenticated handles it
+        if user.is_staff or user.is_superuser:
+            return True
+        hospital = getattr(user, "hospital", None)
+        return hospital is None or hospital.is_active

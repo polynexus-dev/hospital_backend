@@ -84,6 +84,26 @@ def test_nursing_note_list_filters_by_admission(nurse_client, admission, hospita
 
 
 @pytest.mark.django_db
+def test_nursing_note_create_rejects_another_hospitals_admission(nurse_client, other_hospital, other_department):
+    """_AdmissionScopedSerializer.validate_admission — Admission.objects.
+    all() (the field's queryset) is unscoped, so without this check a
+    nurse could point a note at another hospital's admission by guessing
+    its id; the note itself would still be stamped with the nurse's own
+    hospital, but the generic relation would point cross-tenant."""
+    other_doctor = Doctor.objects.create(hospital=other_hospital, department=other_department, name="Not Mehta")
+    other_patient = Patient.objects.create(hospital=other_hospital, first_name="NotMine", mobile="9988776600")
+    other_ward = Ward.objects.create(hospital=other_hospital, name="Ward B")
+    other_room = Room.objects.create(hospital=other_hospital, ward=other_ward, room_number="201")
+    other_bed = Bed.objects.create(hospital=other_hospital, room=other_room, bed_number="A")
+    theirs = admit_patient(hospital=other_hospital, patient=other_patient, admitting_doctor=other_doctor, bed=other_bed)
+
+    response = nurse_client.post("/api/v1/nursing/notes/", {"admission": theirs.id, "note": "Should be rejected"}, format="json")
+
+    assert response.status_code == 400
+    assert not NursingNote.objects.filter(content_type__model="admission", object_id=str(theirs.id)).exists()
+
+
+@pytest.mark.django_db
 def test_medication_administration_api_create(nurse_client, nurse_user, admission):
     response = nurse_client.post("/api/v1/nursing/medication-administrations/", {
         "admission": admission.id, "medication_name": "Paracetamol 500mg", "dose": "1 tablet",

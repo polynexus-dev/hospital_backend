@@ -24,6 +24,7 @@ class Bill(TenantScopedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["hospital", "status"])]
 
     def __str__(self):
         return f"Bill #{self.id} for {self.patient} - ₹{self.net_amount} ({self.status})"

@@ -123,6 +123,24 @@ def staff_user(hospital, department):
 
 
 @pytest.fixture
+def saas_admin_user(db):
+    """is_saas_admin=True, no home hospital — the Master SaaS Admin /
+    platform-owner persona (apps.core.permissions.IsSaaSAdmin). Also gets
+    is_staff=True automatically (User.save()'s invariant), so it can
+    exercise every existing is_staff-gated path too."""
+    created = User.objects.create_user(email="saas-admin@polynexus.in", password="testpass123", is_saas_admin=True)
+    yield created
+    _teardown(created)
+
+
+@pytest.fixture
+def saas_admin_client(api_client, saas_admin_user):
+    api_client.force_authenticate(user=saas_admin_user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+
+@pytest.fixture
 def api_client():
     client = APIClient()
     yield client

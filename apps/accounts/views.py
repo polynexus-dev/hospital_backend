@@ -1,6 +1,7 @@
 from django.contrib.auth import update_session_auth_hash
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -42,10 +43,30 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["email", "phone", "first_name", "last_name"]
 
     def get_queryset(self):
+        # Matches TenantScopedViewSetMixin's own rule (apps/core/viewsets.py):
+        # a staff user needs the X-Hospital-Id header to see another
+        # hospital's rows — without it, even staff only sees their own
+        # hospital. This viewset used to broaden to every hospital for any
+        # is_staff user with no header at all, inconsistent with every
+        # other staff-aware view in the codebase.
         user = self.request.user
-        if user.is_staff:
-            return User.objects.all()
+        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
+            return User.objects.filter(hospital_id=self.request.headers["X-Hospital-Id"])
         return User.objects.filter(hospital_id=user.hospital_id)
+
+    def perform_create(self, serializer):
+        hospital = self.request.user.hospital
+        if hospital is None:
+            raise ValidationError("The requesting user is not attached to a hospital.")
+        subscription = getattr(hospital, "subscription", None)
+        if subscription is not None and subscription.max_staff_users:
+            active_staff = User.objects.filter(hospital=hospital, is_active=True).count()
+            if active_staff >= subscription.max_staff_users:
+                raise ValidationError(
+                    f"This hospital's {subscription.get_tier_display()} plan allows up to "
+                    f"{subscription.max_staff_users} staff users. Contact the platform admin to upgrade."
+                )
+        serializer.save(hospital=hospital)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
@@ -100,6 +121,6 @@ class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return Role.objects.all()
+        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
+            return Role.objects.filter(hospital_id=self.request.headers["X-Hospital-Id"])
         return Role.objects.filter(hospital_id=user.hospital_id)

@@ -38,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "phone", "first_name", "last_name",
             "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state", "hospital_enabled_modules",
             "department", "role", "role_name", "role_domain",
-            "preferred_language", "is_active", "is_staff", "available_hospitals", "permissions", "date_joined",
+            "preferred_language", "is_active", "is_staff", "is_saas_admin", "available_hospitals", "permissions", "date_joined",
         ]
         # `hospital` used to be writable here — perform_create already
         # silently overrides it on create regardless of what's posted, but
@@ -47,8 +47,11 @@ class UserSerializer(serializers.ModelSerializer):
         # empirically), completely bypassing switch_hospital's is_staff
         # gate through a second door. Read-only here forces every
         # hospital reassignment through that one, now-properly-gated,
-        # action instead of two paths with different rules.
-        read_only_fields = ["id", "date_joined", "is_staff", "hospital"]
+        # action instead of two paths with different rules. is_saas_admin
+        # read-only for the same class of reason — it must only ever be
+        # set by another SaaS admin/superuser through Django admin or a
+        # dedicated action, never by a user editing their own record.
+        read_only_fields = ["id", "date_joined", "is_staff", "is_saas_admin", "hospital"]
 
     def get_available_hospitals(self, obj):
         """Staff (ops/superadmin) get every active hospital on the

@@ -18,6 +18,19 @@ class _AdmissionScopedSerializer(serializers.ModelSerializer):
     def get_admission_id(self, obj):
         return obj.object_id
 
+    def validate_admission(self, admission):
+        """`Admission.objects.all()` above is deliberately unscoped (DRF
+        resolves the PK before any hospital is known), so without this
+        check a nurse could target another hospital's Admission by its id
+        — the created record would still be stamped with the *creating*
+        user's hospital (see perform_create in views.py), but the
+        generic-relation FK itself would point cross-tenant. Same pattern
+        as apps.enquiries.serializers.ReassignEnquirySerializer.validate_owner."""
+        request = self.context.get("request")
+        if request is not None and admission.hospital_id != request.user.hospital_id:
+            raise serializers.ValidationError("Admission must belong to your hospital.")
+        return admission
+
     def create(self, validated_data):
         admission = validated_data.pop("admission")
         validated_data["content_type"] = ContentType.objects.get_for_model(Admission)

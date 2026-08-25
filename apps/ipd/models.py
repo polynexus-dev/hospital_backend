@@ -41,6 +41,7 @@ class Admission(TenantScopedModel):
 
     class Meta:
         ordering = ["-admitted_at"]
+        indexes = [models.Index(fields=["hospital", "status"])]
 
     def __str__(self):
         return f"Admission: {self.patient} ({self.get_status_display()})"

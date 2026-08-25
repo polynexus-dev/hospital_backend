@@ -531,3 +531,190 @@ def test_assignment_scope_field_is_ignored_for_a_role_with_the_default_all_scope
         also_visible.delete()
     with suppress(Exception):
         patient.delete()
+
+
+# --- HospitalActive: suspended tenants are actually locked out ------------
+#
+# Hospital.is_active/HospitalViewSet.toggle_status existed before this
+# fix, but nothing on the request path ever checked it —
+# TenantScopedViewSetMixin/UserViewSet/RoleViewSet only ever filtered by
+# hospital_id, never by hospital.is_active. These tests prove the new
+# apps.core.permissions.HospitalActive global permission actually closes
+# that gap.
+
+@pytest.mark.django_db
+def test_suspended_hospitals_user_is_locked_out_of_the_api(auth_client, hospital):
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+
+    response = auth_client.get("/api/v1/patients/")
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_active_hospitals_user_is_unaffected(auth_client, hospital):
+    assert hospital.is_active is True
+    assert auth_client.get("/api/v1/patients/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_staff_user_is_exempt_from_the_suspended_hospital_lockout(api_client, staff_user, hospital):
+    """Staff/SaaS-admins need to keep working inside a suspended hospital
+    (via X-Hospital-Id) to investigate or reactivate it."""
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/patients/")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_staff_only_user_with_no_hospital_is_unaffected(api_client):
+    from apps.accounts.models import User
+
+    staff_only = User.objects.create_user(email="ops-only@polynexus.in", password="x", is_staff=True)
+    api_client.force_authenticate(user=staff_only)
+
+    response = api_client.get("/api/v1/patients/")
+
+    assert response.status_code == 200
+
+
+# --- AuditLogViewSet: platform-wide trail for staff/SaaS-admins -----------
+
+@pytest.mark.django_db
+def test_staff_sees_audit_logs_across_every_hospital(api_client, staff_user, hospital, other_hospital):
+    from apps.core.models import AuditLog
+
+    AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
+    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/audit-logs/")
+
+    paths = {row["path"] for row in response.data["results"]}
+    assert {"/mine/", "/not-mine/"} <= paths
+
+
+@pytest.mark.django_db
+def test_staff_can_narrow_audit_logs_to_one_hospital_via_query_param(api_client, staff_user, hospital, other_hospital):
+    from apps.core.models import AuditLog
+
+    AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
+    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get(f"/api/v1/audit-logs/?hospital={other_hospital.id}")
+
+    paths = {row["path"] for row in response.data["results"]}
+    assert paths == {"/not-mine/"}
+
+
+@pytest.mark.django_db
+def test_non_staff_user_still_only_sees_their_own_hospitals_audit_logs(user, other_hospital):
+    """AuditLogViewSet is IsAdminUser-gated end-to-end (a non-staff user
+    gets 403 before get_queryset() ever runs — see the next test), so this
+    exercises get_queryset()'s non-staff branch directly rather than
+    through the always-403 live endpoint, same style as this file's
+    ActionPermissionRequired fake-request tests below."""
+    from types import SimpleNamespace
+
+    from apps.core.models import AuditLog
+    from apps.core.views import AuditLogViewSet
+
+    AuditLog.objects.create(hospital=user.hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
+    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
+
+    view = AuditLogViewSet()
+    view.request = SimpleNamespace(user=user, query_params={})
+
+    paths = {log.path for log in view.get_queryset()}
+    assert paths == {"/mine/"}
+
+
+@pytest.mark.django_db
+def test_non_staff_user_gets_403_from_the_live_audit_log_endpoint(auth_client):
+    """AuditLogViewSet stays IsAdminUser-gated end-to-end — the platform-
+    wide broadening in this fix is for staff/SaaS-admins only, never a
+    reason to open this endpoint to regular hospital users."""
+    assert auth_client.get("/api/v1/audit-logs/").status_code == 403
+
+
+# --- Hospital.slug validation (ValidationError import bug) ----------------
+
+@pytest.mark.django_db
+def test_reserved_hospital_slug_raises_validation_error_not_nameerror():
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    from apps.core.models import validate_hospital_slug
+
+    with pytest.raises(DjangoValidationError):
+        validate_hospital_slug("admin")
+
+
+# --- HospitalViewSet: module-key validation, suspend/onboard fixes --------
+
+@pytest.mark.django_db
+def test_update_modules_rejects_an_unknown_module_key(api_client, staff_user, hospital):
+    api_client.force_authenticate(user=staff_user)
+    response = api_client.post(f"/api/v1/hospitals/{hospital.id}/update-modules/", {"enabled_modules": ["pharmacy", "not-a-real-module"]}, format="json")
+    assert response.status_code == 400
+    hospital.refresh_from_db()
+    assert "not-a-real-module" not in hospital.enabled_modules
+
+
+@pytest.mark.django_db
+def test_update_modules_accepts_known_module_keys(api_client, staff_user, hospital):
+    api_client.force_authenticate(user=staff_user)
+    response = api_client.post(f"/api/v1/hospitals/{hospital.id}/update-modules/", {"enabled_modules": ["pharmacy", "billing"]}, format="json")
+    assert response.status_code == 200
+    hospital.refresh_from_db()
+    assert hospital.enabled_modules == ["pharmacy", "billing"]
+
+
+@pytest.mark.django_db
+def test_onboarding_does_not_grant_the_auto_provisioned_admin_is_staff(api_client, staff_user):
+    """The bug this closes: every tenant's own auto-created "Hospital
+    Owner / Admin" used to get is_staff=True, which — combined with
+    Django admin's ModelAdmin classes having no per-hospital scoping at
+    all — let every hospital's own admin read/write every *other*
+    hospital's data via X-Hospital-Id, or browse it through /admin/."""
+    from apps.accounts.models import User
+
+    api_client.force_authenticate(user=staff_user)
+    response = api_client.post("/api/v1/hospitals/", {"name": "New Onboarded Hospital", "slug": "new-onboarded"}, format="json")
+
+    assert response.status_code == 201
+    admin_email = f"admin@{response.data['slug']}.example"
+    provisioned_admin = User.objects.get(email=admin_email)
+    assert provisioned_admin.is_staff is False
+    assert provisioned_admin.is_saas_admin is False
+
+
+@pytest.mark.django_db
+def test_onboarding_returns_a_generated_password_once(api_client, staff_user):
+    api_client.force_authenticate(user=staff_user)
+    response = api_client.post("/api/v1/hospitals/", {"name": "Another Onboarded Hospital", "slug": "another-onboarded"}, format="json")
+
+    assert response.status_code == 201
+    provisioned = response.data["provisioned_admin"]
+    assert provisioned["email"] == f"admin@{response.data['slug']}.example"
+    assert len(provisioned["password"]) >= 16
+
+    from apps.accounts.models import User
+    admin_user = User.objects.get(email=provisioned["email"])
+    assert admin_user.check_password(provisioned["password"])
+
+
+@pytest.mark.django_db
+def test_onboarding_accepts_a_caller_supplied_admin_email(api_client, staff_user):
+    api_client.force_authenticate(user=staff_user)
+    response = api_client.post("/api/v1/hospitals/", {
+        "name": "Custom Admin Hospital", "slug": "custom-admin-hospital", "admin_email": "owner@realclinic.example",
+    }, format="json")
+
+    assert response.status_code == 201
+    assert response.data["provisioned_admin"]["email"] == "owner@realclinic.example"

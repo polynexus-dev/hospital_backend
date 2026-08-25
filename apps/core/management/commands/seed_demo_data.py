@@ -96,7 +96,7 @@ class Command(BaseCommand):
         pro_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Patient Relationship Officer", defaults={"template": Role.Template.CRM_EXECUTIVE})
 
         # 4. Demo Users
-        def create_or_update_user(email, first_name, last_name, dept=None, role=None, is_staff=False, is_super=False, lang="en"):
+        def create_or_update_user(email, first_name, last_name, dept=None, role=None, is_staff=False, is_super=False, is_saas_admin=False, lang="en"):
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
@@ -106,11 +106,13 @@ class Command(BaseCommand):
                     "last_name": last_name,
                     "is_staff": is_staff,
                     "is_superuser": is_super,
+                    "is_saas_admin": is_saas_admin,
                     "preferred_language": lang,
                 },
             )
             user.is_staff = is_staff
             user.is_superuser = is_super
+            user.is_saas_admin = is_saas_admin
             if created or not user.check_password(password):
                 user.set_password(password)
             user.save()
@@ -118,7 +120,15 @@ class Command(BaseCommand):
                 assign_role(user, role)
             return user
 
-        saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True)
+        # The Master SaaS Admin / platform-owner persona this seed script
+        # already had a placeholder for (see the hardcoded email match in
+        # apps.core.serializers.AuditLogSerializer, predating
+        # apps.saas_admin) — now a real, checkable flag instead of an
+        # email-string match. Still tied to the demo hospital (like every
+        # other demo user here) purely for convenience; is_saas_admin's
+        # cross-tenant reach doesn't depend on which hospital this account
+        # happens to also belong to.
+        saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True, is_saas_admin=True)
         group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True, is_super=True)
         owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
         admin_user = create_or_update_user("admin@hms.polynexus.in", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
