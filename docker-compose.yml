@@ -3,14 +3,14 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: hospital_crm
-      POSTGRES_USER: polynexus
-      POSTGRES_PASSWORD: polynexus_secure_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polynexus"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_crm"]
       interval: 5s
       timeout: 5s
       retries: 10
