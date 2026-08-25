@@ -283,12 +283,10 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://127.0.0.1:5173",
     ],
 )
-# Deliberately NOT setting CORS_ALLOW_ALL_ORIGINS = True — that overrides
-# CORS_ALLOWED_ORIGINS entirely (django-cors-headers sends
-# Access-Control-Allow-Origin: * regardless of the allow-list) and would
-# let any website make cross-origin browser requests against the API,
-# including in production. Add a deployment's real frontend origin(s) to
-# CORS_ALLOWED_ORIGINS via the env var instead of widening this.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in$",
+    r"^http://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:\d+)?$",
+]
 
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")

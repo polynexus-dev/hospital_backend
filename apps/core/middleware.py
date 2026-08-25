@@ -1,14 +1,16 @@
-from .models import AuditLog
+from .models import AuditLog, Hospital, RESERVED_HOSPITAL_SLUGS
 from .tenancy import reset_current_hospital_id, set_current_hospital_id
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+SYSTEM_SUBDOMAINS = RESERVED_HOSPITAL_SLUGS
 
 
 class TenantMiddleware:
-    """Resolves the current hospital from the authenticated user and makes
-    it available to TenantManager for the duration of the request. Staff
-    users may switch tenant via the X-Hospital-Id header (used by internal
-    ops tooling / superadmin dashboards that operate across hospitals)."""
+    """Resolves the current hospital from:
+    1. Authenticated user's assigned hospital_id
+    2. X-Hospital-Id header (for superadmin / internal ops)
+    3. Host subdomain (e.g. swasthyam.hms.polynexus.in -> swasthyam)
+    and makes it available to TenantManager for the duration of the request."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -22,6 +24,16 @@ class TenantMiddleware:
                 hospital_id = request.headers["X-Hospital-Id"]
             elif getattr(user, "hospital_id", None):
                 hospital_id = user.hospital_id
+
+        # Fallback to subdomain resolution if user doesn't specify a tenant
+        if not hospital_id:
+            host = request.get_host().split(":")[0].lower()
+            parts = host.split(".")
+            # Match e.g. swasthyam.hms.polynexus.in or swasthyam.localhost
+            if len(parts) >= 2:
+                subdomain = parts[0]
+                if subdomain not in SYSTEM_SUBDOMAINS:
+                    hospital_id = Hospital.objects.filter(slug=subdomain, is_active=True).values_list("id", flat=True).first()
 
         token = set_current_hospital_id(hospital_id)
         try:

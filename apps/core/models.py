@@ -44,6 +44,19 @@ def default_enabled_modules():
     return list(ALL_MODULE_KEYS)
 
 
+RESERVED_HOSPITAL_SLUGS = {
+    "app", "api", "admin", "www", "auth", "login", "static", "cdn",
+    "assets", "media", "status", "docs", "help", "support", "billing",
+    "demo", "dev", "staging", "test", "ops", "portal", "account",
+    "hms", "polynexus", "localhost", "127.0.0.1",
+}
+
+
+def validate_hospital_slug(value):
+    if value.lower() in RESERVED_HOSPITAL_SLUGS:
+        raise ValidationError(f"'{value}' is a reserved system slug and cannot be used for a hospital subdomain.")
+
+
 class Hospital(TimeStampedModel):
     """The tenant. One row per hospital, whether served from shared SaaS
     infrastructure or a single-hospital on-premise install."""
@@ -51,7 +64,7 @@ class Hospital(TimeStampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     group = models.ForeignKey(HospitalGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="hospitals")
     name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=255, unique=True, validators=[validate_hospital_slug])
     city = models.CharField(max_length=120, blank=True)
     state = models.CharField(max_length=120, blank=True)
     address = models.TextField(blank=True)
