@@ -4,11 +4,11 @@ services:
     environment:
       POSTGRES_DB: hospital_crm
       POSTGRES_USER: polynexus
-      POSTGRES_PASSWORD: polynexus
+      POSTGRES_PASSWORD: polynexus_secure_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U polynexus"]
       interval: 5s
@@ -31,13 +31,11 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      # Overrides .env's localhost values — inside the compose network the
-      # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -53,10 +51,8 @@ services:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      # Overrides .env's localhost values — inside the compose network the
-      # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -72,10 +68,8 @@ services:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      # Overrides .env's localhost values — inside the compose network the
-      # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
