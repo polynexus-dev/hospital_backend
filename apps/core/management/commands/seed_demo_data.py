@@ -40,6 +40,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         password = options["admin_password"]
 
+        # Check if demo data is already seeded to ensure idempotency
+        if Hospital.objects.filter(slug="demo-hospital").exists() and User.objects.filter(email="admin@hms.polynexus.in").exists():
+            self.stdout.write(self.style.SUCCESS("[SKIP] Demo data is already seeded in the database."))
+            return
+
         self.stdout.write("Seeding data across all modules...")
 
         # 1. Hospital Tenant & Branches
@@ -116,7 +121,7 @@ class Command(BaseCommand):
         saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True)
         group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True, is_super=True)
         owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
-        admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
+        admin_user = create_or_update_user("admin@hms.polynexus.in", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
         frontdesk_user = create_or_update_user("frontdesk@demo-hospital.example", "Priya", "Sharma (Reception)", dept=opd, role=front_desk_role, lang="mr")
         doctor_user = create_or_update_user("doctor@demo-hospital.example", "Dr. Ramesh", "Kulkarni", dept=opd, role=doctor_role, lang="mr")
         operator_user = create_or_update_user("operator@demo-hospital.example", "Amit", "Deshmukh (Call Center)", dept=opd, role=operator_role, lang="hi")
@@ -640,7 +645,7 @@ class Command(BaseCommand):
                 "operator": operator_user,
                 "started_at": timezone.now() - datetime.timedelta(hours=5),
                 "duration_seconds": 142,
-                "call_reason": "OPD Appointment Inquiry & Timing Confirmation",
+                "call_reason": "opd",
                 "ivr_path": "Main Menu > OPD > Operator",
             },
         )
@@ -1214,8 +1219,8 @@ class Command(BaseCommand):
 
         emp_doc, _ = Employee.objects.get_or_create(
             hospital=hospital,
-            employee_code="EMP-DR-001",
-            defaults={"user": doctor_user, "department": opd, "designation": "Senior Consultant Physician", "employment_type": Employee.EmploymentType.PERMANENT},
+            user=doctor_user,
+            defaults={"employee_code": "EMP-DR-001", "department": opd, "designation": "Senior Consultant Physician", "employment_type": Employee.EmploymentType.PERMANENT},
         )
         Attendance.objects.get_or_create(
             hospital=hospital,

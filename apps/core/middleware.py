@@ -25,15 +25,17 @@ class TenantMiddleware:
             elif getattr(user, "hospital_id", None):
                 hospital_id = user.hospital_id
 
-        # Fallback to subdomain resolution if user doesn't specify a tenant
+        # Fallback to X-Tenant header or subdomain resolution if user doesn't specify a tenant
         if not hospital_id:
-            host = request.get_host().split(":")[0].lower()
-            parts = host.split(".")
-            # Match e.g. swasthyam.hms.polynexus.in or swasthyam.localhost
-            if len(parts) >= 2:
-                subdomain = parts[0]
-                if subdomain not in SYSTEM_SUBDOMAINS:
-                    hospital_id = Hospital.objects.filter(slug=subdomain, is_active=True).values_list("id", flat=True).first()
+            tenant_slug = request.headers.get("X-Tenant")
+            if not tenant_slug:
+                host = request.get_host().split(":")[0].lower()
+                parts = host.split(".")
+                if len(parts) >= 2:
+                    tenant_slug = parts[0]
+
+            if tenant_slug and tenant_slug not in SYSTEM_SUBDOMAINS:
+                hospital_id = Hospital.objects.filter(slug=tenant_slug, is_active=True).values_list("id", flat=True).first()
 
         token = set_current_hospital_id(hospital_id)
         try:

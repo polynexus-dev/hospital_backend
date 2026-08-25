@@ -19,9 +19,9 @@ RUN SECRET_KEY=build-time-dummy-secret-key-for-collectstatic-only \
     BLIND_INDEX_KEY=a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0 \
     python manage.py collectstatic --noinput --settings=config.settings.prod || true
 
-RUN groupadd --system app && useradd --system --gid app --home /app app \
-    && chown -R app:app /app
-USER app
+RUN chmod +x /app/docker-entrypoint.sh
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 EXPOSE 8000
 

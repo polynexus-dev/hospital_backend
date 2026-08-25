@@ -27,7 +27,7 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 #
 # This default is a fixed, publicly-visible-in-this-repo placeholder — same
 # reasoning as SECRET_KEY above — and prod.py refuses to boot on it.
-INSECURE_DEV_FIELD_ENCRYPTION_KEY = "BBmuajpTCVZ3-ipNWvktB4oH2E94T_wb2YrDTVX6IoI="
+INSECURE_DEV_FIELD_ENCRYPTION_KEY = "HcAQkwPlEzycVUsf-Ya9mb16TgvfuStY6_iDDcVFON0="
 FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=[INSECURE_DEV_FIELD_ENCRYPTION_KEY])
 
 # HMAC key for apps.core.encryption.compute_blind_index() — deterministic
