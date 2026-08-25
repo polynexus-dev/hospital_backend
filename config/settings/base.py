@@ -148,25 +148,12 @@ if env.bool("USE_SQLITE", default=False):
     }
 else:
     DATABASES = {
-        "default": {
-            "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
-            "NAME": os.environ.get("POSTGRES_DB", "hospital_crm"),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-            "USER": os.environ.get("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
-            # Reuse connections across requests instead of opening a fresh TCP+auth
-            # handshake every time (default is 0 = no reuse). django-tenants'
-            # set_tenant() just issues `SET search_path` on the existing
-            # connection when switching schemas, so this is safe to combine with
-            # multi-tenancy — the schema switch itself stays cheap.
-            # DB_HOST/DB_PORT point at PgBouncer (SESSION pool mode) in
-            # docker-compose, not straight at Postgres — see the pgbouncer
-            # service comment in docker-compose.yml before changing pool mode.
-            # Note: Must be 0 when using PgBouncer to prevent session pool exhaustion.
-            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", 0)),
-        }
+        "default": env.db(
+            "DATABASE_URL",
+            default="postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm",
+        )
     }
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
 
 
