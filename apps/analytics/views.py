@@ -52,6 +52,11 @@ class DepartmentDoctorVolumeView(BaseReportView):
         return {"rows": services.department_doctor_volume(hospital, start, end)}
 
 
+class EnquiriesByDepartmentView(BaseReportView):
+    def build_report(self, hospital, start, end):
+        return {"rows": services.enquiries_by_department(hospital, start, end)}
+
+
 class NoShowEffectivenessView(BaseReportView):
     def build_report(self, hospital, start, end):
         return services.no_show_recall_effectiveness(hospital, start, end)

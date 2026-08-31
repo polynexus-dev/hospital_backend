@@ -246,6 +246,34 @@ def test_department_doctor_volume_report_reflects_seeded_appointment(auth_client
 
 
 @pytest.mark.django_db
+def test_enquiries_by_department_report_reflects_seeded_enquiries(auth_client, hospital):
+    from apps.core.models import Department
+
+    diagnostics = Department.objects.create(hospital=hospital, name="Diagnostics")
+    cardiology = Department.objects.create(hospital=hospital, name="Cardiology")
+
+    Enquiry.objects.create(hospital=hospital, name="A", mobile="9000000020", source=Enquiry.Source.WALK_IN, department=diagnostics)
+    Enquiry.objects.create(hospital=hospital, name="B", mobile="9000000021", source=Enquiry.Source.WALK_IN, department=diagnostics, stage=Enquiry.Stage.COMPLETED)
+    Enquiry.objects.create(hospital=hospital, name="C", mobile="9000000022", source=Enquiry.Source.WALK_IN, department=cardiology)
+
+    response = auth_client.get("/api/v1/reports/enquiries-by-department/")
+
+    assert response.status_code == 200
+    rows = {row["department__name"]: row for row in response.data["rows"]}
+    assert rows["Diagnostics"]["enquiry_count"] == 2
+    assert rows["Diagnostics"]["conversion_count"] == 1
+    assert rows["Cardiology"]["enquiry_count"] == 1
+    assert rows["Cardiology"]["conversion_count"] == 0
+
+
+@pytest.mark.django_db
+def test_enquiries_by_department_report_smoke_with_no_data(auth_client):
+    response = auth_client.get("/api/v1/reports/enquiries-by-department/")
+    assert response.status_code == 200
+    assert response.data == {"rows": []}
+
+
+@pytest.mark.django_db
 def test_no_show_effectiveness_report_smoke_with_no_data(auth_client):
     response = auth_client.get("/api/v1/reports/no-show-effectiveness/")
     assert response.status_code == 200

@@ -289,20 +289,22 @@ GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 # `configured rate x worker count` — not the hard ceiling it's meant to be.
 # Same Redis instance Celery already requires, separate logical DB (1, not
 # Celery's 0) so cache keys and broker traffic don't collide.
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
-        # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
-        # attempting a HELLO handshake (RESP3) on connect, which errors
-        # with "unknown command 'HELLO'" against any Redis server older
-        # than 6.0 (verified against this project's own local dev Redis,
-        # 3.0.504) — RESP2 is a strict subset every version understands,
-        # including whatever a given hospital's ops team ends up running,
-        # so there's no reason to require RESP3 here.
-        "OPTIONS": {"protocol": 2},
+cache_url = env("CACHE_URL", default="redis://localhost:6379/1")
+if cache_url.startswith("locmem") or env.bool("USE_SQLITE", default=False):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": cache_url,
+            "OPTIONS": {"protocol": 2},
+        }
+    }
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")

@@ -41,6 +41,23 @@ def enquiry_funnel(hospital, start, end):
     return {row["stage"]: row["count"] for row in counts}
 
 
+def enquiries_by_department(hospital, start, end):
+    """CRM lead volume by department — complements department_doctor_volume
+    (appointment/booking-based) with enquiry/lead-stage volume, so a
+    department that generates leads without necessarily booking a doctor
+    appointment (e.g. Diagnostics/Lab enquiries) is still visible on the
+    CRM side. Enquiry.department is a plain per-hospital tag set by
+    whoever logs the enquiry — there's no separate link from a lab/
+    radiology order back to the enquiry that led to it, so this counts
+    leads, not confirmed lab bookings."""
+    enquiries = Enquiry.objects.filter(hospital=hospital, created_at__gte=start, created_at__lt=end)
+    rows = enquiries.values("department__name").annotate(
+        enquiry_count=Count("id"),
+        conversion_count=Count("id", filter=Q(stage=Enquiry.Stage.COMPLETED)),
+    )
+    return list(rows)
+
+
 def department_doctor_volume(hospital, start, end):
     """§12 — appointment volume and completion rate by department/doctor."""
     appointments = Appointment.objects.filter(hospital=hospital, created_at__gte=start, created_at__lt=end)
