@@ -15,10 +15,15 @@ class BloodBankComprehensiveTestCase(TestCase):
         self.hospital_a = Hospital.objects.create(name="BB Hospital A", slug="bb-hosp-a")
         self.user_a = User.objects.create_user(email="bb_staff@hospa.com", password="password123", hospital=self.hospital_a)
         
+        # HOSPITAL_ADMINISTRATOR deliberately doesn't carry
+        # patients.access_clinical_detail (org-policy decision — see that
+        # template's comment in apps.accounts.permission_templates), and
+        # every bloodbank ViewSet requires it, so these tests need a role
+        # that's actually meant to operate the blood bank.
         self.role_bb = Role.objects.create(
             hospital=self.hospital_a,
-            name="Admin Role",
-            template=Role.Template.HOSPITAL_ADMINISTRATOR,
+            name="Blood Bank Technician Role",
+            template=Role.Template.BLOOD_BANK_TECHNICIAN,
             data_scope=Role.DataScope.ALL,
         )
         assign_role(self.user_a, self.role_bb)

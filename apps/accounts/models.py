@@ -64,6 +64,7 @@ class Role(TimeStampedModel):
         SURGEON = "surgeon", "Surgeon"
         ANAESTHETIST = "anaesthetist", "Anaesthetist"
         ICU_STAFF = "icu_staff", "ICU Staff"
+        BLOOD_BANK_TECHNICIAN = "blood_bank_technician", "Blood Bank Technician"
         FINANCE_MANAGER = "finance_manager", "Finance Manager"
         HR_MANAGER = "hr_manager", "HR Manager"
         HIM_OFFICER = "him_officer", "HIM Officer"

@@ -126,6 +126,12 @@ PERMISSION_TEMPLATES = {
         },
     },
     "hospital_administrator": {
+        # Facilities/ops-focused admin, not a clinician — deliberately no
+        # "extra" grant here. docs/erp/03-rbac-and-roles.md §3's Hospital
+        # Administrator row: "no access_clinical_detail by default
+        # (org-policy decision)". A hospital that wants to widen this for
+        # a specific admin can still grant the permission directly via
+        # Django admin's per-permission editor, same as any template.
         "apps": {
             "facilities": FULL_VERBS,
             "appointments": ["view"],
@@ -140,7 +146,6 @@ PERMISSION_TEMPLATES = {
             "accounts": ["view"],
             "analytics": ["view"],
         },
-        "extra": ["patients.access_clinical_detail"],
     },
     "nurse": {
         # opd/ipd are view-only here, deliberately — this module's own
@@ -230,6 +235,23 @@ PERMISSION_TEMPLATES = {
     "pharmacist": {
         "apps": {
             "pharmacy": FULL_VERBS,
+            "patients": ["view"],
+        },
+        "extra": ["patients.access_clinical_detail"],
+    },
+    "blood_bank_technician": {
+        # Every other clinical-support app (lab, radiology, pharmacy, OT,
+        # ICU) has its own operational role bundling that app's CRUD with
+        # patients.access_clinical_detail — bloodbank.{Donor,BloodUnit,
+        # CrossMatchRequest,Transfusion} ViewSets are gated the same way
+        # (RequiresClinicalDetailPermission, see apps.bloodbank.views'
+        # CLINICAL_PERMISSION_CLASSES), so without a dedicated role here a
+        # hospital had no way to grant bloodbank-only access out of the
+        # box — hospital_administrator deliberately doesn't carry
+        # access_clinical_detail (see that template's comment) and
+        # owner/admin are full-system, not bloodbank-scoped.
+        "apps": {
+            "bloodbank": FULL_VERBS,
             "patients": ["view"],
         },
         "extra": ["patients.access_clinical_detail"],
