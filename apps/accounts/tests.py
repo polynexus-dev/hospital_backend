@@ -67,15 +67,27 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
     works, against the real Redis-backed cache (see CACHES in
     config.settings.base).
 
-    Patches HospitalTokenObtainPairView.throttle_classes directly rather
-    than using @override_settings(REST_FRAMEWORK=...): DRF's APIView sets
+    Patches HospitalTokenObtainPairView.throttle_classes AND
+    ScopedRateThrottle.THROTTLE_RATES directly rather than using
+    @override_settings(REST_FRAMEWORK=...): DRF's APIView sets
     `throttle_classes = api_settings.DEFAULT_THROTTLE_CLASSES` as a plain
-    class attribute at *module import time* (rest_framework/views.py) —
-    api_settings itself does reload on the `setting_changed` signal
-    override_settings fires, but that stale copy on APIView (and
-    SimpleRateThrottle.THROTTLE_RATES, same pattern) was already bound to
-    the old value and is never reassigned. override_settings silently does
-    nothing here; this is the actual, reliable way to test it."""
+    class attribute at *module import time* (rest_framework/views.py), and
+    SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
+    does the exact same thing (rest_framework/throttling.py) — api_settings
+    itself does reload on the `setting_changed` signal override_settings
+    fires, but both of those stale copies were already bound to whatever
+    settings.REST_FRAMEWORK held at that import and are never reassigned.
+    override_settings silently does nothing here; this is the actual,
+    reliable way to test it.
+
+    THROTTLE_RATES specifically matters because config.settings.dev relaxes
+    "login" to "100/minute" for local development convenience, and
+    config.settings.test inherits dev via `from .dev import *` — without
+    restoring "5/minute" here, this test is asserting a rate that was
+    already overridden to be 20x looser before it even starts, and 6
+    requests can never trip it. (That's not a Redis/platform flake — it's
+    fully deterministic given the settings chain, which is why it failed
+    identically under SQLite+locmem here and Postgres+Redis in CI.)"""
     from django.core.cache import cache
     from rest_framework.throttling import ScopedRateThrottle
 
@@ -85,7 +97,9 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
     cache.clear()
 
     original_throttle_classes = HospitalTokenObtainPairView.throttle_classes
+    original_login_rate = ScopedRateThrottle.THROTTLE_RATES.get("login")
     HospitalTokenObtainPairView.throttle_classes = [ScopedRateThrottle]
+    ScopedRateThrottle.THROTTLE_RATES["login"] = "5/minute"
     try:
         for _ in range(5):
             response = api_client.post("/api/v1/auth/login/", {"email": "throttle-test@test-hospital.example", "password": "wrong"}, format="json")
@@ -95,6 +109,7 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
         assert sixth.status_code == 429
     finally:
         HospitalTokenObtainPairView.throttle_classes = original_throttle_classes
+        ScopedRateThrottle.THROTTLE_RATES["login"] = original_login_rate
         cache.clear()
 
 
