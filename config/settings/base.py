@@ -280,6 +280,17 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
+# Self-hosted Ollama — powers free-text understanding for the 24x7
+# assistant (apps.communications.llm_router): classifying what a patient
+# typed into one of the assistant's known actions. It is never used to
+# generate clinical/medical content itself — process_interactive_chat_action
+# still owns every word a patient actually sees. No API key: Ollama has no
+# built-in auth, so this must only ever point at a server on a trusted
+# network, never a public one.
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://13.235.143.251:11435")
+OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")
+OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=30)
+
 
 
 # Cache — backs DRF's request throttling (see REST_FRAMEWORK below). Redis,
