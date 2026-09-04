@@ -54,7 +54,9 @@ jobs:
         run: python manage.py migrate --noinput
 
       - name: Run tests with coverage
-        run: pytest -q --cov --cov-report=term --cov-report=xml
+        run: |
+          set -o pipefail
+          pytest -q --cov --cov-report=term --cov-report=xml 2>&1 | tee pytest-output.log
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -72,6 +74,33 @@ jobs:
           pip install pip-audit
           pip-audit -r requirements.txt
         continue-on-error: true
+
+      - name: Email test report
+        # Fires on pass or fail (if: always()) with the full pytest output
+        # attached — GitHub's own native run-status email (account
+        # Settings > Notifications > Actions) covers the bare pass/fail
+        # signal already; this covers the "what actually happened" report.
+        # Non-blocking: a report failing to send (bad creds, mail server
+        # hiccup) must never fail CI or block a merge on its own.
+        if: always()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: mail.polynexus.in
+          server_port: 587
+          username: reports@polynexus.in
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: Polynexus CI <reports@polynexus.in>
+          to: aniket@polynexus.in
+          subject: "Backend CI ${{ job.status }}: ${{ github.repository }} #${{ github.run_number }}"
+          body: |
+            Backend CI run ${{ job.status }} for ${{ github.repository }} on branch ${{ github.ref_name }} (${{ github.sha }}).
+
+            Full pytest output is attached.
+
+            Triggered by: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          attachments: pytest-output.log
 
   django-check:
     runs-on: ubuntu-latest
