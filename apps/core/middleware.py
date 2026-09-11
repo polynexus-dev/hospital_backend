@@ -1,16 +1,25 @@
-from .models import AuditLog, Hospital, RESERVED_HOSPITAL_SLUGS
+from .models import AuditLog
+from .request_utils import get_client_ip
 from .tenancy import reset_current_hospital_id, set_current_hospital_id
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-SYSTEM_SUBDOMAINS = RESERVED_HOSPITAL_SLUGS
+
+# Part A #6 — "every read of a patient record is logged". Scoped to the
+# actual patient-record endpoints rather than every GET in the API (which
+# would double the audit table's write volume for enquiry/telephony/
+# analytics traffic that isn't a patient-record read at all).
+PATIENT_RECORD_READ_PREFIXES = (
+    "/api/v1/patients/",
+    "/api/v1/documents/",
+    "/api/v1/prescriptions/",
+)
 
 
 class TenantMiddleware:
-    """Resolves the current hospital from:
-    1. Authenticated user's assigned hospital_id
-    2. X-Hospital-Id header (for superadmin / internal ops)
-    3. Host subdomain (e.g. swasthyam.hms.polynexus.in -> swasthyam)
-    and makes it available to TenantManager for the duration of the request."""
+    """Resolves the current hospital from the authenticated user and makes
+    it available to TenantManager for the duration of the request. Staff
+    users may switch tenant via the X-Hospital-Id header (used by internal
+    ops tooling / superadmin dashboards that operate across hospitals)."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -24,18 +33,6 @@ class TenantMiddleware:
                 hospital_id = request.headers["X-Hospital-Id"]
             elif getattr(user, "hospital_id", None):
                 hospital_id = user.hospital_id
-
-        # Fallback to X-Tenant header or subdomain resolution if user doesn't specify a tenant
-        if not hospital_id:
-            tenant_slug = request.headers.get("X-Tenant")
-            if not tenant_slug:
-                host = request.get_host().split(":")[0].lower()
-                parts = host.split(".")
-                if len(parts) >= 2:
-                    tenant_slug = parts[0]
-
-            if tenant_slug and tenant_slug not in SYSTEM_SUBDOMAINS:
-                hospital_id = Hospital.objects.filter(slug=tenant_slug, is_active=True).values_list("id", flat=True).first()
 
         token = set_current_hospital_id(hospital_id)
         try:
@@ -56,22 +53,21 @@ class AuditMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
-        if request.method in MUTATING_METHODS and not request.path.startswith("/admin/"):
+        if request.path.startswith("/admin/"):
+            return response
+
+        is_mutation = request.method in MUTATING_METHODS
+        is_patient_record_read = request.method in ("GET", "HEAD") and request.path.startswith(PATIENT_RECORD_READ_PREFIXES)
+
+        if is_mutation or is_patient_record_read:
             user = getattr(request, "user", None)
             AuditLog.objects.create(
                 hospital_id=getattr(user, "hospital_id", None) if user else None,
                 actor=user if user and getattr(user, "is_authenticated", False) else None,
-                action=AuditLog.Action.REQUEST,
+                action=AuditLog.Action.REQUEST if is_mutation else AuditLog.Action.READ,
                 method=request.method,
                 path=request.path,
                 status_code=response.status_code,
-                ip_address=self._client_ip(request),
+                ip_address=get_client_ip(request),
             )
         return response
-
-    @staticmethod
-    def _client_ip(request):
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR")

@@ -2,33 +2,26 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.core.viewsets import TenantScopedViewSetMixin
+from apps.core.viewsets import SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
 from .models import Document, Patient
 from .serializers import (
     DocumentSerializer,
-    PatientCRMSerializer,
     PatientLookupSerializer,
     PatientSerializer,
     TimelineEventSerializer,
 )
 
 
-class PatientViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
     filterset_fields = ["is_active", "gender", "preferred_language"]
-    search_fields = ["first_name", "last_name", "mobile", "alternate_mobile", "email"]
-
-    def get_serializer_class(self):
-        # Field-level gating, not record-level — see
-        # docs/erp/03-rbac-and-roles.md §2c. A CRM role can still see and
-        # edit a Patient row (front-desk registration, corporate/insurance
-        # enquiries); it just never sees national_id_number through this
-        # endpoint.
-        if self.request.user.has_perm("patients.access_clinical_detail"):
-            return PatientSerializer
-        return PatientCRMSerializer
+    # mobile/alternate_mobile are encrypted at rest (Part A #2) and
+    # deliberately excluded here — SearchFilter's icontains lookup against
+    # an encrypted column silently matches nothing rather than erroring.
+    # Exact phone lookup still works, via the `lookup` action below.
+    search_fields = ["first_name", "last_name", "email"]
 
     @action(detail=False, methods=["get"])
     def lookup(self, request):
@@ -45,11 +38,15 @@ class PatientViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         just the caller's — verified empirically (a Hospital A front-desk
         user could look up a Hospital B patient's full match by mobile
         number) before switching it to self.get_queryset(), which is
-        correctly scoped by self.request.user.hospital_id."""
+        correctly scoped by self.request.user.hospital_id.
+
+        mobile/alternate_mobile are now encrypted (Part A #2), so this can
+        no longer filter the columns directly — by_mobile() goes through
+        the blind-index columns instead (see PatientQuerySet.by_mobile)."""
         mobile = request.query_params.get("mobile", "").strip()
         if not mobile:
             return Response({"detail": "mobile query param is required."}, status=400)
-        matches = self.get_queryset().filter(mobile=mobile) | self.get_queryset().filter(alternate_mobile=mobile)
+        matches = self.get_queryset().by_mobile(mobile)
         serializer = PatientLookupSerializer(matches.distinct(), many=True)
         return Response(serializer.data)
 
@@ -60,7 +57,7 @@ class PatientViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return Response(TimelineEventSerializer(events, many=True).data)
 
 
-class DocumentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class DocumentViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     queryset = Document.objects.all()
     filterset_fields = ["patient", "category"]
@@ -70,25 +67,17 @@ class DocumentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.save(hospital=hospital, uploaded_by=self.request.user)
 
 
-class PrescriptionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
-    """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx). Every field here
-    (diagnosis, medications, lab orders) is clinical content with no
-    CRM-safe partial view — gated by RequiresClinicalDetailPermission
-    rather than a swapped serializer, see docs/erp/03-rbac-and-roles.md
-    §2c and apps.core.permissions.RequiresClinicalDetailPermission."""
-
-    from rest_framework.permissions import IsAuthenticated
-
-    from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDetailPermission, RoleBasedModelPermissions
+class PrescriptionViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx)."""
 
     from .models import Prescription
     from .serializers import PrescriptionSerializer
 
-    permission_classes = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
     serializer_class = PrescriptionSerializer
     queryset = Prescription.objects.all()
     filterset_fields = ["patient", "doctor"]
-    search_fields = ["diagnosis", "notes"]
+    # diagnosis/notes are encrypted at rest (Part A #2) — see the same
+    # caveat on PatientViewSet.search_fields above.
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)

@@ -5,7 +5,11 @@ from django.utils import timezone
 
 from apps.automation.engine import execute_workflow
 from apps.automation.models import EscalationRule, Task, Workflow, WorkflowRun, WorkflowStep
-from apps.automation.tasks import sweep_patient_recalls
+from apps.automation.tasks import (
+    purge_expired_soft_deleted_records,
+    purge_stale_unconverted_enquiries,
+    sweep_patient_recalls,
+)
 from apps.patients.models import Patient
 
 
@@ -99,6 +103,52 @@ def test_sweep_patient_recalls_fires_matching_workflow(hospital):
     sweep_patient_recalls()
 
     assert WorkflowRun.objects.filter(workflow=workflow).exists()
+
+
+# --- purge_expired_soft_deleted_records / purge_stale_unconverted_enquiries -
+
+@pytest.mark.django_db
+def test_purge_expired_soft_deleted_records_removes_only_past_the_grace_period(settings, hospital):
+    settings.SOFT_DELETE_PURGE_GRACE_DAYS = 30
+
+    long_deleted = Patient.objects.create(hospital=hospital, first_name="Old", mobile="9000050001")
+    long_deleted.delete(reason="duplicate")
+    Patient.objects.all_with_deleted().filter(pk=long_deleted.pk).update(
+        deleted_at=timezone.now() - timedelta(days=31)
+    )
+
+    recently_deleted = Patient.objects.create(hospital=hospital, first_name="Recent", mobile="9000050002")
+    recently_deleted.delete(reason="duplicate")
+
+    still_active = Patient.objects.create(hospital=hospital, first_name="Active", mobile="9000050003")
+
+    purged = purge_expired_soft_deleted_records()
+
+    assert purged == 1
+    assert not Patient.objects.all_with_deleted().filter(pk=long_deleted.pk).exists()
+    assert Patient.objects.all_with_deleted().filter(pk=recently_deleted.pk).exists()
+    assert Patient.objects.filter(pk=still_active.pk).exists()
+
+
+@pytest.mark.django_db
+def test_purge_stale_unconverted_enquiries_leaves_converted_ones_alone(settings, hospital):
+    from apps.enquiries.models import Enquiry
+
+    settings.DEFAULT_DATA_RETENTION_DAYS = 365
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Converted", mobile="9000050004")
+    stale_unconverted = Enquiry.objects.create(hospital=hospital, name="Stale Lead", mobile="9000050005", source=Enquiry.Source.WEBSITE)
+    Enquiry.objects.filter(pk=stale_unconverted.pk).update(created_at=timezone.now() - timedelta(days=400))
+    fresh_unconverted = Enquiry.objects.create(hospital=hospital, name="Fresh Lead", mobile="9000050006", source=Enquiry.Source.WEBSITE)
+    stale_converted = Enquiry.objects.create(hospital=hospital, name="Stale But Converted", mobile="9000050007", source=Enquiry.Source.WEBSITE, patient=patient)
+    Enquiry.objects.filter(pk=stale_converted.pk).update(created_at=timezone.now() - timedelta(days=400))
+
+    purged = purge_stale_unconverted_enquiries()
+
+    assert purged == 1
+    assert not Enquiry.objects.filter(pk=stale_unconverted.pk).exists()
+    assert Enquiry.objects.filter(pk=fresh_unconverted.pk).exists()
+    assert Enquiry.objects.filter(pk=stale_converted.pk).exists()
 
 
 # --- EscalationRule: model + API CRUD ---------------------------------------

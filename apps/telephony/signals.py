@@ -18,7 +18,7 @@ def resolve_patient_and_log_timeline(sender, instance: Call, created, **kwargs):
         return
 
     if instance.patient_id is None:
-        match = Patient.objects.filter(hospital_id=instance.hospital_id, mobile=instance.from_number).first()
+        match = Patient.objects.filter(hospital_id=instance.hospital_id).by_mobile(instance.from_number).first()
         if match is not None:
             instance.patient = match
             instance.save(update_fields=["patient"])

@@ -102,7 +102,7 @@ class InboundWebhookView(APIView):
         address = payload.get("from", "")
         body = payload.get("body", "")
 
-        patient = Patient.objects.filter(hospital_id=hospital_id, mobile=address).first()
+        patient = Patient.objects.filter(hospital_id=hospital_id).by_mobile(address).first()
         if patient is None and "@" in address:
             patient = Patient.objects.filter(hospital_id=hospital_id, email=address).first()
 

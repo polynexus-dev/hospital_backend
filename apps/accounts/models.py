@@ -2,6 +2,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import Group, PermissionsMixin
 from django.db import models
 
+from apps.core.fields import EncryptedCharField
 from apps.core.models import Department, Hospital, TimeStampedModel
 
 
@@ -33,11 +34,7 @@ class UserManager(BaseUserManager):
 
 
 class Role(TimeStampedModel):
-    """A named permission set, scoped to a hospital and optionally to a
-    department (e.g. "Front Desk Operator", "PRO", "Owner"). Backed by a
-    Django Group so DRF's permission checks (apps.core.permissions.
-    RoleBasedModelPermissions, has_perm()) work without a parallel
-    permission-checking system."""
+    """A named permission set, scoped to a hospital and optionally to a department."""
 
     class Template(models.TextChoices):
         OWNER = "owner", "Owner"
@@ -90,15 +87,15 @@ class Role(TimeStampedModel):
     description = models.TextField(blank=True)
     template = models.CharField(
         max_length=32, choices=Template.choices, blank=True,
-        help_text="Applies a starter permission set on creation only — see apps.accounts.permission_templates. Leave blank for a hand-built role with no default permissions.",
+        help_text="Applies a starter permission set on creation only.",
     )
     data_scope = models.CharField(
         max_length=16, choices=DataScope.choices, default=DataScope.ALL,
-        help_text="assigned_only narrows any ViewSet declaring assignment_scope_field (see apps.core.viewsets.TenantScopedViewSetMixin) to records assigned to the requesting user.",
+        help_text="assigned_only narrows any ViewSet declaring assignment_scope_field to records assigned to the requesting user.",
     )
     domain = models.CharField(
         max_length=8, choices=Domain.choices, default=Domain.BOTH,
-        help_text="Drives which top-level nav (CRM/ERP/both) the frontend shows for users with this role — see docs/erp/06-navigation-and-dashboards.md.",
+        help_text="Drives which top-level nav (CRM/ERP/both) the frontend shows for users with this role.",
     )
     group = models.OneToOneField(Group, on_delete=models.CASCADE, related_name="role", editable=False)
 
@@ -145,14 +142,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_saas_admin = models.BooleanField(
         default=False,
-        help_text=(
-            "Master SaaS Admin / platform owner — manages tenants, subscriptions, billing, "
-            "and support tickets across every hospital (apps.saas_admin, apps.core.permissions.IsSaaSAdmin). "
-            "Narrower than is_staff (which every SaaS admin also gets — see save() below): plenty of "
-            "is_staff platform-ops accounts don't need to see cross-tenant billing/revenue data."
-        ),
+        help_text="Master SaaS Admin / platform owner — manages tenants, subscriptions, billing, and support tickets across every hospital.",
     )
     is_2fa_enabled = models.BooleanField(default=False)
+    totp_secret = EncryptedCharField(max_length=64, blank=True, editable=False)
     allowed_ip_ranges = models.JSONField(default=list, blank=True, help_text="CIDR ranges this user may log in from; empty = unrestricted.")
 
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -170,13 +163,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def save(self, *args, **kwargs):
-        # A SaaS admin always gets every existing is_staff capability
-        # (X-Hospital-Id cross-hospital override, switch_hospital,
-        # IsAdminUser-gated views) for free — see
-        # apps.core.permissions.IsSaaSAdmin's docstring for why this is
-        # the deliberate design (is_saas_admin only ever adds capability
-        # on top of is_staff, so nothing already gated on is_staff needed
-        # to change).
         if self.is_saas_admin:
             self.is_staff = True
             update_fields = kwargs.get("update_fields")
@@ -190,10 +176,30 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.first_name or self.email
 
+    @property
+    def requires_mfa(self) -> bool:
+        if self.is_staff:
+            return True
+        return bool(self.role_id) and self.role.template in (Role.Template.OWNER, Role.Template.ADMIN)
+
+    def is_login_ip_allowed(self, ip_address: str) -> bool:
+        if not self.allowed_ip_ranges or not ip_address:
+            return True
+        import ipaddress
+        try:
+            addr = ipaddress.ip_address(ip_address)
+        except ValueError:
+            return False
+        for cidr in self.allowed_ip_ranges:
+            try:
+                if addr in ipaddress.ip_network(cidr, strict=False):
+                    return True
+            except ValueError:
+                continue
+        return False
+
 
 def assign_role(user: User, role: Role | None) -> None:
-    """Swaps a user's role, keeping Django group membership (and therefore
-    permissions) in sync with the assignment."""
     if user.role_id and user.role.group_id:
         user.groups.remove(user.role.group)
     if role is not None:

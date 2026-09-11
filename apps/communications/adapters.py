@@ -16,6 +16,19 @@ from django.conf import settings
 logger = logging.getLogger("communications.adapters")
 
 
+def _redact_contact(value: str) -> str:
+    """Masks a phone number/email address for logging (Part A #3 — no
+    patient data in logs by default). Keeps just enough to recognize "same
+    contact" across two log lines while debugging, without putting the
+    full identifier in the log stream."""
+    if not value:
+        return value
+    if "@" in value:
+        local, _, domain = value.partition("@")
+        return f"{local[:2]}***@{domain}"
+    return f"***{value[-4:]}" if len(value) > 4 else "***"
+
+
 class MessageProvider(ABC):
     @abstractmethod
     def send(self, *, to: str, body: str, subject: str = "") -> str:
@@ -26,7 +39,7 @@ class StubWhatsAppProvider(MessageProvider):
     """No provider configured — logs instead of sending."""
 
     def send(self, *, to: str, body: str, subject: str = "") -> str:
-        logger.info("STUB WhatsApp -> %s: %s", to, body)
+        logger.info("STUB WhatsApp -> %s (%d chars)", _redact_contact(to), len(body))
         return f"stub-whatsapp-{to}"
 
 
@@ -75,7 +88,7 @@ class AWSEndUserMessagingWhatsAppProvider(MessageProvider):
             message=json.dumps(message_payload).encode("utf-8"),
         )
         message_id = response.get("messageId", "")
-        logger.info("AWS WhatsApp -> %s: message_id=%s", to, message_id)
+        logger.info("AWS WhatsApp -> %s: message_id=%s", _redact_contact(to), message_id)
         return message_id
 
 
@@ -83,7 +96,7 @@ class StubSMSProvider(MessageProvider):
     """Stands in for a DLT-registered SMS route."""
 
     def send(self, *, to: str, body: str, subject: str = "") -> str:
-        logger.info("STUB SMS -> %s: %s", to, body)
+        logger.info("STUB SMS -> %s (%d chars)", _redact_contact(to), len(body))
         return f"stub-sms-{to}"
 
 
@@ -91,7 +104,7 @@ class StubEmailProvider(MessageProvider):
     """Stands in for SES / Brevo."""
 
     def send(self, *, to: str, body: str, subject: str = "") -> str:
-        logger.info("STUB Email -> %s [%s]: %s", to, subject, body)
+        logger.info("STUB Email -> %s (%d chars, subject %d chars)", _redact_contact(to), len(body), len(subject))
         return f"stub-email-{to}"
 
 

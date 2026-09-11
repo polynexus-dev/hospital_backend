@@ -52,11 +52,6 @@ class DepartmentDoctorVolumeView(BaseReportView):
         return {"rows": services.department_doctor_volume(hospital, start, end)}
 
 
-class EnquiriesByDepartmentView(BaseReportView):
-    def build_report(self, hospital, start, end):
-        return {"rows": services.enquiries_by_department(hospital, start, end)}
-
-
 class NoShowEffectivenessView(BaseReportView):
     def build_report(self, hospital, start, end):
         return services.no_show_recall_effectiveness(hospital, start, end)
@@ -87,62 +82,6 @@ class DailyMISPreviewView(APIView):
     def get(self, request):
         summary = services.daily_mis_summary(request.user.hospital)
         return Response({"summary": summary, "text": services.render_daily_mis_text(request.user.hospital, summary)})
-
-
-class OPDSnapshotView(APIView):
-    """ERP ops dashboard, OPD metrics only (docs/erp/06-navigation-and-dashboards.md
-    §4) — today's counts, not a date-range report like the CRM views
-    above, so it doesn't extend BaseReportView."""
-
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.opd_snapshot(request.user.hospital))
-
-
-class BedOccupancyView(APIView):
-    """ERP ops dashboard, bed occupancy (Phase 4 addition — see
-    OPDSnapshotView above for the same "today, not a date-range report"
-    reasoning)."""
-
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.bed_occupancy_snapshot(request.user.hospital))
-
-
-class ICUOccupancyView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.icu_occupancy_snapshot(request.user.hospital))
-
-
-class OTUtilizationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.ot_utilization_snapshot(request.user.hospital))
-
-
-class LabTATView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.lab_tat_snapshot(request.user.hospital))
-
-
-class PharmacyLowStockView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.pharmacy_low_stock_snapshot(request.user.hospital))
 
 
 class DailyMISLogViewSet(viewsets.ReadOnlyModelViewSet):

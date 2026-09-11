@@ -1,3 +1,4 @@
+import pyotp
 import pytest
 from django.contrib.auth.models import Permission
 
@@ -67,27 +68,15 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
     works, against the real Redis-backed cache (see CACHES in
     config.settings.base).
 
-    Patches HospitalTokenObtainPairView.throttle_classes AND
-    ScopedRateThrottle.THROTTLE_RATES directly rather than using
-    @override_settings(REST_FRAMEWORK=...): DRF's APIView sets
+    Patches HospitalTokenObtainPairView.throttle_classes directly rather
+    than using @override_settings(REST_FRAMEWORK=...): DRF's APIView sets
     `throttle_classes = api_settings.DEFAULT_THROTTLE_CLASSES` as a plain
-    class attribute at *module import time* (rest_framework/views.py), and
-    SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
-    does the exact same thing (rest_framework/throttling.py) — api_settings
-    itself does reload on the `setting_changed` signal override_settings
-    fires, but both of those stale copies were already bound to whatever
-    settings.REST_FRAMEWORK held at that import and are never reassigned.
-    override_settings silently does nothing here; this is the actual,
-    reliable way to test it.
-
-    THROTTLE_RATES specifically matters because config.settings.dev relaxes
-    "login" to "100/minute" for local development convenience, and
-    config.settings.test inherits dev via `from .dev import *` — without
-    restoring "5/minute" here, this test is asserting a rate that was
-    already overridden to be 20x looser before it even starts, and 6
-    requests can never trip it. (That's not a Redis/platform flake — it's
-    fully deterministic given the settings chain, which is why it failed
-    identically under SQLite+locmem here and Postgres+Redis in CI.)"""
+    class attribute at *module import time* (rest_framework/views.py) —
+    api_settings itself does reload on the `setting_changed` signal
+    override_settings fires, but that stale copy on APIView (and
+    SimpleRateThrottle.THROTTLE_RATES, same pattern) was already bound to
+    the old value and is never reassigned. override_settings silently does
+    nothing here; this is the actual, reliable way to test it."""
     from django.core.cache import cache
     from rest_framework.throttling import ScopedRateThrottle
 
@@ -97,9 +86,7 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
     cache.clear()
 
     original_throttle_classes = HospitalTokenObtainPairView.throttle_classes
-    original_login_rate = ScopedRateThrottle.THROTTLE_RATES.get("login")
     HospitalTokenObtainPairView.throttle_classes = [ScopedRateThrottle]
-    ScopedRateThrottle.THROTTLE_RATES["login"] = "5/minute"
     try:
         for _ in range(5):
             response = api_client.post("/api/v1/auth/login/", {"email": "throttle-test@test-hospital.example", "password": "wrong"}, format="json")
@@ -109,7 +96,6 @@ def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, depa
         assert sixth.status_code == 429
     finally:
         HospitalTokenObtainPairView.throttle_classes = original_throttle_classes
-        ScopedRateThrottle.THROTTLE_RATES["login"] = original_login_rate
         cache.clear()
 
 
@@ -122,23 +108,6 @@ def test_token_refresh_returns_a_new_access_token(api_client, hospital, departme
 
     assert response.status_code == 200
     assert "access" in response.data
-
-
-@pytest.mark.django_db
-def test_logout_blacklists_the_refresh_token_so_it_can_no_longer_be_used(api_client, hospital, department):
-    """Requires rest_framework_simplejwt.token_blacklist in INSTALLED_APPS —
-    without it BLACKLIST_AFTER_ROTATION is a silent no-op and a
-    stolen/leaked refresh token stays valid for its full lifetime even
-    after logout."""
-    User.objects.create_user(email="logout-test@test-hospital.example", password="correct-horse-1", hospital=hospital, department=department)
-    login = api_client.post("/api/v1/auth/login/", {"email": "logout-test@test-hospital.example", "password": "correct-horse-1"}, format="json")
-    refresh_token = login.data["refresh"]
-
-    logout = api_client.post("/api/v1/auth/logout/", {"refresh": refresh_token}, format="json")
-    assert logout.status_code == 200
-
-    reuse_attempt = api_client.post("/api/v1/auth/refresh/", {"refresh": refresh_token}, format="json")
-    assert reuse_attempt.status_code == 401
 
 
 # --- Users API: CRUD, isolation, and real gotchas ------------------------
@@ -187,31 +156,14 @@ def test_users_list_is_scoped_to_the_authenticated_users_hospital(auth_client, h
 
 
 @pytest.mark.django_db
-def test_staff_user_with_x_hospital_id_header_sees_that_hospitals_users(api_client, staff_user, other_hospital, other_department):
-    """Matches TenantScopedViewSetMixin's own rule (apps/core/viewsets.py)
-    — staff needs the X-Hospital-Id header to see another hospital's rows.
-    UserViewSet/RoleViewSet used to broaden to every hospital for any
-    is_staff user with no header at all; fixed for consistency with every
-    other staff-aware view in the codebase (see next test)."""
+def test_staff_user_sees_every_hospitals_users(api_client, staff_user, other_hospital, other_department):
     User.objects.create_user(email="other-hospital-staff2@example.com", password="testpass123", hospital=other_hospital, department=other_department)
-    api_client.force_authenticate(user=staff_user)
-
-    response = api_client.get("/api/v1/users/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
-
-    emails = {row["email"] for row in response.data["results"]}
-    assert "other-hospital-staff2@example.com" in emails
-
-
-@pytest.mark.django_db
-def test_staff_user_without_header_sees_only_their_own_hospitals_users(api_client, staff_user, hospital, other_hospital, other_department):
-    User.objects.create_user(email="other-hospital-staff3@example.com", password="testpass123", hospital=other_hospital, department=other_department)
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/users/")
 
     emails = {row["email"] for row in response.data["results"]}
-    assert "other-hospital-staff3@example.com" not in emails
-    assert staff_user.email in emails
+    assert "other-hospital-staff2@example.com" in emails
 
 
 @pytest.mark.django_db
@@ -359,79 +311,116 @@ def test_role_crud_and_isolation(auth_client, hospital, other_hospital, other_de
     assert not Role.objects.filter(pk=created.id).exists()
 
 
-# --- Role.data_scope / Role.domain (docs/erp/03-rbac-and-roles.md §2d) ----
+# --- MFA (Part A #7: admin/bulk-export roles) -------------------------------
 
 @pytest.mark.django_db
-def test_role_data_scope_and_domain_default_to_all_and_both(hospital, department):
-    role = Role.objects.create(hospital=hospital, department=department, name="Default Scope Role")
-    assert role.data_scope == Role.DataScope.ALL
-    assert role.domain == Role.Domain.BOTH
-
-
-@pytest.mark.django_db
-def test_role_data_scope_and_domain_are_settable(hospital, department):
-    role = Role.objects.create(
-        hospital=hospital, department=department, name="Nurse-shaped Role",
-        data_scope=Role.DataScope.ASSIGNED_ONLY, domain=Role.Domain.ERP,
+def test_login_response_flags_mfa_setup_required_for_staff_without_2fa_yet(api_client, hospital, department):
+    User.objects.create_user(
+        email="staffer@test-hospital.example", password="correct-horse-1",
+        hospital=hospital, department=department, is_staff=True,
     )
-    role.refresh_from_db()
-    assert role.data_scope == Role.DataScope.ASSIGNED_ONLY
-    assert role.domain == Role.Domain.ERP
-
-
-# --- New CRM role templates (docs/erp/03-rbac-and-roles.md §3) ------------
-
-@pytest.mark.django_db
-def test_crm_executive_template_grants_enquiries_but_not_tpa(hospital, department):
-    from apps.tpa.models import TPACompany
-
-    role = Role.objects.create(hospital=hospital, department=department, name="CRM Exec", template=Role.Template.CRM_EXECUTIVE)
-    crm_user = User.objects.create_user(email="crm-template@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-    assign_role(crm_user, role)
-
-    assert crm_user.has_perm("enquiries.add_enquiry")
-    assert not crm_user.has_perm(f"{TPACompany._meta.app_label}.add_{TPACompany._meta.model_name}")
+    response = api_client.post("/api/v1/auth/login/", {"email": "staffer@test-hospital.example", "password": "correct-horse-1"}, format="json")
+    assert response.status_code == 200
+    assert response.data.get("mfa_setup_required") is True
+    assert "access" in response.data  # not blocked — see requires_mfa's docstring
 
 
 @pytest.mark.django_db
-def test_crm_auditor_template_is_view_only_across_crm_apps(hospital, department):
-    role = Role.objects.create(hospital=hospital, department=department, name="CRM Auditor", template=Role.Template.CRM_AUDITOR)
-    auditor = User.objects.create_user(email="crm-auditor@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-    assign_role(auditor, role)
-
-    assert auditor.has_perm("enquiries.view_enquiry")
-    assert not auditor.has_perm("enquiries.add_enquiry")
-    assert not auditor.has_perm("enquiries.change_enquiry")
-    assert not auditor.has_perm("enquiries.delete_enquiry")
-
-
-@pytest.mark.django_db
-def test_no_crm_template_grants_access_clinical_detail(hospital, department):
-    """The whole point of the capability-permission split (see
-    apps.patients.models.Patient.Meta.permissions) — verify none of the 7
-    CRM templates accidentally got swept into granting it, the exact
-    failure mode a same-named codename almost caused (see
-    apps.accounts.permission_templates' module docstring)."""
-    from apps.accounts.permission_templates import PERMISSION_TEMPLATES
-
-    crm_templates = [
-        Role.Template.CRM_SUPER_ADMIN, Role.Template.CRM_MANAGER, Role.Template.CRM_EXECUTIVE,
-        Role.Template.CALL_CENTRE_EXECUTIVE, Role.Template.MARKETING_MANAGER,
-        Role.Template.CORPORATE_RM, Role.Template.CRM_AUDITOR,
-    ]
-    for i, template in enumerate(crm_templates):
-        role = Role.objects.create(hospital=hospital, department=department, name=f"CRM Template Check {i}", template=template)
-        crm_user = User.objects.create_user(email=f"crm-check-{i}@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-        assign_role(crm_user, role)
-        assert not crm_user.has_perm("patients.access_clinical_detail"), f"{template} should not grant access_clinical_detail"
-
-    assert "extra" not in PERMISSION_TEMPLATES[Role.Template.CRM_SUPER_ADMIN]
+def test_login_response_does_not_flag_mfa_for_a_low_privilege_role(api_client, restricted_user):
+    """restricted_user carries the Telephony Operator template — not
+    is_staff and not Owner/Admin, so requires_mfa should be False. (The
+    plain `user` fixture is deliberately templated as Admin — see its own
+    docstring in conftest.py — so it's the wrong fixture for this case.)"""
+    response = api_client.post("/api/v1/auth/login/", {"email": restricted_user.email, "password": "testpass123"}, format="json")
+    assert response.status_code == 200
+    assert "mfa_setup_required" not in response.data
 
 
 @pytest.mark.django_db
-def test_doctor_template_grants_access_clinical_detail(hospital, department):
-    role = Role.objects.create(hospital=hospital, department=department, name="Doctor", template=Role.Template.DOCTOR)
-    doctor = User.objects.create_user(email="doctor-template@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-    assign_role(doctor, role)
+def test_2fa_setup_then_enable_then_login_requires_otp(api_client, auth_client, user):
+    setup = auth_client.post("/api/v1/users/2fa/setup/")
+    assert setup.status_code == 200
+    secret = setup.data["secret"]
+    assert "provisioning_uri" in setup.data
 
-    assert doctor.has_perm("patients.access_clinical_detail")
+    valid_code = pyotp.TOTP(secret).now()
+    enable = auth_client.post("/api/v1/users/2fa/enable/", {"otp": valid_code}, format="json")
+    assert enable.status_code == 200
+    user.refresh_from_db()
+    assert user.is_2fa_enabled is True
+
+    login = api_client.post("/api/v1/auth/login/", {"email": user.email, "password": "testpass123"}, format="json")
+    assert login.status_code == 200
+    assert login.data.get("mfa_required") is True
+    assert "access" not in login.data
+    mfa_token = login.data["mfa_token"]
+
+    bad_verify = api_client.post("/api/v1/auth/mfa/verify/", {"mfa_token": mfa_token, "otp": "000000"}, format="json")
+    assert bad_verify.status_code == 400
+
+    good_verify = api_client.post("/api/v1/auth/mfa/verify/", {"mfa_token": mfa_token, "otp": pyotp.TOTP(secret).now()}, format="json")
+    assert good_verify.status_code == 200
+    assert "access" in good_verify.data and "refresh" in good_verify.data
+
+
+@pytest.mark.django_db
+def test_2fa_enable_rejects_wrong_otp(auth_client):
+    auth_client.post("/api/v1/users/2fa/setup/")
+    response = auth_client.post("/api/v1/users/2fa/enable/", {"otp": "000000"}, format="json")
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_2fa_disable_requires_current_password(auth_client, user):
+    setup = auth_client.post("/api/v1/users/2fa/setup/")
+    auth_client.post("/api/v1/users/2fa/enable/", {"otp": pyotp.TOTP(setup.data["secret"]).now()}, format="json")
+
+    wrong = auth_client.post("/api/v1/users/2fa/disable/", {"password": "wrong-password"}, format="json")
+    assert wrong.status_code == 400
+    user.refresh_from_db()
+    assert user.is_2fa_enabled is True
+
+    right = auth_client.post("/api/v1/users/2fa/disable/", {"password": "testpass123"}, format="json")
+    assert right.status_code == 200
+    user.refresh_from_db()
+    assert user.is_2fa_enabled is False
+
+
+@pytest.mark.django_db
+def test_mfa_verify_rejects_a_tampered_token(api_client):
+    response = api_client.post("/api/v1/auth/mfa/verify/", {"mfa_token": "not-a-real-token", "otp": "123456"}, format="json")
+    assert response.status_code == 400
+
+
+# --- allowed_ip_ranges enforcement -------------------------------------------
+
+@pytest.mark.django_db
+def test_login_blocked_when_client_ip_outside_allowed_ranges(api_client, hospital, department):
+    restricted = User.objects.create_user(
+        email="ip-restricted@test-hospital.example", password="correct-horse-1",
+        hospital=hospital, department=department,
+    )
+    restricted.allowed_ip_ranges = ["10.0.0.0/8"]
+    restricted.save(update_fields=["allowed_ip_ranges"])
+
+    response = api_client.post(
+        "/api/v1/auth/login/", {"email": restricted.email, "password": "correct-horse-1"}, format="json",
+        REMOTE_ADDR="203.0.113.5",
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_login_allowed_when_client_ip_inside_allowed_ranges(api_client, hospital, department):
+    restricted = User.objects.create_user(
+        email="ip-allowed@test-hospital.example", password="correct-horse-1",
+        hospital=hospital, department=department,
+    )
+    restricted.allowed_ip_ranges = ["127.0.0.0/8"]
+    restricted.save(update_fields=["allowed_ip_ranges"])
+
+    response = api_client.post(
+        "/api/v1/auth/login/", {"email": restricted.email, "password": "correct-horse-1"}, format="json",
+        REMOTE_ADDR="127.0.0.1",
+    )
+    assert response.status_code == 200

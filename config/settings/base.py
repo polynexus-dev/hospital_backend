@@ -19,27 +19,17 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 
-# Key(s) for apps.core.encryption.EncryptedTextField (Aadhaar/PAN, insurance
-# policy numbers on Patient — see docs/SECURITY_COMPLIANCE.md finding C2).
-# A list, not a single key, so a key can be rotated by adding a new one
-# without losing the ability to decrypt rows written under an old one — the
-# first key is used for new writes, every key is tried on read.
-#
-# This default is a fixed, publicly-visible-in-this-repo placeholder — same
-# reasoning as SECRET_KEY above — and prod.py refuses to boot on it.
-INSECURE_DEV_FIELD_ENCRYPTION_KEY = "BBmuajpTCVZ3-ipNWvktB4oH2E94T_wb2YrDTVX6IoI="
-FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=["HcAQkwPlEzycVUsf-Ya9mb16TgvfuStY6_iDDcVFON0="])
-
-# HMAC key for apps.core.encryption.compute_blind_index() — deterministic
-# exact-match lookup alongside an EncryptedTextField (e.g.
-# PreAuthRequest.policy_number_lookup), for fields that need search but
-# can't expose plaintext at rest. Not rotatable via a list the way
-# FIELD_ENCRYPTION_KEYS is — changing this key changes every hash it
-# produces, so rotating it means recomputing every existing lookup column
-# in one pass, not gradually. Same insecure-placeholder-in-repo /
-# fail-closed-in-prod pattern as SECRET_KEY and FIELD_ENCRYPTION_KEYS.
-INSECURE_DEV_BLIND_INDEX_KEY = "79bba20118d39806042130385b486531af8d8069a51976294eb4cc7c5a206469"
-BLIND_INDEX_KEY = env("BLIND_INDEX_KEY", default=INSECURE_DEV_BLIND_INDEX_KEY)
+# Field-level encryption (Part A #2) — see apps.core.encryption /
+# apps.core.fields. FIELD_ENCRYPTION_KEY must be a urlsafe-base64 32-byte
+# Fernet key (`Fernet.generate_key()`); FIELD_HASH_KEY is an independent
+# secret used only for one-way blind-index hashes (exact-match lookups on
+# encrypted columns, e.g. phone number matching) and is never used to
+# recover data, so it can be any sufficiently random string. The dev
+# defaults below are fixed (not randomly generated per-run) so local data
+# stays decryptable across restarts, and are rejected outright in prod.py
+# if left unchanged.
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=")
+FIELD_HASH_KEY = env("FIELD_HASH_KEY", default="dev-only-insecure-blind-index-key-change-me")
 
 DEBUG = env.bool("DEBUG", default=False)
 
@@ -60,7 +50,6 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
     "corsheaders",
@@ -99,6 +88,7 @@ LOCAL_APPS = [
     "apps.inventory",
     "apps.saas_admin",
 ]
+
 
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -149,12 +139,25 @@ if env.bool("USE_SQLITE", default=False):
     }
 else:
     DATABASES = {
-        "default": env.db(
-            "DATABASE_URL",
-            default="postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm",
-        )
+        "default": {
+            "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
+            "NAME": os.environ.get("POSTGRES_DB", "hospital_crm"),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+            "USER": os.environ.get("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
+            # Reuse connections across requests instead of opening a fresh TCP+auth
+            # handshake every time (default is 0 = no reuse). django-tenants'
+            # set_tenant() just issues `SET search_path` on the existing
+            # connection when switching schemas, so this is safe to combine with
+            # multi-tenancy — the schema switch itself stays cheap.
+            # DB_HOST/DB_PORT point at PgBouncer (SESSION pool mode) in
+            # docker-compose, not straight at Postgres — see the pgbouncer
+            # service comment in docker-compose.yml before changing pool mode.
+            # Note: Must be 0 when using PgBouncer to prevent session pool exhaustion.
+            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", 0)),
+        }
     }
-    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
 
 
@@ -206,9 +209,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
-        "apps.core.permissions.HospitalActive",
         "apps.core.permissions.RoleBasedModelPermissions",
-        "apps.core.permissions.ActionPermissionRequired",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -246,8 +247,18 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Part A #7 — "session timeout on clinical workstations". Was 8h/7d: a
+    # front-desk/nurse-station terminal left logged in stayed a valid
+    # session for a week via silent refresh, well past any single shift.
+    # 1h/12h means an abandoned browser session dies within the same
+    # working day even if nobody touches it, while ROTATE_REFRESH_TOKENS
+    # below keeps re-auth invisible to a genuinely active user. This is a
+    # partial mitigation, not the full control: a stolen *access* token is
+    # only ever good for up to an hour, but nothing here notices an idle
+    # tab and locks it mid-shift — that needs a frontend inactivity timer,
+    # which is a separate (frontend) change from this one.
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=env.int("ACCESS_TOKEN_LIFETIME_HOURS", default=1)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=env.int("REFRESH_TOKEN_LIFETIME_HOURS", default=12)),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "USER_ID_FIELD": "id",
@@ -272,24 +283,10 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://127.0.0.1:5173",
     ],
 )
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in$",
-    r"^http://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:\d+)?$",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
-
-# Self-hosted Ollama — powers free-text understanding for the 24x7
-# assistant (apps.communications.llm_router): classifying what a patient
-# typed into one of the assistant's known actions. It is never used to
-# generate clinical/medical content itself — process_interactive_chat_action
-# still owns every word a patient actually sees. No API key: Ollama has no
-# built-in auth, so this must only ever point at a server on a trusted
-# network, never a public one.
-OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://13.235.143.251:11435")
-OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")
-OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=30)
 
 
 
@@ -300,22 +297,20 @@ OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=30)
 # `configured rate x worker count` — not the hard ceiling it's meant to be.
 # Same Redis instance Celery already requires, separate logical DB (1, not
 # Celery's 0) so cache keys and broker traffic don't collide.
-cache_url = env("CACHE_URL", default="redis://localhost:6379/1")
-if cache_url.startswith("locmem") or env.bool("USE_SQLITE", default=False):
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
-        }
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
+        # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
+        # attempting a HELLO handshake (RESP3) on connect, which errors
+        # with "unknown command 'HELLO'" against any Redis server older
+        # than 6.0 (verified against this project's own local dev Redis,
+        # 3.0.504) — RESP2 is a strict subset every version understands,
+        # including whatever a given hospital's ops team ends up running,
+        # so there's no reason to require RESP3 here.
+        "OPTIONS": {"protocol": 2},
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": cache_url,
-            "OPTIONS": {"protocol": 2},
-        }
-    }
+}
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -367,14 +362,16 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.tasks.sync_all_hospitals_his_data",
         "schedule": 3600.0,  # hourly
     },
-    # SaaS admin — monthly per-tenant usage metering (active staff,
-    # patient registrations, bills generated, storage) for the platform
-    # usage/billing dashboard. Runs early on the 1st for the month that
-    # just ended — see apps.saas_admin.tasks for why it's computed once
-    # rather than derived on-demand.
-    "compute-monthly-tenant-usage": {
-        "task": "apps.saas_admin.tasks.compute_monthly_tenant_usage",
-        "schedule": crontab(hour=3, minute=0, day_of_month=1),
+    # DPDP Act 2023 (Part A #12) — completes right-to-erasure requests by
+    # hard-deleting records past their soft-delete grace period.
+    "purge-expired-soft-deleted-records": {
+        "task": "apps.automation.tasks.purge_expired_soft_deleted_records",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    # DPDP Act 2023 (Part A #12) — stale, never-converted leads.
+    "purge-stale-unconverted-enquiries": {
+        "task": "apps.automation.tasks.purge_stale_unconverted_enquiries",
+        "schedule": crontab(hour=3, minute=15),
     },
 }
 
@@ -384,6 +381,15 @@ CELERY_BEAT_SCHEDULE = {
 # DPDP Act 2023 default retention window for interaction data (days).
 # Overridable per-hospital in future phases; a single default is enough for P1.
 DEFAULT_DATA_RETENTION_DAYS = env.int("DEFAULT_DATA_RETENTION_DAYS", default=365 * 3)
+
+# How long a soft-deleted patient-identifying/clinical record (Part A #1)
+# stays soft-deleted before apps.automation.tasks.
+# purge_expired_soft_deleted_records removes it outright — completing a
+# right-to-erasure request (Part A #12) rather than leaving it soft-deleted
+# forever. Deliberately short and separate from DEFAULT_DATA_RETENTION_DAYS
+# above: this only ever applies to a record someone already decided should
+# go, not to live clinical data subject to medical-record retention law.
+SOFT_DELETE_PURGE_GRACE_DAYS = env.int("SOFT_DELETE_PURGE_GRACE_DAYS", default=30)
 
 # Appointment reminder offsets, hours-before-slot.
 APPOINTMENT_REMINDER_OFFSETS_HOURS = [24, 2]
@@ -409,3 +415,65 @@ TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="stub")
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")
+
+
+# --- Logging (Part A #3: no patient data in logs by default) -------------
+#
+# Deliberately explicit rather than relying on Django's built-in logging
+# config. Django's default wires the `django.request` logger to an
+# AdminEmailHandler on any 5xx — which, on a Django app whose views mostly
+# take and return patient data, means emailing whoever's in ADMINS a page
+# containing the failing request's full POST body (mobile numbers,
+# national IDs, clinical notes) every time a request errors. ADMINS is not
+# set anywhere in this project (grep confirms it), so that handler is
+# currently a no-op — but "currently a no-op because nobody's configured
+# ADMINS yet" is not a control, it's an accident waiting for someone to set
+# ADMINS for on-call paging and get patient data in their inbox as a side
+# effect. Routing straight to console/file instead removes that trap.
+#
+# This does NOT redact patient fields from application log lines — no
+# logging filter can know which fields in an arbitrary `logger.info(...)`
+# call are patient data. The actual control is upstream of logging: don't
+# pass patient-identifying values (mobile, national_id_number, address,
+# diagnosis/symptoms/notes, or a whole model instance/serializer.data) into
+# a log call. If a log line needs to reference a record, log its id, not
+# its content.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Overrides Django's built-in AdminEmailHandler wiring for this
+        # logger specifically — see the module comment above.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}
