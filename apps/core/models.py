@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils import timezone as tz
 
+from .fields import EncryptedTextField
 from .managers import TenantManager
 
 RESERVED_HOSPITAL_SLUGS = {
@@ -86,6 +87,13 @@ class Hospital(TimeStampedModel):
         default=1, editable=False,
         help_text="Next UHID sequence number for this hospital — see apps.patients.Patient._generate_uhid.",
     )
+
+    # DPDP Act 2023 / Rules 2025 §2.5 — "Grievance officer named, contactable,
+    # with SLA". A named contact per hospital, not a global one: each
+    # hospital is its own Data Fiduciary (see apps.privacy).
+    grievance_officer_name = models.CharField(max_length=150, blank=True)
+    grievance_officer_email = models.EmailField(blank=True)
+    grievance_officer_phone = EncryptedTextField(blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -169,6 +177,7 @@ class AuditLog(models.Model):
         DELETE = "delete", "Delete"
         READ = "read", "Read"
         REQUEST = "request", "Request"
+        EXPORT = "export", "Export"
 
     hospital = models.ForeignKey(Hospital, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
@@ -200,6 +209,42 @@ class AuditLog(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("AuditLog records are immutable and cannot be deleted.")
+
+
+class EmergencyAccessLog(models.Model):
+    """Break-glass access record (Part A #6 — "Break-glass emergency access
+    is allowed but must be flagged and reviewable"). Written by
+    apps.core.viewsets.TenantScopedViewSetMixin whenever a `data_scope=
+    assigned_only` user retrieves a specific record their normal assignment
+    scope (assignment_scope_field) would have hidden, using an
+    X-Emergency-Reason header. Every row here represents an actual, real
+    bypass that happened — not every request carrying the header — so this
+    table doubles as the audit trail an auditor role reviews, not a log of
+    attempts."""
+
+    hospital = models.ForeignKey(Hospital, on_delete=models.SET_NULL, null=True, blank=True, related_name="emergency_access_logs")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="emergency_access_logs")
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=64)
+    reason = EncryptedTextField()
+    accessed_at = models.DateTimeField(auto_now_add=True)
+
+    reviewed = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = EncryptedTextField(blank=True)
+
+    class Meta:
+        ordering = ["-accessed_at"]
+        indexes = [
+            models.Index(fields=["hospital", "reviewed"]),
+            models.Index(fields=["model_name", "object_id"]),
+        ]
+
+    def __str__(self):
+        return f"Emergency access to {self.model_name}:{self.object_id} by {self.actor_id}"
 
 
 class FinalizableModel(models.Model):

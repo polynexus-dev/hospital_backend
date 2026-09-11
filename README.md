@@ -104,3 +104,31 @@ database against it.
   creates a real `Appointment` via `apps.appointments.services.book_appointment`, the same path the
   front-desk UI uses. It does not understand free-text queries, only the button options it returns.
 - **Export**: `apps.integrations` ships open CSV export (§13); FHIR R4 resource export is P2/P4 scope.
+- **Disk/volume-level encryption at rest**: `apps.core.fields`'s AES-256-GCM field encryption (Fernet
+  before this pass; `apps.core.encryption.decrypt_value` still reads old Fernet-encrypted values so
+  nothing needed re-encrypting) protects specific sensitive columns from anyone with raw DB/query
+  access, but it's not a substitute for encrypting the
+  database's storage itself — a stolen disk or an unencrypted backup still exposes every *non*-encrypted
+  column (which is most of the schema) in full. This is a hosting/ops setting, not application code, and
+  it depends entirely on where Postgres actually runs:
+  - **Managed Postgres** (AWS RDS/Aurora, GCP Cloud SQL, Azure Database for PostgreSQL): enable storage
+    encryption at instance creation time (`--storage-encrypted` on RDS, "Data encryption" on Cloud SQL,
+    on by default but confirm on Azure). On RDS/Aurora specifically this **cannot be toggled on an
+    existing unencrypted instance** — it requires a snapshot → encrypted-copy → restore-into-new-instance
+    migration, so it's much cheaper to get right before the first production instance is ever created
+    than to retrofit later.
+  - **Self-hosted** (this repo's `docker-compose.yml`, which is dev-only — see the `db` service's plain
+    `postgres_data` named volume): put the Docker volume's backing path on a LUKS-encrypted block device
+    at the host/OS level before running `docker compose up` against it in anything resembling production.
+    Compose itself has no encryption setting to flip.
+  - Either way, also encrypt wherever backups/snapshots land — a plaintext backup defeats an encrypted
+    live volume.
+- **ABDM / NHCX**: `apps.abdm` is scaffolding, not a live integration — the models (ABHA linkage,
+  HIE-CM consent request lifecycle, health-record-fetch audit trail, an NHCX transaction log bridging
+  to `apps.tpa.PreAuthRequest`), permission wiring, and API surface all exist, but `ABDM_GATEWAY`/
+  `NHCX_GATEWAY` default to `"stub"` (`apps.abdm.gateway.StubABDMGateway`/`StubNHCXGateway`), which
+  raises `GatewayNotConfigured` — surfaced as a clean HTTP 503 — on every call rather than fabricating
+  a successful ABHA link or consent grant. Connecting either for real means implementing an
+  `ABDMGateway`/`NHCXGateway` subclass against the actual sandbox/production APIs, pointing the two
+  settings at it, and filling in `ABDM_CLIENT_ID`/`ABDM_CLIENT_SECRET`/`ABDM_HIP_ID` (issued once this
+  facility completes ABDM's Health Facility Registry onboarding) and `NHCX_PARTICIPANT_CODE`.

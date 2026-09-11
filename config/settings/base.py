@@ -31,6 +31,13 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=")
 FIELD_HASH_KEY = env("FIELD_HASH_KEY", default="dev-only-insecure-blind-index-key-change-me")
 
+# AES-256-GCM key for new field encryption (apps.core.encryption._gcm_*) —
+# FIELD_ENCRYPTION_KEY/Fernet above is only still consulted to decrypt
+# values written before this key existed. Must be a urlsafe-base64
+# 32-byte key: `base64.urlsafe_b64encode(os.urandom(32))`. Same
+# fixed-dev-default / rejected-in-prod treatment as FIELD_ENCRYPTION_KEY.
+FIELD_ENCRYPTION_KEY_V2 = env("FIELD_ENCRYPTION_KEY_V2", default="UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw=")
+
 DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
@@ -87,6 +94,8 @@ LOCAL_APPS = [
     "apps.billing",
     "apps.inventory",
     "apps.saas_admin",
+    "apps.privacy",
+    "apps.abdm",
 ]
 
 
@@ -391,6 +400,15 @@ DEFAULT_DATA_RETENTION_DAYS = env.int("DEFAULT_DATA_RETENTION_DAYS", default=365
 # go, not to live clinical data subject to medical-record retention law.
 SOFT_DELETE_PURGE_GRACE_DAYS = env.int("SOFT_DELETE_PURGE_GRACE_DAYS", default=30)
 
+# DPDP Act 2023 data-principal rights (Part A #11) — see apps.privacy.
+# These are operational SLAs this codebase enforces, not a specific legal
+# deadline quoted from the DPDP Rules 2025 (that's a compliance/legal
+# question outside what a settings default can responsibly assert) —
+# 30 days is a conservative, commonly-used baseline; a hospital's legal
+# counsel should confirm the number that actually applies to it.
+DATA_RIGHTS_REQUEST_SLA_DAYS = env.int("DATA_RIGHTS_REQUEST_SLA_DAYS", default=30)
+GRIEVANCE_SLA_DAYS = env.int("GRIEVANCE_SLA_DAYS", default=30)
+
 # Appointment reminder offsets, hours-before-slot.
 APPOINTMENT_REMINDER_OFFSETS_HOURS = [24, 2]
 
@@ -415,6 +433,26 @@ TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="stub")
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")
+
+# ABDM (Ayushman Bharat Digital Mission — ABHA linking + HIE-CM consent)
+# and NHCX (National Health Claims Exchange) gateway selection — see
+# apps.abdm.gateway. "stub" (the only implementation that exists so far)
+# raises GatewayNotConfigured on every call rather than fabricating a
+# success; connecting either later is a matter of adding a real
+# ABDMGateway/NHCXGateway subclass and pointing these at it, plus filling
+# in the sandbox/production credentials below once ABDM/NHCX onboarding
+# for this hospital's Health Facility Registry entry is complete.
+ABDM_GATEWAY = env("ABDM_GATEWAY", default="stub")
+ABDM_BASE_URL = env("ABDM_BASE_URL", default="")
+ABDM_CLIENT_ID = env("ABDM_CLIENT_ID", default="")
+ABDM_CLIENT_SECRET = env("ABDM_CLIENT_SECRET", default="")
+# Health Information Provider ID, assigned once this facility is
+# registered on ABDM's Health Facility Registry.
+ABDM_HIP_ID = env("ABDM_HIP_ID", default="")
+
+NHCX_GATEWAY = env("NHCX_GATEWAY", default="stub")
+NHCX_BASE_URL = env("NHCX_BASE_URL", default="")
+NHCX_PARTICIPANT_CODE = env("NHCX_PARTICIPANT_CODE", default="")
 
 
 # --- Logging (Part A #3: no patient data in logs by default) -------------

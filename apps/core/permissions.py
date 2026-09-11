@@ -49,12 +49,60 @@ class RequiresClinicalDetailPermission(BasePermission):
         return request.user.has_perm("patients.access_clinical_detail")
 
 
+class RequiresViewPermission(BasePermission):
+    """Gates `list`/`retrieve` on Django's `view_<model>` permission —
+    RoleBasedModelPermissions deliberately does not (see that class's
+    read/write asymmetry, and apps.core.tests.
+    test_restricted_role_can_still_list_and_retrieve_patients: most roles'
+    screens need to read records — e.g. Patient — from an app they have no
+    write access to). That default is wrong for an app that's meant to be
+    read-restricted too, not just write-restricted — apps.accounts.
+    permission_templates.PERMISSION_TEMPLATES only ever lists "privacy" in
+    FULL_ACCESS_APPS (owner/admin/hospital_administrator); every other
+    template omits it entirely, meaning no other role is ever granted
+    `privacy.view_*` — so this class's check reflects a restriction the
+    templates already encode, it doesn't invent a new one. Opt-in per
+    ViewSet (like RequiresClinicalDetailPermission) rather than a change to
+    the shared default, so it only tightens reads where a ViewSet's own
+    permission_classes says so."""
+
+    def has_permission(self, request, view):
+        if getattr(view, "action", None) not in ("list", "retrieve"):
+            return True
+        queryset = getattr(view, "queryset", None)
+        if queryset is None:
+            return True
+        model_cls = queryset.model
+        permission = f"{model_cls._meta.app_label}.view_{model_cls._meta.model_name}"
+        return request.user.has_perm(permission)
+
+
 class IsSaaSAdmin(BasePermission):
     """Gates the platform-management surface (apps.saas_admin)."""
 
     def has_permission(self, request, view):
         user = request.user
         return bool(user and user.is_authenticated and (user.is_superuser or getattr(user, "is_saas_admin", False)))
+
+
+class CanReviewEmergencyAccess(BasePermission):
+    """Gates apps.core.views.EmergencyAccessLogViewSet (Part A #6 —
+    break-glass access "must be flagged and reviewable"). Deliberately
+    broader than IsAdminUser: an auditor/admin role is meant to review
+    this *within* their own hospital without needing platform-staff
+    (is_staff) elevation — this is the hospital's own compliance
+    oversight, not a platform-ops concern."""
+
+    REVIEWER_TEMPLATES = {"owner", "admin", "hospital_administrator", "hospital_auditor", "crm_auditor", "crm_super_admin"}
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        role = getattr(user, "role", None)
+        return bool(role and role.template in self.REVIEWER_TEMPLATES)
 
 
 class HospitalActive(BasePermission):

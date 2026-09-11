@@ -1,10 +1,23 @@
 from rest_framework.exceptions import ValidationError
 
+EMERGENCY_REASON_HEADER = "X-Emergency-Reason"
+
 
 class TenantScopedViewSetMixin:
     """Scopes every action (list/retrieve/update/partial_update/destroy via
     get_queryset, create via perform_create) to the requesting user's
-    hospital."""
+    hospital.
+
+    Break-glass (Part A #6): a `data_scope=assigned_only` user (see
+    apps.accounts.models.Role) who supplies a non-empty X-Emergency-Reason
+    header on a `retrieve` for a specific record their assignment_scope_field
+    would otherwise hide gets it anyway — real emergencies don't wait for a
+    reassignment. This only ever engages for a record genuinely outside the
+    user's normal scope (never fires, and never logs, for a record they'd
+    see anyway) and only for `retrieve` — never `list`, so this can't be
+    used to browse the whole hospital's records "just in case"; it grants
+    access to one already-identified record at a time. Every real bypass
+    writes an apps.core.models.EmergencyAccessLog row for later review."""
 
     assignment_scope_field = None
 
@@ -17,11 +30,31 @@ class TenantScopedViewSetMixin:
             hospital_id = getattr(user, "hospital_id", None)
         if hospital_id is None:
             return manager.none()
-        queryset = manager.filter(hospital_id=hospital_id)
+
+        hospital_queryset = manager.filter(hospital_id=hospital_id)
         role = getattr(user, "role", None)
-        if self.assignment_scope_field and role is not None and getattr(role, "data_scope", None) == "assigned_only":
-            queryset = queryset.filter(**{self.assignment_scope_field: user})
-        return queryset
+        if not (self.assignment_scope_field and role is not None and getattr(role, "data_scope", None) == "assigned_only"):
+            return hospital_queryset
+
+        scoped_queryset = hospital_queryset.filter(**{self.assignment_scope_field: user})
+        reason = self.request.headers.get(EMERGENCY_REASON_HEADER, "").strip()
+        if self.action == "retrieve" and reason:
+            pk = self.kwargs.get(self.lookup_url_kwarg or self.lookup_field)
+            if pk is not None and hospital_queryset.filter(pk=pk).exists() and not scoped_queryset.filter(pk=pk).exists():
+                self._log_emergency_access(hospital_id, pk, reason)
+                return hospital_queryset
+        return scoped_queryset
+
+    def _log_emergency_access(self, hospital_id, object_id, reason):
+        from apps.core.models import EmergencyAccessLog
+
+        EmergencyAccessLog.objects.create(
+            hospital_id=hospital_id,
+            actor=self.request.user,
+            model_name=self.queryset.model._meta.label,
+            object_id=str(object_id),
+            reason=reason,
+        )
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)

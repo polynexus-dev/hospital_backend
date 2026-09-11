@@ -256,6 +256,60 @@ def test_patching_own_user_record_cannot_bypass_switch_hospital_via_the_hospital
     assert user.hospital_id == hospital.id
 
 
+@pytest.mark.django_db
+def test_is_superuser_and_is_saas_admin_are_visible_but_not_writable(auth_client, user):
+    """These were previously missing from UserSerializer.fields entirely,
+    so /users/me/ never told the frontend whether the caller was a
+    superuser/SaaS admin at all (see apps.core.permissions.IsSaaSAdmin,
+    which already treats is_superuser as sufficient — the gap was purely
+    that nothing surfaced it). Now exposed, but read-only for the same
+    privilege-escalation reason `hospital`/`is_staff` are above — a PATCH
+    claiming either must be silently ignored, never applied."""
+    me = auth_client.get("/api/v1/users/me/")
+    assert me.data["is_superuser"] is False
+    assert me.data["is_saas_admin"] is False
+
+    response = auth_client.patch(f"/api/v1/users/{user.id}/", {"is_superuser": True, "is_saas_admin": True}, format="json")
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.is_superuser is False
+    assert user.is_saas_admin is False
+
+
+@pytest.mark.django_db
+def test_a_superuser_can_access_saas_admin_endpoints_without_is_saas_admin_set(hospital, department):
+    """Confirms the actual behavior a plain `manage.py createsuperuser`
+    account gets: IsSaaSAdmin (apps.core.permissions) already treats
+    is_superuser as equivalent to is_saas_admin, and TenantSubscriptionViewSet
+    queries every tenant unscoped (no TenantScopedViewSetMixin) — so a
+    superuser needs no hospital, no Role, and no is_saas_admin=True to
+    reach this surface. This was already true before today; this test
+    just pins it down now that is_superuser is visible to check."""
+    from apps.accounts.models import User
+    from rest_framework.test import APIClient
+
+    superuser = User.objects.create_superuser(email="root@polynexus.in", password="testpass123")
+    assert superuser.is_saas_admin is True  # createsuperuser sets this so the SaaS console shows up in the UI too
+
+    client = APIClient()
+    client.force_authenticate(user=superuser)
+    response = client.get("/api/v1/saas-admin/subscriptions/")
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_create_superuser_can_opt_out_of_the_saas_admin_persona():
+    """The escape hatch for a pure-infrastructure account (migrations,
+    shell) that shouldn't appear as a platform operator in the product
+    UI — is_superuser still grants every backend permission either way."""
+    from apps.accounts.models import User
+
+    sysadmin = User.objects.create_superuser(email="sysadmin@polynexus.in", password="testpass123", is_saas_admin=False)
+
+    assert sysadmin.is_superuser is True
+    assert sysadmin.is_saas_admin is False
+
+
 # --- available_hospitals: information-disclosure regression --------------
 #
 # Companion to the switch-hospital fix above — UserSerializer used to list

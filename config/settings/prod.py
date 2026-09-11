@@ -24,6 +24,8 @@ if not SECRET_KEY or "change-me" in SECRET_KEY or "insecure" in SECRET_KEY:  # n
 # history.
 if not FIELD_ENCRYPTION_KEY or FIELD_ENCRYPTION_KEY == "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=":  # noqa: F405
     raise RuntimeError("FIELD_ENCRYPTION_KEY is still the dev placeholder — set a real key in the production environment before starting.")
+if not FIELD_ENCRYPTION_KEY_V2 or FIELD_ENCRYPTION_KEY_V2 == "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw=":  # noqa: F405
+    raise RuntimeError("FIELD_ENCRYPTION_KEY_V2 is still the dev placeholder — set a real key in the production environment before starting.")
 if not FIELD_HASH_KEY or "change-me" in FIELD_HASH_KEY or "insecure" in FIELD_HASH_KEY:  # noqa: F405
     raise RuntimeError("FIELD_HASH_KEY is still a placeholder — set a real key in the production environment before starting.")
 

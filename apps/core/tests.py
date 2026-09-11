@@ -166,13 +166,48 @@ def test_restricted_role_cannot_create_a_patient(restricted_client):
 
 @pytest.mark.django_db
 def test_restricted_role_can_still_list_and_retrieve_patients(restricted_client, hospital, department):
-    """Read access is deliberately not gated by this permission class —
-    every role needs to see records relevant to its screens."""
+    """Read access isn't gated by RoleBasedModelPermissions itself — every
+    role whose template grants "patients" at all needs to see records
+    relevant to its screens, and Telephony Operator (restricted_client's
+    template) does hold "patients": ["view"]. That's not the same as read
+    access being wide open to every role regardless of template — see
+    test_role_without_patients_permission_cannot_read_patients_at_all
+    below for the roles PatientViewSet's RequiresViewPermission actually
+    does block."""
     from apps.patients.models import Patient
     patient = Patient.objects.create(hospital=hospital, first_name="Viewable", mobile="9000000002")
 
     assert restricted_client.get("/api/v1/patients/").status_code == 200
     assert restricted_client.get(f"/api/v1/patients/{patient.id}/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_role_without_patients_permission_cannot_read_patients_at_all(hospital, department):
+    """hr_manager/purchase_manager/inventory_manager templates (see
+    apps.accounts.permission_templates.PERMISSION_TEMPLATES) omit
+    "patients" entirely — unlike Telephony Operator above, these roles
+    have no patient-facing screen at all, so PatientViewSet's
+    RequiresViewPermission (and ActionPermissionRequired for the
+    lookup/timeline custom actions, which RoleBasedModelPermissions never
+    gates — see test_custom_actions_are_not_gated_by_the_model_permission_check)
+    should actually block them, not just leave it to tenant scoping."""
+    from apps.accounts.models import Role, User, assign_role
+    from apps.patients.models import Patient
+    from rest_framework.test import APIClient
+
+    role = Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER)
+    user = User.objects.create_user(email="hr@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(user, role)
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Confidential", mobile="9000000005")
+
+    assert client.get("/api/v1/patients/").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/").status_code == 403
+    assert client.get(f"/api/v1/patients/lookup/?mobile={patient.mobile}").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/timeline/").status_code == 403
+    assert client.get("/api/v1/documents/").status_code == 403
 
 
 @pytest.mark.django_db
@@ -337,4 +372,58 @@ def test_auditlog_raw_sql_delete_is_blocked_at_the_database_level(hospital):
             cursor.execute("DELETE FROM core_auditlog WHERE id = %s", [log.pk])
 
     assert AuditLog.objects.filter(pk=log.pk).exists()
+
+
+# --- EmergencyAccessLogViewSet: review surface for break-glass (Part A #6) --
+
+@pytest.mark.django_db
+def test_emergency_access_log_list_is_scoped_to_hospital(auth_client, hospital, other_hospital, user):
+    from apps.core.models import EmergencyAccessLog
+
+    mine = EmergencyAccessLog.objects.create(hospital=hospital, actor=user, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+    EmergencyAccessLog.objects.create(hospital=other_hospital, model_name="opd.Encounter", object_id="2", reason="unrelated")
+
+    response = auth_client.get("/api/v1/emergency-access-logs/")
+    ids = [row["id"] for row in response.data["results"]]
+    assert mine.id in ids
+    assert len(ids) == 1
+
+
+@pytest.mark.django_db
+def test_emergency_access_log_rejects_a_low_privilege_role(restricted_client):
+    """restricted_client carries the Telephony Operator template — not in
+    CanReviewEmergencyAccess.REVIEWER_TEMPLATES and not is_staff."""
+    response = restricted_client.get("/api/v1/emergency-access-logs/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_mark_reviewed_stamps_reviewer_and_timestamp_together(auth_client, hospital, user):
+    from apps.core.models import EmergencyAccessLog
+
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+
+    response = auth_client.post(f"/api/v1/emergency-access-logs/{log.id}/mark_reviewed/", {"review_notes": "Confirmed legitimate — on-call doctor was unreachable."}, format="json")
+
+    assert response.status_code == 200
+    log.refresh_from_db()
+    assert log.reviewed is True
+    assert log.reviewed_by_id == user.id
+    assert log.reviewed_at is not None
+    assert log.review_notes == "Confirmed legitimate — on-call doctor was unreachable."
+
+
+@pytest.mark.django_db
+def test_emergency_access_log_reviewed_field_cannot_be_set_via_bare_patch(auth_client, hospital):
+    """reviewed/reviewed_by/reviewed_at must only change together, through
+    mark_reviewed — otherwise a bare PATCH could set reviewed=True with no
+    reviewer attached, defeating the point of a reviewable log."""
+    from apps.core.models import EmergencyAccessLog
+
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+
+    response = auth_client.patch(f"/api/v1/emergency-access-logs/{log.id}/", {"reviewed": True}, format="json")
+    assert response.status_code == 405  # ReadOnlyModelViewSet — no update action at all
+    log.refresh_from_db()
+    assert log.reviewed is False
 
