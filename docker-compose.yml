@@ -66,6 +66,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_started
 
   celery-beat:
     build: .
@@ -85,6 +87,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_started
 
 volumes:
   postgres_data:
