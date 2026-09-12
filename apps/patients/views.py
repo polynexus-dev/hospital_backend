@@ -120,3 +120,16 @@ class PrescriptionViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, view
         hospital = getattr(self.request.user, "hospital", None)
         serializer.save(hospital=hospital, doctor=self.request.user)
 
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        prescription = self.get_object()
+        from django.http import HttpResponse
+        from .prescription_pdf import render_prescription_pdf
+
+        pdf_bytes = render_prescription_pdf(prescription)
+        filename = f"Prescription_{getattr(prescription.patient, 'uhid', 'Rx')}_{prescription.id}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+

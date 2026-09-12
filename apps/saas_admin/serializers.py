@@ -85,3 +85,28 @@ class SaaSSupportTicketSerializer(serializers.ModelSerializer):
             "resolution_notes", "resolved_at", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "hospital", "raised_by", "resolved_at", "created_at", "updated_at"]
+
+
+class SaaSHospitalSubscriptionSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TenantSubscription
+        fields = ["id", "tier", "billing_cycle", "status", "base_price", "max_staff_users", "next_billing_date"]
+
+
+class SaaSHospitalSerializer(serializers.ModelSerializer):
+    subscription = SaaSHospitalSubscriptionSummarySerializer(read_only=True)
+    staff_count = serializers.SerializerMethodField()
+
+    class Meta:
+        from apps.core.models import Hospital
+        model = Hospital
+        fields = [
+            "id", "name", "slug", "city", "state", "address",
+            "primary_language", "is_active", "enabled_modules",
+            "subscription", "staff_count", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at", "subscription", "staff_count"]
+
+    def get_staff_count(self, obj) -> int:
+        return obj.users.count()
+

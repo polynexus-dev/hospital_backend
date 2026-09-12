@@ -257,3 +257,26 @@ def test_restricted_role_without_clinical_detail_cannot_read_prescriptions(restr
 
     assert restricted_client.get("/api/v1/prescriptions/").status_code == 403
     assert restricted_client.get(f"/api/v1/prescriptions/{prescription.id}/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_prescription_download_pdf(auth_client, hospital, patient, user):
+    prescription = Prescription.objects.create(
+        hospital=hospital,
+        patient=patient,
+        doctor=user,
+        diagnosis="Acute Bronchitis",
+        symptoms="Persistent dry cough, mild fever",
+        medications=[
+            {"name": "Amoxicillin", "dosage": "500mg", "frequency": "1-0-1", "duration": "5 Days", "instructions": "After meals"},
+            {"name": "Paracetamol", "dosage": "650mg", "frequency": "SOS", "duration": "3 Days", "instructions": "If temp > 100F"},
+        ],
+        lab_orders=["Chest X-Ray PA View", "CBC"],
+        notes="Steam inhalation twice daily",
+    )
+    res = auth_client.get(f"/api/v1/prescriptions/{prescription.id}/download/")
+    assert res.status_code == 200
+    assert res["Content-Type"] == "application/pdf"
+    assert len(res.content) > 1000
+    assert res.content.startswith(b"%PDF")
+

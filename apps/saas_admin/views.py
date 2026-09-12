@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.models import ALL_MODULES, Hospital
 from apps.core.permissions import IsSaaSAdmin
 from apps.core.viewsets import TenantScopedViewSetMixin
 
@@ -16,12 +17,15 @@ from . import services
 from .models import SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 from .pdf import render_invoice_pdf
 from .serializers import (
+    SaaSHospitalSerializer,
     SaaSSupportTicketSerializer,
     SupportTicketSerializer,
     TenantInvoiceSerializer,
     TenantSubscriptionSerializer,
     TenantUsageSnapshotSerializer,
 )
+from .tenant_service import onboard_hospital_tenant
+
 
 
 class TenantSubscriptionViewSet(viewsets.ModelViewSet):
@@ -33,6 +37,7 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
     queryset = TenantSubscription.objects.all()
     filterset_fields = ["hospital", "tier", "status"]
+    search_fields = ["hospital__name", "hospital__slug", "hospital__city"]
 
 
 class TenantInvoiceViewSet(viewsets.ModelViewSet):
@@ -40,6 +45,7 @@ class TenantInvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
     queryset = TenantInvoice.objects.all()
     filterset_fields = ["hospital", "status"]
+    search_fields = ["invoice_number", "hospital__name", "hospital__slug"]
 
     def perform_create(self, serializer):
         serializer.save(invoice_number=services.generate_invoice_number())
@@ -69,6 +75,7 @@ class TenantUsageSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
     queryset = TenantUsageSnapshot.objects.all()
     filterset_fields = ["hospital", "period_start"]
+    search_fields = ["hospital__name", "hospital__slug"]
 
 
 class SaaSSupportTicketViewSet(viewsets.ModelViewSet):
@@ -80,6 +87,7 @@ class SaaSSupportTicketViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
     queryset = SupportTicket.objects.all()
     filterset_fields = ["hospital", "status", "priority", "category", "assigned_to"]
+    search_fields = ["subject", "hospital__name", "hospital__slug", "raised_by_email"]
 
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve(self, request, pk=None):
@@ -148,3 +156,44 @@ class PlatformAnalyticsView(APIView):
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
         return Response(services.platform_analytics_snapshot())
+
+
+class SaaSHospitalViewSet(viewsets.ModelViewSet):
+    """
+    SaaS Platform management for Hospital Tenants:
+    - Lists and searches across all hospitals and branch networks.
+    - Full end-to-end tenant onboarding wizard endpoint.
+    - Live granular module toggle (OPD, IPD, ICU, OT, Pharmacy, etc.).
+    - Activation / suspension switch.
+    """
+
+    serializer_class = SaaSHospitalSerializer
+    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    queryset = Hospital.objects.all().select_related("subscription").prefetch_related("users").order_by("-created_at")
+    filterset_fields = ["is_active", "city", "state"]
+    search_fields = ["name", "slug", "city", "state"]
+
+    def create(self, request, *args, **kwargs):
+        result = onboard_hospital_tenant(request.data)
+        hospital = result["hospital"]
+        return Response(SaaSHospitalSerializer(hospital).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["patch", "post"], url_path="modules")
+    def update_modules(self, request, pk=None):
+        hospital = self.get_object()
+        raw_modules = request.data.get("enabled_modules")
+        if not isinstance(raw_modules, list):
+            return Response({"error": "enabled_modules must be a list of module keys."}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_modules = [m for m in raw_modules if m in ALL_MODULES]
+        hospital.enabled_modules = valid_modules
+        hospital.save(update_fields=["enabled_modules"])
+        return Response(SaaSHospitalSerializer(hospital).data)
+
+    @action(detail=True, methods=["post"], url_path="toggle-status")
+    def toggle_status(self, request, pk=None):
+        hospital = self.get_object()
+        hospital.is_active = not hospital.is_active
+        hospital.save(update_fields=["is_active"])
+        return Response(SaaSHospitalSerializer(hospital).data)
+

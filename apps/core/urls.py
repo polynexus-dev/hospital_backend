@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .tenant_public_views import PublicTenantBrandingView
 from .views import AuditLogViewSet, EmergencyAccessLogViewSet, SessionKeyView
 
 router = DefaultRouter()
@@ -9,4 +10,6 @@ router.register("emergency-access-logs", EmergencyAccessLogViewSet, basename="em
 
 urlpatterns = router.urls + [
     path("session-key/", SessionKeyView.as_view(), name="session-key"),
+    path("public/tenant-branding/", PublicTenantBrandingView.as_view(), name="tenant-branding"),
 ]
+

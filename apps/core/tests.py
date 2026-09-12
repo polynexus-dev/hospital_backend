@@ -502,3 +502,21 @@ def test_prod_settings_reject_the_placeholder_hiding_in_a_rotation_list():
     assert result.returncode != 0
     assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
 
+
+@pytest.mark.django_db
+def test_public_tenant_branding_for_hospital(api_client, hospital):
+    res = api_client.get(f"/api/v1/public/tenant-branding/?subdomain={hospital.slug}")
+    assert res.status_code == 200
+    assert res.data["is_tenant"] is True
+    assert res.data["name"] == hospital.name
+    assert res.data["slug"] == hospital.slug
+
+
+@pytest.mark.django_db
+def test_public_tenant_branding_default_platform(api_client):
+    res = api_client.get("/api/v1/public/tenant-branding/?subdomain=hms")
+    assert res.status_code == 200
+    assert res.data["is_tenant"] is False
+    assert res.data["name"] == "Polynexus Healthcare OS"
+
+

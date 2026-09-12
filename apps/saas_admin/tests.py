@@ -372,3 +372,58 @@ def test_user_creation_succeeds_under_the_staff_limit(auth_client, subscription)
 def test_user_creation_is_unaffected_when_the_hospital_has_no_subscription(auth_client):
     response = auth_client.post("/api/v1/users/", {"email": "fourth-user@test-hospital.example"}, format="json")
     assert response.status_code == 201
+
+
+@pytest.mark.django_db
+def test_saas_admin_onboard_hospital_tenant_wizard(saas_admin_client):
+    payload = {
+        "name": "Apollo Prime Hospital",
+        "slug": "apollo-prime",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "address": "123 Bannerghatta Road",
+        "enabled_modules": ["opd", "ipd", "pharmacy", "billing"],
+        "subscription": {
+            "tier": "enterprise",
+            "billing_cycle": "annual",
+            "base_price": 50000,
+            "max_staff_users": 100,
+        },
+        "owner": {
+            "email": "dr.patil@apollo-prime.example",
+            "first_name": "Arjun",
+            "last_name": "Patil",
+            "phone": "+919876500111",
+            "password": "Password@123",
+        },
+    }
+    response = saas_admin_client.post("/api/v1/saas-admin/hospitals/", payload, format="json")
+    assert response.status_code == 201
+    assert response.data["name"] == "Apollo Prime Hospital"
+    assert response.data["slug"] == "apollo-prime"
+    assert "opd" in response.data["enabled_modules"]
+    assert response.data["subscription"]["tier"] == "enterprise"
+
+    # Verify hospital & owner exist in DB
+    from apps.core.models import Hospital
+    hospital = Hospital.objects.get(slug="apollo-prime")
+    assert hospital.name == "Apollo Prime Hospital"
+    assert hospital.departments.filter(code="OPD").exists()
+    assert hospital.roles.filter(name="Hospital Owner / Admin").exists()
+    owner_user = User.objects.get(email="dr.patil@apollo-prime.example")
+    assert owner_user.hospital == hospital
+    assert owner_user.role.name == "Hospital Owner / Admin"
+
+
+@pytest.mark.django_db
+def test_saas_admin_update_hospital_modules(saas_admin_client, hospital):
+    response = saas_admin_client.post(
+        f"/api/v1/saas-admin/hospitals/{hospital.id}/modules/",
+        {"enabled_modules": ["opd", "pharmacy"]},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["enabled_modules"] == ["opd", "pharmacy"]
+    hospital.refresh_from_db()
+    assert hospital.enabled_modules == ["opd", "pharmacy"]
+
