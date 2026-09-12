@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 
-from .models import AuditLog
+from .models import AuditLog, RESERVED_HOSPITAL_SLUGS
 from .payload_crypto import decrypt_payload, encrypt_payload
 from .request_utils import get_client_ip
 from .tenancy import reset_current_hospital_id, set_current_hospital_id
@@ -39,11 +39,25 @@ PATIENT_RECORD_READ_PREFIXES = (
 )
 
 
+def get_subdomain_from_request(request):
+    try:
+        host = request.get_host().split(":")[0].lower()
+        parts = host.split(".")
+        if len(parts) >= 3 and parts[0] not in ("www", "api"):
+            return parts[0]
+        if len(parts) == 2 and parts[1] == "localhost":
+            return parts[0]
+    except Exception:
+        pass
+    return None
+
+
 class TenantMiddleware:
     """Resolves the current hospital from the authenticated user and makes
     it available to TenantManager for the duration of the request. Staff
     users may switch tenant via the X-Hospital-Id header (used by internal
-    ops tooling / superadmin dashboards that operate across hospitals)."""
+    ops tooling / superadmin dashboards that operate across hospitals).
+    Also supports subdomain-based tenant resolution (e.g. demo-hospital.hms.polynexus.in)."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -52,11 +66,24 @@ class TenantMiddleware:
         hospital_id = None
         user = getattr(request, "user", None)
 
+        subdomain = get_subdomain_from_request(request)
+        tenant_from_subdomain = None
+        if subdomain and subdomain not in RESERVED_HOSPITAL_SLUGS:
+            from .models import Hospital
+            tenant_from_subdomain = Hospital.objects.filter(slug=subdomain, is_active=True).first()
+
+        request.subdomain = subdomain
+        request.tenant = tenant_from_subdomain
+
         if user is not None and getattr(user, "is_authenticated", False):
             if user.is_staff and request.headers.get("X-Hospital-Id"):
                 hospital_id = request.headers["X-Hospital-Id"]
             elif getattr(user, "hospital_id", None):
                 hospital_id = user.hospital_id
+            elif tenant_from_subdomain:
+                hospital_id = tenant_from_subdomain.id
+        elif tenant_from_subdomain:
+            hospital_id = tenant_from_subdomain.id
 
         token = set_current_hospital_id(hospital_id)
         try:

@@ -63,4 +63,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # session-authenticated POST/PUT/PATCH/DELETE from the real frontend
 # origin gets rejected in production even though CORS allowed the request
 # through.
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=CORS_ALLOWED_ORIGINS)  # noqa: F405
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "https://*.hms.polynexus.in",
+        "https://hms.polynexus.in",
+        "http://*.hms.polynexus.in",
+        "http://hms.polynexus.in",
+    ] + CORS_ALLOWED_ORIGINS,  # noqa: F405
+)

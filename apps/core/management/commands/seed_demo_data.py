@@ -92,6 +92,10 @@ class Command(BaseCommand):
             return user
 
         saas_owner = create_or_update_user("saas_owner@hospital-crm.com", "SaaS Platform", "Super Admin", is_staff=True, is_super=True)
+        admin_polynexus = create_or_update_user("admin@hms.polynexus.in", "System", "Admin", is_staff=True, is_super=True)
+        admin_polynexus.is_saas_admin = True
+        admin_polynexus.hospital = None
+        admin_polynexus.save(update_fields=["is_saas_admin", "hospital"])
         group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True)
         owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
         admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
