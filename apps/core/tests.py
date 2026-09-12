@@ -427,3 +427,78 @@ def test_emergency_access_log_reviewed_field_cannot_be_set_via_bare_patch(auth_c
     log.refresh_from_db()
     assert log.reviewed is False
 
+
+# --- config.settings.prod encryption-key gate -----------------------------
+#
+# Run in a subprocess: importing config.settings.prod in-process would both
+# fight the already-loaded test settings and, by design, raise on import.
+# django.setup() is the real thing being asserted — "does the app refuse to
+# boot", not "does a helper function return False".
+
+DEV_FERNET_KEY = "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs="
+DEV_GCM_KEY = "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw="
+REAL_KEY_A = "Zt8QpL3vX1mN7bS5dH0jK4rT6yW9cF2gA8eU1oI3sQ4="
+REAL_KEY_B = "Qw3rT6yU9iO2pA5sD8fG1hJ4kL7zX0cV3bN6mQ9wE2s="
+
+
+def _boot_prod_settings(**env_overrides):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    env = {
+        **os.environ,
+        "DJANGO_SETTINGS_MODULE": "config.settings.prod",
+        "SECRET_KEY": "a-real-looking-production-secret-value-for-tests",
+        "FIELD_HASH_KEY": "a-real-looking-blind-index-key-for-tests",
+        "FIELD_ENCRYPTION_KEY": REAL_KEY_A,
+        "FIELD_ENCRYPTION_KEY_V2": REAL_KEY_B,
+        "FIELD_ENCRYPTION_KEYS": "",
+        "FIELD_ENCRYPTION_KEYS_V2": "",
+        "ALLOWED_HOSTS": "api.example.com",
+        **env_overrides,
+    }
+    return subprocess.run(
+        [sys.executable, "-c", "import django; django.setup()"],
+        cwd=repo_root, env=env, capture_output=True, text=True,
+    )
+
+
+def test_prod_settings_boot_with_real_keys():
+    assert _boot_prod_settings().returncode == 0
+
+
+def test_prod_settings_reject_the_dev_fernet_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY=DEV_FERNET_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY(S)" in result.stderr
+
+
+def test_prod_settings_reject_the_dev_gcm_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY_V2=DEV_GCM_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
+
+
+def test_prod_settings_accept_a_rotation_list():
+    """Newest key first — the list form is what makes rotation possible at
+    all (apps.core.encryption encrypts under keys[0] and tries every key on
+    decrypt), and nothing in base.py defined these settings until now."""
+    result = _boot_prod_settings(
+        FIELD_ENCRYPTION_KEYS=f"{REAL_KEY_A},{REAL_KEY_B}",
+        FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{REAL_KEY_A}",
+    )
+    assert result.returncode == 0
+
+
+def test_prod_settings_reject_the_placeholder_hiding_in_a_rotation_list():
+    """The rotation list must not become a way around the placeholder
+    check — including as a trailing "just for decryption" key, since that
+    still means production is serving data encrypted under a key published
+    in this repo."""
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{DEV_GCM_KEY}")
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
+

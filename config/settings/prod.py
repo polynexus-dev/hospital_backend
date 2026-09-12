@@ -22,10 +22,27 @@ if not SECRET_KEY or "change-me" in SECRET_KEY or "insecure" in SECRET_KEY:  # n
 # deployment that forgot to set them encrypts patient data (and hashes
 # phone numbers for lookup) under a key anyone can read in this repo's
 # history.
-if not FIELD_ENCRYPTION_KEY or FIELD_ENCRYPTION_KEY == "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=":  # noqa: F405
-    raise RuntimeError("FIELD_ENCRYPTION_KEY is still the dev placeholder — set a real key in the production environment before starting.")
-if not FIELD_ENCRYPTION_KEY_V2 or FIELD_ENCRYPTION_KEY_V2 == "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw=":  # noqa: F405
-    raise RuntimeError("FIELD_ENCRYPTION_KEY_V2 is still the dev placeholder — set a real key in the production environment before starting.")
+_DEV_FERNET_KEY = "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs="
+_DEV_GCM_KEY = "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw="
+
+# Resolved the same way apps.core.encryption resolves them: the rotation
+# list wins when set, otherwise the single key. Checking only the singular
+# would leave FIELD_ENCRYPTION_KEYS_V2="<placeholder>" as a way to boot
+# production encrypting under a key that is public in this repo — i.e. the
+# rotation settings would be a hole in the check that exists to stop
+# exactly that.
+#
+# The placeholder is rejected anywhere in the list, not just as the
+# primary. Keeping it for decryption would mean production is still
+# serving data encrypted under a public key; that situation calls for
+# re-encrypting before deploying, not for carrying the key forward.
+_fernet_keys = FIELD_ENCRYPTION_KEYS or [FIELD_ENCRYPTION_KEY]  # noqa: F405
+_gcm_keys = FIELD_ENCRYPTION_KEYS_V2 or [FIELD_ENCRYPTION_KEY_V2]  # noqa: F405
+
+if not any(_fernet_keys) or _DEV_FERNET_KEY in _fernet_keys:
+    raise RuntimeError("FIELD_ENCRYPTION_KEY(S) is unset or still the dev placeholder — set a real key in the production environment before starting.")
+if not any(_gcm_keys) or _DEV_GCM_KEY in _gcm_keys:
+    raise RuntimeError("FIELD_ENCRYPTION_KEY_V2(S) is unset or still the dev placeholder — set a real key in the production environment before starting.")
 if not FIELD_HASH_KEY or "change-me" in FIELD_HASH_KEY or "insecure" in FIELD_HASH_KEY:  # noqa: F405
     raise RuntimeError("FIELD_HASH_KEY is still a placeholder — set a real key in the production environment before starting.")
 

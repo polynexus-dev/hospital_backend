@@ -31,12 +31,26 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=")
 FIELD_HASH_KEY = env("FIELD_HASH_KEY", default="dev-only-insecure-blind-index-key-change-me")
 
+# Rotation list, newest key first — the primary encrypts, every key is
+# tried on decrypt, so old ciphertext stays readable until each row is
+# re-saved under the new key. apps.core.encryption has always looked for
+# these (see _build_fernet / _build_gcm_keys) but nothing here defined
+# them, so the getattr always returned None and rotation was impossible
+# to configure: putting FIELD_ENCRYPTION_KEYS in a .env populated
+# os.environ without ever becoming a Django setting. Empty by default,
+# which falls back to the single-key settings above.
+FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=[])
+
 # AES-256-GCM key for new field encryption (apps.core.encryption._gcm_*) —
 # FIELD_ENCRYPTION_KEY/Fernet above is only still consulted to decrypt
 # values written before this key existed. Must be a urlsafe-base64
 # 32-byte key: `base64.urlsafe_b64encode(os.urandom(32))`. Same
 # fixed-dev-default / rejected-in-prod treatment as FIELD_ENCRYPTION_KEY.
 FIELD_ENCRYPTION_KEY_V2 = env("FIELD_ENCRYPTION_KEY_V2", default="UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw=")
+# Rotation list for the AES-256-GCM key — same newest-first semantics as
+# FIELD_ENCRYPTION_KEYS above (apps.core.encryption._gcm_encrypt always
+# encrypts under keys[0]).
+FIELD_ENCRYPTION_KEYS_V2 = env.list("FIELD_ENCRYPTION_KEYS_V2", default=[])
 
 DEBUG = env.bool("DEBUG", default=False)
 
