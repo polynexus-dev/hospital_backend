@@ -117,6 +117,10 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    # Layer-2 payload encryption -- must be FIRST so it can rewrite
+    # request.body before SecurityMiddleware or any other middleware reads it.
+    # Transparent no-op when PAYLOAD_ENCRYPTION_ENABLED=False.
+    "apps.core.middleware.PayloadEncryptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -153,6 +157,11 @@ ASGI_APPLICATION = "config.asgi.application"
 
 
 # Database
+# Payload encryption toggle (Layer 2 -- application-layer encrypt/decrypt).
+# Set True in production to hide all API payloads from browser DevTools.
+# Set False (default) in dev / Postman -- middleware becomes a no-op.
+PAYLOAD_ENCRYPTION_ENABLED = env.bool("PAYLOAD_ENCRYPTION_ENABLED", default=False)
+
 if env.bool("USE_SQLITE", default=False):
     DATABASES = {
         "default": {

@@ -1,12 +1,85 @@
+import uuid
+
+from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import AuditLog, EmergencyAccessLog
+from .payload_crypto import derive_shared_aes_key, get_server_public_key_b64
 from .permissions import CanReviewEmergencyAccess
 from .serializers import AuditLogSerializer, EmergencyAccessLogSerializer
+
+# Session TTL matches the refresh token lifetime (12 h by default).
+_SESSION_TTL_SECONDS = 60 * 60 * 12
+_SESSION_CACHE_PREFIX = "payload_enc_session:"
+
+
+class SessionKeyView(APIView):
+    """
+    POST /api/v1/session-key/
+
+    ECDH key-exchange handshake. The client sends its ephemeral P-256 public
+    key; the server derives the shared AES-256 key via ECDH + HKDF, caches it
+    under a random session_id, and returns its own public key so the client can
+    derive the same shared secret independently.
+
+    No authentication required -- the handshake happens before login.
+    The AuditMiddleware / TenantMiddleware are intentionally bypassed for this
+    endpoint (no user context yet).
+
+    Request body:
+        { "client_public_key": "<urlsafe-base64 uncompressed P-256 point>" }
+
+    Response:
+        {
+            "session_id": "<uuid>",
+            "server_public_key": "<urlsafe-base64 uncompressed P-256 point>"
+        }
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []  # rate-limit via nginx/WAF upstream
+
+    def post(self, request):
+        if not getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False):
+            return Response(
+                {"detail": "Payload encryption is not enabled on this server."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        client_public_key = request.data.get("client_public_key", "")
+        if not client_public_key:
+            return Response(
+                {"detail": "client_public_key is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            aes_key = derive_shared_aes_key(client_public_key)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        session_id = str(uuid.uuid4())
+        # Store as hex string — bytes are not JSON-serializable in all cache backends.
+        cache.set(
+            f"{_SESSION_CACHE_PREFIX}{session_id}",
+            aes_key.hex(),
+            timeout=_SESSION_TTL_SECONDS,
+        )
+
+        return Response(
+            {
+                "session_id": session_id,
+                "server_public_key": get_server_public_key_b64(),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class EmergencyAccessLogViewSet(viewsets.ReadOnlyModelViewSet):
