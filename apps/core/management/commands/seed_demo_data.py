@@ -97,8 +97,15 @@ class Command(BaseCommand):
         admin_polynexus.hospital = None
         admin_polynexus.save(update_fields=["is_saas_admin", "hospital"])
         group_owner = create_or_update_user("group_owner@polynexus.com", "Dr. Vikram", "Pol (Group Owner)", role=owner_role, is_staff=True)
-        owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=True, lang="mr")
-        admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=True)
+        owner_user = create_or_update_user("owner@demo-hospital.example", "Vikram", "Patil (Owner)", role=owner_role, is_staff=True, is_super=False, lang="mr")
+        owner_user.is_superuser = False
+        owner_user.is_saas_admin = False
+        owner_user.save(update_fields=["is_superuser", "is_saas_admin"])
+
+        admin_user = create_or_update_user("admin@demo-hospital.example", "System", "Admin", role=owner_role, is_staff=True, is_super=False)
+        admin_user.is_superuser = False
+        admin_user.is_saas_admin = False
+        admin_user.save(update_fields=["is_superuser", "is_saas_admin"])
         frontdesk_user = create_or_update_user("frontdesk@demo-hospital.example", "Priya", "Sharma (Reception)", dept=opd, role=front_desk_role, lang="mr")
         doctor_user = create_or_update_user("doctor@demo-hospital.example", "Dr. Ramesh", "Kulkarni", dept=opd, role=doctor_role, lang="mr")
         operator_user = create_or_update_user("operator@demo-hospital.example", "Amit", "Deshmukh (Call Center)", dept=opd, role=operator_role, lang="hi")

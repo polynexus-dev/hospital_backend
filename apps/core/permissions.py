@@ -82,7 +82,11 @@ class IsSaaSAdmin(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and (user.is_superuser or getattr(user, "is_saas_admin", False)))
+        if not (user and user.is_authenticated):
+            return False
+        if getattr(user, "hospital_id", None) is not None:
+            return False
+        return bool(user.is_superuser or getattr(user, "is_saas_admin", False))
 
 
 class CanReviewEmergencyAccess(BasePermission):

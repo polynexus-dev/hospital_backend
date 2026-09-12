@@ -23,7 +23,7 @@ from apps.core.models import Hospital
 
 users = [
     ('admin@hms.polynexus.in', 'System Admin', None, True, True),
-    ('owner@demo-hospital.example', 'Hospital Owner / Admin', 'demo-hospital', True, True),
+    ('owner@demo-hospital.example', 'Hospital Owner / Admin', 'demo-hospital', True, False),
     ('frontdesk@demo-hospital.example', 'Front Desk / Reception', 'demo-hospital', False, False),
     ('doctor@demo-hospital.example', 'OPD Doctor', 'demo-hospital', False, False),
     ('operator@demo-hospital.example', 'Telephony Operator', 'demo-hospital', False, False),
@@ -47,9 +47,13 @@ for email, role_desc, h_slug, is_staff, is_super in users:
         u.save()
         print(f'   [+] Created login account: {email} ({role_desc})')
     else:
+        u.is_staff = is_staff
+        u.is_superuser = is_super
+        u.is_saas_admin = (email == 'admin@hms.polynexus.in')
+        u.hospital = h if h_slug else None
         if not u.check_password('changeme123'):
             u.set_password('changeme123')
-            u.save()
+        u.save()
         print(f'   [OK] Verified login account: {email} ({role_desc})')
 " || true
 
