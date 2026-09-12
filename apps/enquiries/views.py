@@ -1,6 +1,7 @@
 import csv
 import io
 
+from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -12,7 +13,7 @@ from rest_framework.views import APIView
 from apps.core.models import Hospital
 from apps.core.viewsets import TenantScopedViewSetMixin
 
-from .models import Enquiry
+from .models import Enquiry, TreatmentEstimate
 from .serializers import (
     BulkImportRowSerializer,
     EnquirySerializer,
@@ -21,8 +22,10 @@ from .serializers import (
     MergeEnquirySerializer,
     MoveStageSerializer,
     ReassignEnquirySerializer,
+    TreatmentEstimateSerializer,
 )
 from .services import merge_enquiries, move_stage, reassign_enquiry
+from .treatment_estimate_pdf import render_treatment_estimate_pdf
 
 
 class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -104,6 +107,30 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         return Response({"created": created, "errors": errors}, status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=["get"], url_path="webhook-config")
+    def webhook_config(self, request):
+        hospital = request.user.hospital
+        if not hospital:
+            return Response({"detail": "No hospital tenant configured."}, status=status.HTTP_400_BAD_REQUEST)
+        token = str(hospital.lead_webhook_token)
+        webhook_url = request.build_absolute_uri(f"/api/v1/enquiries/lead-webhook/{token}/")
+        return Response({
+            "token": token,
+            "webhook_url": webhook_url,
+            "supported_sources": [c[0] for c in Enquiry.Source.choices],
+            "sample_payload": {
+                "name": "Suresh Patel",
+                "mobile": "+919876543210",
+                "email": "suresh.patel@example.com",
+                "source": "meta",
+                "campaign": "Orthopedics Joint Replacement Campaign 2026",
+                "service_requested": "Total Knee Replacement",
+                "utm_source": "facebook",
+                "utm_medium": "cpc",
+                "utm_campaign": "joint_pain_pune",
+            },
+        })
+
 
 class LeadWebhookView(APIView):
     """Public inbound lead-capture endpoint for website contact forms and
@@ -127,3 +154,31 @@ class LeadWebhookView(APIView):
 
         enquiry = Enquiry.objects.create(hospital=hospital, **serializer.validated_data)
         return Response({"id": enquiry.id}, status=status.HTTP_201_CREATED)
+
+
+class TreatmentEstimateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """IPD & Surgical counseling conversion pipeline & estimate generator."""
+
+    serializer_class = TreatmentEstimateSerializer
+    queryset = TreatmentEstimate.objects.all().select_related("patient", "enquiry", "doctor", "department", "hospital")
+    filterset_fields = ["stage", "insurance_preauth_status", "payment_mode", "doctor", "department", "patient"]
+    search_fields = ["procedure_name", "diagnosis", "patient__first_name", "patient__last_name", "enquiry__name", "notes"]
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def download_pdf(self, request, pk=None):
+        estimate = self.get_object()
+        pdf_bytes = render_treatment_estimate_pdf(estimate)
+        sanitized_name = "".join(c for c in estimate.procedure_name if c.isalnum() or c in (" ", "_", "-")).strip().replace(" ", "_")
+        filename = f"Estimate_EST-{estimate.pk:05d}_{sanitized_name or 'Surgical_Estimate'}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="convert-admission")
+    def convert_admission(self, request, pk=None):
+        """Marks estimate as converted to admission / OT schedule."""
+        estimate = self.get_object()
+        estimate.stage = TreatmentEstimate.Stage.CONVERTED
+        estimate.save(update_fields=["stage"])
+        return Response(TreatmentEstimateSerializer(estimate).data)
+

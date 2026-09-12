@@ -11,6 +11,7 @@ from .views import (
     NoShowEffectivenessView,
     ReminderDeliverySummaryView,
     RevenueBySourceView,
+    MISExportView,
 )
 
 router = DefaultRouter()
@@ -25,4 +26,5 @@ urlpatterns = router.urls + [
     path("reports/revenue-by-source/", RevenueBySourceView.as_view(), name="report-revenue-by-source"),
     path("reports/doctor-revenue/", DoctorRevenueView.as_view(), name="report-doctor-revenue"),
     path("reports/reminder-delivery/", ReminderDeliverySummaryView.as_view(), name="report-reminder-delivery"),
+    path("reports/mis-export/", MISExportView.as_view(), name="report-mis-export"),
 ]

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 
-from .models import Enquiry, EnquiryAssignmentChange, EnquiryStageChange
+from .models import Enquiry, EnquiryAssignmentChange, EnquiryStageChange, TreatmentEstimate
 
 
 class EnquirySerializer(serializers.ModelSerializer):
@@ -87,3 +87,61 @@ class LeadWebhookSerializer(serializers.Serializer):
     utm_content = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     landing_page = serializers.URLField(max_length=500, required=False, allow_blank=True, default="")
     referrer_url = serializers.URLField(max_length=500, required=False, allow_blank=True, default="")
+
+
+class TreatmentEstimateSerializer(serializers.ModelSerializer):
+    patient_name = serializers.SerializerMethodField()
+    patient_mobile = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TreatmentEstimate
+        fields = [
+            "id", "patient", "patient_name", "patient_mobile",
+            "enquiry", "doctor", "doctor_name", "department", "department_name",
+            "procedure_name", "diagnosis", "room_category", "stay_days",
+            "surgeon_fee", "ot_charges", "room_charges", "medicines_estimate", "implants_investigations",
+            "total_estimate", "payment_mode", "tpa_name", "insurance_preauth_status", "approved_preauth_amount",
+            "stage", "drop_reason", "notes", "valid_until", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_patient_name(self, obj) -> str:
+        if obj.patient:
+            return obj.patient.full_name
+        if obj.enquiry:
+            return obj.enquiry.name
+        return "Unknown Patient"
+
+    def get_patient_mobile(self, obj) -> str:
+        if obj.patient:
+            return getattr(obj.patient, "mobile", "")
+        if obj.enquiry:
+            return getattr(obj.enquiry, "mobile", "")
+        return ""
+
+    def get_doctor_name(self, obj) -> str:
+        if not obj.doctor:
+            return ""
+        if hasattr(obj.doctor, "user") and obj.doctor.user:
+            return f"Dr. {obj.doctor.user.get_full_name() or obj.doctor.user.username}"
+        return getattr(obj.doctor, "name", "Doctor")
+
+    def get_department_name(self, obj) -> str:
+        return obj.department.name if obj.department else ""
+
+    def validate(self, attrs):
+        # Auto-compute total_estimate if not explicitly passed or if components passed
+        components = [
+            attrs.get("surgeon_fee", getattr(self.instance, "surgeon_fee", 0)),
+            attrs.get("ot_charges", getattr(self.instance, "ot_charges", 0)),
+            attrs.get("room_charges", getattr(self.instance, "room_charges", 0)),
+            attrs.get("medicines_estimate", getattr(self.instance, "medicines_estimate", 0)),
+            attrs.get("implants_investigations", getattr(self.instance, "implants_investigations", 0)),
+        ]
+        calc_total = sum(c or 0 for c in components)
+        if not attrs.get("total_estimate") or attrs.get("total_estimate") == 0:
+            attrs["total_estimate"] = calc_total
+        return attrs
+

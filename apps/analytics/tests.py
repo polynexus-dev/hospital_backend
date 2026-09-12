@@ -342,3 +342,33 @@ def test_doctor_revenue_report_attributes_billing_to_the_completing_doctor(auth_
     row = next(r for r in response.data["rows"] if r["doctor_id"] == doctor.id)
     assert row["completed_appointments"] == 1
     assert row["billed_amount"] == Decimal("3000.00")
+
+
+@pytest.mark.django_db
+def test_daily_mis_preview_accepts_custom_date_window(auth_client, hospital):
+    today = timezone.localdate().strftime("%Y-%m-%d")
+    response = auth_client.get(f"/api/v1/reports/daily-mis-preview/?start={today}&end={today}")
+    assert response.status_code == 200
+    assert "summary" in response.data
+    assert "text" in response.data
+    assert hospital.name in response.data["text"]
+
+
+@pytest.mark.django_db
+def test_mis_export_pdf_returns_valid_document(auth_client, hospital):
+    today = timezone.localdate().strftime("%Y-%m-%d")
+    response = auth_client.get(f"/api/v1/reports/mis-export/?format=pdf&start={today}&end={today}")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.django_db
+def test_mis_export_csv_returns_valid_spreadsheet(auth_client, hospital):
+    today = timezone.localdate().strftime("%Y-%m-%d")
+    response = auth_client.get(f"/api/v1/reports/mis-export/?format=csv&start={today}&end={today}")
+    assert response.status_code == 200
+    assert "text/csv" in response["Content-Type"]
+    content = response.content.decode("utf-8")
+    assert "HOSPITAL EXECUTIVE MIS REPORT" in content
+    assert hospital.name in content

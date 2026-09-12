@@ -280,3 +280,37 @@ def test_prescription_download_pdf(auth_client, hospital, patient, user):
     assert len(res.content) > 1000
     assert res.content.startswith(b"%PDF")
 
+
+@pytest.mark.django_db
+def test_patient_recalls_hub_endpoint(auth_client, hospital):
+    from django.utils import timezone
+    from datetime import timedelta
+
+    now = timezone.now()
+    p1 = Patient.objects.create(
+        hospital=hospital, first_name="Ramesh", last_name="Shinde", mobile="9876500001",
+        next_recall_due_at=now - timedelta(days=2), recall_reason="Diabetic HbA1c Review",
+    )
+    p2 = Patient.objects.create(
+        hospital=hospital, first_name="Sunita", last_name="Jadhav", mobile="9876500002",
+        next_recall_due_at=now + timedelta(days=3), recall_reason="Post-Surgery Wound Dressing",
+    )
+
+    res = auth_client.get("/api/v1/patients/recalls/")
+    assert res.status_code == 200
+    assert "summary" in res.data
+    assert res.data["summary"]["overdue"] >= 1
+    assert len(res.data["results"]) >= 2
+
+    # Filter overdue
+    overdue_res = auth_client.get("/api/v1/patients/recalls/?status=overdue")
+    assert overdue_res.status_code == 200
+    assert any(r["id"] == p1.id for r in overdue_res.data["results"])
+    assert not any(r["id"] == p2.id for r in overdue_res.data["results"])
+
+    # Filter reason
+    reason_res = auth_client.get("/api/v1/patients/recalls/?reason=Diabetic")
+    assert reason_res.status_code == 200
+    assert any(r["id"] == p1.id for r in reason_res.data["results"])
+
+

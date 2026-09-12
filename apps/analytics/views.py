@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.http import HttpResponse
 from . import services
 from .models import DailyMISLog
 from .serializers import DailyMISLogSerializer
@@ -73,15 +74,91 @@ class ReminderDeliverySummaryView(BaseReportView):
 
 
 class DailyMISPreviewView(APIView):
-    """Lets the front desk / owner preview today's MIS without waiting for
-    the Celery beat schedule to fire."""
+    """Lets the front desk / owner preview MIS for today or any requested window."""
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
-        summary = services.daily_mis_summary(request.user.hospital)
-        return Response({"summary": summary, "text": services.render_daily_mis_text(request.user.hospital, summary)})
+        hospital = request.user.hospital
+        start_param = request.query_params.get("start")
+        end_param = request.query_params.get("end")
+        if start_param or end_param:
+            start, end = _parse_window(request)
+        else:
+            start, end = services._today_range()
+
+        summary = services.daily_mis_summary(hospital, start=start, end=end)
+        return Response({"summary": summary, "text": services.render_daily_mis_text(hospital, summary)})
+
+
+class MISExportView(APIView):
+    """Export executive MIS report as PDF or CSV."""
+
+    permission_classes = [IsAuthenticated]
+
+    def perform_content_negotiation(self, request, force=False):
+        # Return passthrough renderer so DRF does not raise 404 on ?format=pdf or ?format=csv
+        from rest_framework.renderers import BaseRenderer
+        return (BaseRenderer(), "*/*")
+
+    def get(self, request):
+        import csv
+        hospital = request.user.hospital
+        start, end = _parse_window(request)
+        start_str = start.strftime("%Y-%m-%d")
+        end_str = end.strftime("%Y-%m-%d")
+
+        summary = services.daily_mis_summary(hospital, start=start, end=end)
+        export_format = request.query_params.get("format", "pdf").lower()
+
+        dept_doctor_rows = services.department_doctor_volume(hospital, start, end)
+        rev_data = services.revenue_by_source(hospital, start, end)
+
+        if export_format == "csv":
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = f'attachment; filename="MIS_Report_{start_str}_to_{end_str}.csv"'
+            writer = csv.writer(response)
+            writer.writerow(["HOSPITAL EXECUTIVE MIS REPORT", hospital.name])
+            writer.writerow(["Period", f"{start_str} to {end_str}"])
+            writer.writerow([])
+
+            calls = summary.get("calls", {})
+            writer.writerow(["TELEPHONY PERFORMANCE"])
+            writer.writerow(["Metric", "Value"])
+            writer.writerow(["Calls Received", calls.get("received", 0)])
+            writer.writerow(["Calls Answered", calls.get("answered", 0)])
+            writer.writerow(["Calls Missed", calls.get("missed", 0)])
+            writer.writerow(["Pending Callbacks", summary.get("pending_callbacks", 0)])
+            writer.writerow([])
+
+            writer.writerow(["DEPARTMENT & DOCTOR CLINICAL FOOTFALL"])
+            writer.writerow(["Doctor", "Department", "Booked", "Completed", "No-Show"])
+            for r in dept_doctor_rows:
+                writer.writerow([r.get("doctor__name", "—"), r.get("doctor__department__name", "—"), r.get("booked", 0), r.get("completed", 0), r.get("no_show", 0)])
+            writer.writerow([])
+
+            writer.writerow(["ACQUISITION CHANNEL & REVENUE ATTRIBUTION"])
+            writer.writerow(["Source", "Enquiries", "Conversions", "Billed Amount (INR)"])
+            for r in rev_data.get("rows", []):
+                writer.writerow([r.get("source", ""), r.get("enquiry_count", 0), r.get("conversion_count", 0), r.get("billed_amount", 0)])
+
+            return response
+
+        # Default: PDF
+        from .mis_pdf import render_mis_pdf
+        pdf_bytes = render_mis_pdf(
+            hospital=hospital,
+            summary=summary,
+            dept_doctor_rows=dept_doctor_rows,
+            revenue_rows=rev_data.get("rows", []),
+            start_date=start_str,
+            end_date=end_str,
+            period_label="Executive",
+        )
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="MIS_Report_{start_str}_to_{end_str}.pdf"'
+        return response
 
 
 class DailyMISLogViewSet(viewsets.ReadOnlyModelViewSet):

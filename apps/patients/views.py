@@ -38,7 +38,7 @@ class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
     # search that would otherwise let those same excluded roles reach any
     # patient one at a time instead of via `list`.
     permission_classes = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission, ActionPermissionRequired]
-    action_permissions = {"lookup": "patients.view_patient", "timeline": "patients.view_patient"}
+    action_permissions = {"lookup": "patients.view_patient", "timeline": "patients.view_patient", "recalls": "patients.view_patient"}
     filterset_fields = ["is_active", "gender", "preferred_language"]
     # mobile/alternate_mobile are encrypted at rest (Part A #2) and
     # deliberately excluded here — SearchFilter's icontains lookup against
@@ -49,23 +49,7 @@ class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
     @action(detail=False, methods=["get"])
     def lookup(self, request):
         """Auto-identification by phone number — powers telephony screen-pop
-        and click-to-call (Part A §1).
-
-        Was `Patient.objects.filter(...)` directly — same class of bug as
-        the old TenantScopedViewSetMixin.get_queryset(): that call goes
-        through TenantManager, which only scopes by hospital when
-        tenancy.get_current_hospital_id() is set, and that contextvar is
-        never populated for this project's JWT-authenticated requests (see
-        apps.core.viewsets.TenantScopedViewSetMixin's docstring). So this
-        action returned matches from every hospital on the platform, not
-        just the caller's — verified empirically (a Hospital A front-desk
-        user could look up a Hospital B patient's full match by mobile
-        number) before switching it to self.get_queryset(), which is
-        correctly scoped by self.request.user.hospital_id.
-
-        mobile/alternate_mobile are now encrypted (Part A #2), so this can
-        no longer filter the columns directly — by_mobile() goes through
-        the blind-index columns instead (see PatientQuerySet.by_mobile)."""
+        and click-to-call (Part A §1)."""
         mobile = request.query_params.get("mobile", "").strip()
         if not mobile:
             return Response({"detail": "mobile query param is required."}, status=400)
@@ -73,11 +57,77 @@ class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
         serializer = PatientLookupSerializer(matches.distinct(), many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="recalls")
+    def recalls(self, request):
+        """Clinical recall & preventive care retention hub (§CRM Growth)."""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        now = timezone.now()
+        today = now.date()
+        week_ahead = today + timedelta(days=7)
+
+        qs = self.get_queryset().filter(next_recall_due_at__isnull=False)
+
+        # Compute summary counts across entire active patient pool for this hospital
+        overdue_count = qs.filter(next_recall_due_at__lt=now).count()
+        today_count = qs.filter(next_recall_due_at__date=today).count()
+        week_count = qs.filter(next_recall_due_at__date__gte=today, next_recall_due_at__date__lte=week_ahead).count()
+
+        # Apply user filters
+        filter_status = request.query_params.get("status")
+        if filter_status == "overdue":
+            qs = qs.filter(next_recall_due_at__lt=now)
+        elif filter_status == "due_today":
+            qs = qs.filter(next_recall_due_at__date=today)
+        elif filter_status == "due_this_week":
+            qs = qs.filter(next_recall_due_at__date__gte=today, next_recall_due_at__date__lte=week_ahead)
+        elif filter_status == "upcoming":
+            qs = qs.filter(next_recall_due_at__gt=now)
+
+        reason = request.query_params.get("reason")
+        if reason:
+            qs = qs.filter(recall_reason__icontains=reason)
+
+        qs = qs.order_by("next_recall_due_at")[:100]
+
+        items = []
+        for p in qs:
+            due_at = p.next_recall_due_at
+            if due_at < now:
+                urgency = "overdue"
+            elif due_at.date() == today:
+                urgency = "due_today"
+            else:
+                urgency = "upcoming"
+
+            items.append({
+                "id": p.id,
+                "full_name": p.full_name,
+                "uhid": getattr(p, "uhid", ""),
+                "mobile": getattr(p, "mobile", ""),
+                "preferred_language": p.preferred_language,
+                "next_recall_due_at": p.next_recall_due_at.isoformat(),
+                "recall_reason": p.recall_reason or "Preventive Clinical Follow-Up",
+                "urgency": urgency,
+            })
+
+        return Response({
+            "summary": {
+                "overdue": overdue_count,
+                "due_today": today_count,
+                "due_this_week": week_count,
+                "total_recalls": overdue_count + today_count + week_count,
+            },
+            "results": items,
+        })
+
     @action(detail=True, methods=["get"])
     def timeline(self, request, pk=None):
         patient = self.get_object()
         events = patient.timeline_events.all()[:200]
         return Response(TimelineEventSerializer(events, many=True).data)
+
 
 
 class DocumentViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):

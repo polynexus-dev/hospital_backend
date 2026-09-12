@@ -277,3 +277,52 @@ def test_bulk_import_reports_row_errors_without_failing_the_whole_batch(auth_cli
 def test_bulk_import_without_a_file_returns_400(auth_client):
     response = auth_client.post("/api/v1/enquiries/bulk-import/", {}, format="multipart")
     assert response.status_code == 400
+
+
+# --- webhook-config & TreatmentEstimate tests --------------------------------
+
+@pytest.mark.django_db
+def test_webhook_config_returns_hospital_token_and_payload(auth_client, hospital):
+    response = auth_client.get("/api/v1/enquiries/webhook-config/")
+    assert response.status_code == 200
+    assert response.data["token"] == str(hospital.lead_webhook_token)
+    assert str(hospital.lead_webhook_token) in response.data["webhook_url"]
+    assert "sample_payload" in response.data
+
+
+@pytest.mark.django_db
+def test_treatment_estimate_lifecycle_and_pdf(auth_client, hospital):
+    from apps.patients.models import Patient
+    patient = Patient.objects.create(hospital=hospital, first_name="Asha", last_name="Patil", mobile="9800000000")
+    payload = {
+        "patient": patient.id,
+        "procedure_name": "Total Knee Replacement",
+        "diagnosis": "Severe Osteoarthritis Grade IV",
+        "room_category": "private",
+        "stay_days": 3,
+        "surgeon_fee": "50000.00",
+        "ot_charges": "30000.00",
+        "room_charges": "15000.00",
+        "medicines_estimate": "25000.00",
+        "implants_investigations": "60000.00",
+        "payment_mode": "insurance",
+        "tpa_name": "Star Health",
+        "insurance_preauth_status": "approved",
+        "approved_preauth_amount": "170000.00",
+    }
+    create_res = auth_client.post("/api/v1/treatment-estimates/", payload, format="json")
+    assert create_res.status_code == 201
+    estimate_id = create_res.data["id"]
+    assert float(create_res.data["total_estimate"]) == 180000.00
+
+    # Test PDF download
+    pdf_res = auth_client.get(f"/api/v1/treatment-estimates/{estimate_id}/pdf/")
+    assert pdf_res.status_code == 200
+    assert pdf_res["Content-Type"] == "application/pdf"
+    assert len(pdf_res.content) > 1000
+
+    # Test convert to admission
+    convert_res = auth_client.post(f"/api/v1/treatment-estimates/{estimate_id}/convert-admission/")
+    assert convert_res.status_code == 200
+    assert convert_res.data["stage"] == "converted"
+
