@@ -3,14 +3,14 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: hospital_crm
-      POSTGRES_USER: polynexus
-      POSTGRES_PASSWORD: polynexus
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polynexus"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6381:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,7 +37,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -56,7 +56,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -75,7 +75,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://polynexus:polynexus@db:5432/hospital_crm
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
