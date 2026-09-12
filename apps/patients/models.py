@@ -81,11 +81,17 @@ class Patient(TenantScopedModel, SoftDeleteModel):
     national_id_number = EncryptedCharField(max_length=64, blank=True)
 
     insurance_provider = models.CharField(max_length=150, blank=True)
-    insurance_policy_number = models.CharField(max_length=100, blank=True)
+    # Encrypted at rest (Part A #2) — same reasoning as national_id_number
+    # above. Was briefly reverted to plaintext by a merge conflict
+    # resolution; restored here, see apps.patients.migrations.0014.
+    insurance_policy_number = EncryptedCharField(max_length=100, blank=True)
     employer = models.CharField(max_length=150, blank=True)
 
     attendant_name = models.CharField(max_length=150, blank=True)
-    attendant_phone = models.CharField(max_length=20, blank=True)
+    # Encrypted at rest (Part A #2) — a phone number identifying a
+    # non-patient third party (attendant/guardian), same sensitivity class
+    # as Patient.mobile.
+    attendant_phone = EncryptedCharField(max_length=20, blank=True)
     attendant_relation = models.CharField(max_length=50, blank=True, help_text="e.g. daughter, spouse")
     referring_doctor_name = models.CharField(
         max_length=150,

@@ -78,8 +78,8 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "phone", "first_name", "last_name",
             "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state",
             "department", "role", "role_name",
-            "preferred_language", "is_active", "is_staff", "available_hospitals", "date_joined",
-            "is_2fa_enabled", "requires_mfa",
+            "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
+            "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
         ]
         # `hospital` used to be writable here — perform_create already
         # silently overrides it on create regardless of what's posted, but
@@ -95,7 +95,17 @@ class UserSerializer(serializers.ModelSerializer):
         # disable_2fa actions (which prove control of the authenticator,
         # or the current password), never a bare PATCH. totp_secret itself
         # is never serialized here at all — it's not in `fields` above.
-        read_only_fields = ["id", "date_joined", "is_staff", "hospital", "is_2fa_enabled", "requires_mfa"]
+        #
+        # is_superuser/is_saas_admin are exposed (previously omitted from
+        # `fields` entirely, so `/users/me/` never told the frontend
+        # whether the caller was one) but, same as is_staff, read-only —
+        # a bare PATCH granting yourself either would be a direct
+        # privilege escalation, exactly the class of bug `hospital`'s
+        # comment above already describes for this same serializer.
+        read_only_fields = [
+            "id", "date_joined", "is_staff", "is_superuser", "is_saas_admin",
+            "hospital", "is_2fa_enabled", "requires_mfa",
+        ]
 
     def get_available_hospitals(self, obj):
         """Staff (ops/superadmin) get every active hospital on the

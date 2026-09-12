@@ -1,7 +1,14 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.permissions import (
+    ActionPermissionRequired,
+    RequiresClinicalDetailPermission,
+    RequiresViewPermission,
+    RoleBasedModelPermissions,
+)
 from apps.core.viewsets import SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
 from .models import Document, Patient
@@ -16,6 +23,22 @@ from .serializers import (
 class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
+    # list/retrieve stay open to every role whose template grants
+    # "patients" at all (see apps.core.tests.
+    # test_restricted_role_can_still_list_and_retrieve_patients — front
+    # desk/telephony/billing/clinical roles all legitimately need this).
+    # RequiresViewPermission only closes the gap for the few templates that
+    # deliberately omit "patients" entirely (hr_manager, purchase_manager,
+    # inventory_manager — see apps.accounts.permission_templates), who were
+    # never meant to see a patient record at all. lookup/timeline are
+    # custom actions RoleBasedModelPermissions never gates (see
+    # apps.core.tests.test_custom_actions_are_not_gated_by_the_model_permission_check)
+    # so they need the same check spelled out explicitly via
+    # ActionPermissionRequired — lookup in particular is a phone-number
+    # search that would otherwise let those same excluded roles reach any
+    # patient one at a time instead of via `list`.
+    permission_classes = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission, ActionPermissionRequired]
+    action_permissions = {"lookup": "patients.view_patient", "timeline": "patients.view_patient"}
     filterset_fields = ["is_active", "gender", "preferred_language"]
     # mobile/alternate_mobile are encrypted at rest (Part A #2) and
     # deliberately excluded here — SearchFilter's icontains lookup against
@@ -60,6 +83,11 @@ class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
 class DocumentViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     queryset = Document.objects.all()
+    # Same reasoning as PatientViewSet.permission_classes above — Document
+    # is in the same "patients" app, so the same templates that omit it
+    # (hr_manager, purchase_manager, inventory_manager) should not be able
+    # to read uploaded patient documents either.
+    permission_classes = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission]
     filterset_fields = ["patient", "category"]
 
     def perform_create(self, serializer):
@@ -75,6 +103,15 @@ class PrescriptionViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, view
 
     serializer_class = PrescriptionSerializer
     queryset = Prescription.objects.all()
+    # "patients" is a coarse, per-app Django permission (see
+    # apps.accounts.permission_templates's module docstring) — many
+    # non-clinical roles (front_desk, billing_executive, finance_manager)
+    # legitimately hold it for Patient demographics/billing, which would
+    # otherwise also implicitly cover this viewset's diagnosis/medications/
+    # lab_orders content. RequiresClinicalDetailPermission is the same
+    # extra gate every other clinical app (opd/ipd/pharmacy/laboratory/...)
+    # already applies for exactly this reason.
+    permission_classes = [IsAuthenticated, RoleBasedModelPermissions, RequiresClinicalDetailPermission]
     filterset_fields = ["patient", "doctor"]
     # diagnosis/notes are encrypted at rest (Part A #2) — see the same
     # caveat on PatientViewSet.search_fields above.

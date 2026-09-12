@@ -15,11 +15,11 @@ admin hand-building a bespoke role would expect a blank slate.
 """
 
 FULL_ACCESS_APPS = [
-    "accounts", "analytics", "appointments", "automation", "billing",
+    "abdm", "accounts", "analytics", "appointments", "automation", "billing",
     "bloodbank", "communications", "core", "emergency", "enquiries",
     "facilities", "feedback", "finance", "hr", "icu", "integrations",
     "inventory", "ipd", "laboratory", "nursing", "opd", "ot",
-    "packages", "patients", "pharmacy", "radiology", "referrals",
+    "packages", "patients", "pharmacy", "privacy", "radiology", "referrals",
     "saas_admin", "telephony", "tpa",
 ]
 
@@ -31,6 +31,7 @@ PERMISSION_TEMPLATES = {
     "hospital_administrator": {app: ["add", "change", "delete", "view"] for app in FULL_ACCESS_APPS},
     "doctor": {
         "patients": ["view", "add", "change"],
+        "abdm": ["view"],
         "appointments": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
@@ -50,6 +51,7 @@ PERMISSION_TEMPLATES = {
     },
     "front_desk": {
         "patients": ["view", "add", "change"],
+        "abdm": ["view", "add", "change"],
         "enquiries": ["view", "add", "change"],
         "appointments": ["view", "add", "change"],
         "packages": ["view", "add", "change"],
@@ -62,6 +64,7 @@ PERMISSION_TEMPLATES = {
     },
     "receptionist": {
         "patients": ["view", "add", "change"],
+        "abdm": ["view", "add", "change"],
         "enquiries": ["view", "add", "change"],
         "appointments": ["view", "add", "change"],
         "packages": ["view", "add", "change"],
@@ -177,6 +180,7 @@ PERMISSION_TEMPLATES = {
     },
     "insurance_tpa_executive": {
         "tpa": ["view", "add", "change", "delete"],
+        "abdm": ["view", "add", "change"],
         "billing": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
     },

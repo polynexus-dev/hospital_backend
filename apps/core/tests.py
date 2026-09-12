@@ -166,13 +166,48 @@ def test_restricted_role_cannot_create_a_patient(restricted_client):
 
 @pytest.mark.django_db
 def test_restricted_role_can_still_list_and_retrieve_patients(restricted_client, hospital, department):
-    """Read access is deliberately not gated by this permission class —
-    every role needs to see records relevant to its screens."""
+    """Read access isn't gated by RoleBasedModelPermissions itself — every
+    role whose template grants "patients" at all needs to see records
+    relevant to its screens, and Telephony Operator (restricted_client's
+    template) does hold "patients": ["view"]. That's not the same as read
+    access being wide open to every role regardless of template — see
+    test_role_without_patients_permission_cannot_read_patients_at_all
+    below for the roles PatientViewSet's RequiresViewPermission actually
+    does block."""
     from apps.patients.models import Patient
     patient = Patient.objects.create(hospital=hospital, first_name="Viewable", mobile="9000000002")
 
     assert restricted_client.get("/api/v1/patients/").status_code == 200
     assert restricted_client.get(f"/api/v1/patients/{patient.id}/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_role_without_patients_permission_cannot_read_patients_at_all(hospital, department):
+    """hr_manager/purchase_manager/inventory_manager templates (see
+    apps.accounts.permission_templates.PERMISSION_TEMPLATES) omit
+    "patients" entirely — unlike Telephony Operator above, these roles
+    have no patient-facing screen at all, so PatientViewSet's
+    RequiresViewPermission (and ActionPermissionRequired for the
+    lookup/timeline custom actions, which RoleBasedModelPermissions never
+    gates — see test_custom_actions_are_not_gated_by_the_model_permission_check)
+    should actually block them, not just leave it to tenant scoping."""
+    from apps.accounts.models import Role, User, assign_role
+    from apps.patients.models import Patient
+    from rest_framework.test import APIClient
+
+    role = Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER)
+    user = User.objects.create_user(email="hr@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(user, role)
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Confidential", mobile="9000000005")
+
+    assert client.get("/api/v1/patients/").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/").status_code == 403
+    assert client.get(f"/api/v1/patients/lookup/?mobile={patient.mobile}").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/timeline/").status_code == 403
+    assert client.get("/api/v1/documents/").status_code == 403
 
 
 @pytest.mark.django_db
@@ -337,4 +372,133 @@ def test_auditlog_raw_sql_delete_is_blocked_at_the_database_level(hospital):
             cursor.execute("DELETE FROM core_auditlog WHERE id = %s", [log.pk])
 
     assert AuditLog.objects.filter(pk=log.pk).exists()
+
+
+# --- EmergencyAccessLogViewSet: review surface for break-glass (Part A #6) --
+
+@pytest.mark.django_db
+def test_emergency_access_log_list_is_scoped_to_hospital(auth_client, hospital, other_hospital, user):
+    from apps.core.models import EmergencyAccessLog
+
+    mine = EmergencyAccessLog.objects.create(hospital=hospital, actor=user, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+    EmergencyAccessLog.objects.create(hospital=other_hospital, model_name="opd.Encounter", object_id="2", reason="unrelated")
+
+    response = auth_client.get("/api/v1/emergency-access-logs/")
+    ids = [row["id"] for row in response.data["results"]]
+    assert mine.id in ids
+    assert len(ids) == 1
+
+
+@pytest.mark.django_db
+def test_emergency_access_log_rejects_a_low_privilege_role(restricted_client):
+    """restricted_client carries the Telephony Operator template — not in
+    CanReviewEmergencyAccess.REVIEWER_TEMPLATES and not is_staff."""
+    response = restricted_client.get("/api/v1/emergency-access-logs/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_mark_reviewed_stamps_reviewer_and_timestamp_together(auth_client, hospital, user):
+    from apps.core.models import EmergencyAccessLog
+
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+
+    response = auth_client.post(f"/api/v1/emergency-access-logs/{log.id}/mark_reviewed/", {"review_notes": "Confirmed legitimate — on-call doctor was unreachable."}, format="json")
+
+    assert response.status_code == 200
+    log.refresh_from_db()
+    assert log.reviewed is True
+    assert log.reviewed_by_id == user.id
+    assert log.reviewed_at is not None
+    assert log.review_notes == "Confirmed legitimate — on-call doctor was unreachable."
+
+
+@pytest.mark.django_db
+def test_emergency_access_log_reviewed_field_cannot_be_set_via_bare_patch(auth_client, hospital):
+    """reviewed/reviewed_by/reviewed_at must only change together, through
+    mark_reviewed — otherwise a bare PATCH could set reviewed=True with no
+    reviewer attached, defeating the point of a reviewable log."""
+    from apps.core.models import EmergencyAccessLog
+
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+
+    response = auth_client.patch(f"/api/v1/emergency-access-logs/{log.id}/", {"reviewed": True}, format="json")
+    assert response.status_code == 405  # ReadOnlyModelViewSet — no update action at all
+    log.refresh_from_db()
+    assert log.reviewed is False
+
+
+# --- config.settings.prod encryption-key gate -----------------------------
+#
+# Run in a subprocess: importing config.settings.prod in-process would both
+# fight the already-loaded test settings and, by design, raise on import.
+# django.setup() is the real thing being asserted — "does the app refuse to
+# boot", not "does a helper function return False".
+
+DEV_FERNET_KEY = "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs="
+DEV_GCM_KEY = "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw="
+REAL_KEY_A = "Zt8QpL3vX1mN7bS5dH0jK4rT6yW9cF2gA8eU1oI3sQ4="
+REAL_KEY_B = "Qw3rT6yU9iO2pA5sD8fG1hJ4kL7zX0cV3bN6mQ9wE2s="
+
+
+def _boot_prod_settings(**env_overrides):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    env = {
+        **os.environ,
+        "DJANGO_SETTINGS_MODULE": "config.settings.prod",
+        "SECRET_KEY": "a-real-looking-production-secret-value-for-tests",
+        "FIELD_HASH_KEY": "a-real-looking-blind-index-key-for-tests",
+        "FIELD_ENCRYPTION_KEY": REAL_KEY_A,
+        "FIELD_ENCRYPTION_KEY_V2": REAL_KEY_B,
+        "FIELD_ENCRYPTION_KEYS": "",
+        "FIELD_ENCRYPTION_KEYS_V2": "",
+        "ALLOWED_HOSTS": "api.example.com",
+        **env_overrides,
+    }
+    return subprocess.run(
+        [sys.executable, "-c", "import django; django.setup()"],
+        cwd=repo_root, env=env, capture_output=True, text=True,
+    )
+
+
+def test_prod_settings_boot_with_real_keys():
+    assert _boot_prod_settings().returncode == 0
+
+
+def test_prod_settings_reject_the_dev_fernet_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY=DEV_FERNET_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY(S)" in result.stderr
+
+
+def test_prod_settings_reject_the_dev_gcm_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY_V2=DEV_GCM_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
+
+
+def test_prod_settings_accept_a_rotation_list():
+    """Newest key first — the list form is what makes rotation possible at
+    all (apps.core.encryption encrypts under keys[0] and tries every key on
+    decrypt), and nothing in base.py defined these settings until now."""
+    result = _boot_prod_settings(
+        FIELD_ENCRYPTION_KEYS=f"{REAL_KEY_A},{REAL_KEY_B}",
+        FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{REAL_KEY_A}",
+    )
+    assert result.returncode == 0
+
+
+def test_prod_settings_reject_the_placeholder_hiding_in_a_rotation_list():
+    """The rotation list must not become a way around the placeholder
+    check — including as a trailing "just for decryption" key, since that
+    still means production is serving data encrypted under a key published
+    in this repo."""
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{DEV_GCM_KEY}")
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
 

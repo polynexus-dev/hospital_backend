@@ -243,3 +243,17 @@ def test_prescription_isolation(auth_client, other_hospital, other_user, other_p
     theirs = Prescription.objects.create(hospital=other_hospital, patient=other_patient, doctor=other_user, diagnosis="Theirs")
     assert auth_client.get(f"/api/v1/prescriptions/{theirs.id}/").status_code == 404
     assert auth_client.delete(f"/api/v1/prescriptions/{theirs.id}/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_restricted_role_without_clinical_detail_cannot_read_prescriptions(restricted_client, hospital, patient):
+    """Telephony Operator holds "patients": ["view"] (per
+    apps.accounts.permission_templates) so it can look up a caller's
+    demographic record — that per-app grant would otherwise also cover
+    Prescription (diagnosis/medications/lab_orders), which is why
+    PrescriptionViewSet adds RequiresClinicalDetailPermission on top,
+    same as every other clinical app."""
+    prescription = Prescription.objects.create(hospital=hospital, patient=patient, diagnosis="Confidential diagnosis")
+
+    assert restricted_client.get("/api/v1/prescriptions/").status_code == 403
+    assert restricted_client.get(f"/api/v1/prescriptions/{prescription.id}/").status_code == 403

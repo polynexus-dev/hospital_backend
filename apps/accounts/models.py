@@ -26,6 +26,17 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        # `manage.py createsuperuser` is how this platform's operator
+        # account gets made, and an operator who can't see the SaaS
+        # console is not what anyone means by "superuser" here.
+        # apps.core.permissions.IsSaaSAdmin already treats is_superuser as
+        # sufficient on its own, so this changes no permission decision —
+        # it makes the *flag* match, which is what the product UI reads to
+        # decide whether to show the SaaS console at all. setdefault, not
+        # a hard assignment: `create_superuser(..., is_saas_admin=False)`
+        # still gets you a pure-infrastructure account with no operator
+        # persona in the UI.
+        extra_fields.setdefault("is_saas_admin", True)
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
