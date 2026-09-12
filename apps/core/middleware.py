@@ -66,7 +66,7 @@ class TenantMiddleware:
         hospital_id = None
         user = getattr(request, "user", None)
 
-        subdomain = get_subdomain_from_request(request)
+        subdomain = request.headers.get("X-Tenant") or get_subdomain_from_request(request)
         tenant_from_subdomain = None
         if subdomain and subdomain not in RESERVED_HOSPITAL_SLUGS:
             from .models import Hospital
