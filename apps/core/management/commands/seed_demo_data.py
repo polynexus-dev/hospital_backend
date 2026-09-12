@@ -18,6 +18,8 @@ from apps.patients.models import Document, Patient, Prescription, TimelineEvent,
 from apps.referrals.models import FieldVisit, ReferralRecord, ReferringDoctor
 from apps.telephony.models import Call, CallbackTask
 from apps.tpa.models import PreAuthRequest, TPACompany
+from apps.saas_admin.models import TenantSubscription, TenantInvoice
+from apps.saas_admin.services import generate_invoice_number
 
 
 class Command(BaseCommand):
@@ -1013,6 +1015,34 @@ class Command(BaseCommand):
                 "checklist": {"id_proof": True, "doctor_prescription": True, "discharge_summary": False},
             },
         )
+
+        # 16. SaaS Tenant Subscriptions and Invoices
+        for h in Hospital.objects.all():
+            sub, _ = TenantSubscription.objects.get_or_create(
+                hospital=h,
+                defaults={
+                    "tier": "enterprise" if any(x in h.name for x in ["Apollo", "Max"]) else "pro",
+                    "billing_cycle": "monthly",
+                    "base_price": 49999.00 if "Apollo" in h.name else 24999.00,
+                    "max_staff_users": 50,
+                    "status": "active",
+                    "started_at": timezone.now().date() - datetime.timedelta(days=60),
+                    "next_billing_date": timezone.now().date() + datetime.timedelta(days=30),
+                },
+            )
+            if not TenantInvoice.objects.filter(hospital=h).exists():
+                inv_num = generate_invoice_number()
+                TenantInvoice.objects.create(
+                    hospital=h,
+                    subscription=sub,
+                    invoice_number=inv_num,
+                    billing_period_start=sub.started_at,
+                    billing_period_end=sub.started_at + datetime.timedelta(days=30),
+                    due_date=sub.started_at + datetime.timedelta(days=45),
+                    amount=sub.base_price,
+                    status="paid" if "Apollo" in h.name else "unpaid",
+                    paid_at=timezone.now() if "Apollo" in h.name else None,
+                )
 
         # Print success table
         self.stdout.write(self.style.SUCCESS("\n========================================================"))
