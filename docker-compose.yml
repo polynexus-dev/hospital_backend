@@ -35,6 +35,7 @@ services:
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
+      ALLOWED_HOSTS: ".hms.polynexus.in,localhost,127.0.0.1"
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
       DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm

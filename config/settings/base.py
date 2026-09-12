@@ -54,7 +54,11 @@ FIELD_ENCRYPTION_KEYS_V2 = env.list("FIELD_ENCRYPTION_KEYS_V2", default=[])
 
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", ".hms.polynexus.in"])
+_allowed_hosts = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+for h in [".hms.polynexus.in", "app.hms.polynexus.in", "localhost", "127.0.0.1"]:
+    if h not in _allowed_hosts:
+        _allowed_hosts.append(h)
+ALLOWED_HOSTS = _allowed_hosts
 
 
 # Application definition
