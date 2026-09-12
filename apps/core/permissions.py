@@ -84,9 +84,11 @@ class IsSaaSAdmin(BasePermission):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        if getattr(user, "hospital_id", None) is not None:
-            return False
-        return bool(user.is_superuser or getattr(user, "is_saas_admin", False))
+        if getattr(user, "is_saas_admin", False):
+            return True
+        if user.is_superuser and not getattr(user, "hospital_id", None):
+            return True
+        return False
 
 
 class CanReviewEmergencyAccess(BasePermission):
