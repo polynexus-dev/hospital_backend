@@ -622,7 +622,8 @@ class Command(BaseCommand):
                 "operator": operator_user,
                 "started_at": timezone.now() - datetime.timedelta(hours=5),
                 "duration_seconds": 142,
-                "call_reason": "OPD Appointment Inquiry & Timing Confirmation",
+                "call_reason": Call.CallReason.OPD,
+                "notes": "OPD Appointment Inquiry & Timing Confirmation",
                 "ivr_path": "Main Menu > OPD > Operator",
             },
         )
