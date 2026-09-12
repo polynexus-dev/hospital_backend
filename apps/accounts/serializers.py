@@ -71,13 +71,17 @@ class UserSerializer(serializers.ModelSerializer):
     hospital_city = serializers.CharField(source="hospital.city", read_only=True)
     hospital_state = serializers.CharField(source="hospital.state", read_only=True)
     available_hospitals = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+    role_domain = serializers.SerializerMethodField()
+    hospital_enabled_modules = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "email", "phone", "first_name", "last_name",
             "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state",
-            "department", "role", "role_name",
+            "hospital_enabled_modules",
+            "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
             "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
         ]
@@ -106,6 +110,23 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "date_joined", "is_staff", "is_superuser", "is_saas_admin",
             "hospital", "is_2fa_enabled", "requires_mfa",
         ]
+
+    def get_permissions(self, obj):
+        """Flat `app_label.codename` strings — PermissionsMixin already
+        computes exactly this shape (and already special-cases
+        is_superuser to return every permission), so this just surfaces
+        what Django's own auth backend already derives from the user's
+        role group, no new logic. Frontend nav-gating (navConfig.hasNavAccess)
+        and route-gating (RequirePermission) both key off this."""
+        return sorted(obj.get_all_permissions())
+
+    def get_role_domain(self, obj):
+        """Drives the CRM/ERP sidebar switch (see Role.domain's docstring)
+        — None when the user has no role at all (e.g. a bare superuser)."""
+        return obj.role.domain if obj.role_id else None
+
+    def get_hospital_enabled_modules(self, obj):
+        return obj.hospital.enabled_modules if obj.hospital_id else []
 
     def get_available_hospitals(self, obj):
         """Staff (ops/superadmin) get every active hospital on the

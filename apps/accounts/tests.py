@@ -173,6 +173,47 @@ def test_users_me_returns_the_authenticated_user(auth_client, user):
     assert response.data["email"] == user.email
 
 
+# --- /users/me/: permissions, role_domain, hospital_enabled_modules ------
+#
+# These three fields drive the frontend's CRM/ERP nav switch and route
+# gating (navConfig.hasNavAccess, RequirePermission) entirely client-side —
+# they used to be computed on the frontend `User` type and read everywhere,
+# but UserSerializer never actually included them, so every permission/
+# domain/module check was silently operating on `undefined`. These pin the
+# fix down.
+
+@pytest.mark.django_db
+def test_users_me_includes_permissions_granted_by_the_role_template(auth_client, user):
+    """`user` fixture's role applies the `admin` template, which grants
+    full CRUD on `core` (see permission_templates.py) — confirms
+    get_all_permissions() surfaces as the flat "app_label.codename" list
+    the frontend expects, not e.g. a queryset or empty."""
+    response = auth_client.get("/api/v1/users/me/")
+    assert "core.add_department" in response.data["permissions"]
+
+
+@pytest.mark.django_db
+def test_users_me_role_domain_reflects_the_roles_domain_field(auth_client, user, role):
+    """`role` fixture leaves `domain` at its model default (`both`)."""
+    response = auth_client.get("/api/v1/users/me/")
+    assert response.data["role_domain"] == "both"
+
+
+@pytest.mark.django_db
+def test_users_me_role_domain_is_null_without_a_role(api_client, hospital, department):
+    roleless = User.objects.create_user(email="noroleyet@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    api_client.force_authenticate(user=roleless)
+
+    response = api_client.get("/api/v1/users/me/")
+    assert response.data["role_domain"] is None
+
+
+@pytest.mark.django_db
+def test_users_me_hospital_enabled_modules_matches_the_hospital(auth_client, hospital):
+    response = auth_client.get("/api/v1/users/me/")
+    assert response.data["hospital_enabled_modules"] == hospital.enabled_modules
+
+
 @pytest.mark.django_db
 def test_change_password_rejects_wrong_old_password(auth_client, user):
     response = auth_client.post("/api/v1/users/change_password/", {"old_password": "wrong", "new_password": "newpass1234"}, format="json")
