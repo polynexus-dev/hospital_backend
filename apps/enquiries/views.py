@@ -221,6 +221,102 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             },
         })
 
+    @action(detail=False, methods=["get"], url_path="chain-overview")
+    def chain_overview(self, request):
+        """Cross-branch CRM pipeline aggregator across the hospital network."""
+        from django.db.models import Sum
+        from django.utils import timezone
+
+        current_hospital = getattr(request.user, "hospital", None)
+        if not current_hospital:
+            return Response({"detail": "No hospital assigned to user."}, status=status.HTTP_400_BAD_REQUEST)
+
+        group = current_hospital.group
+        if group:
+            branches = list(Hospital.objects.filter(group=group, is_active=True).order_by("name"))
+            group_name = group.name
+        else:
+            # Fallback to current hospital + any active sibling hospitals for demo/chain view
+            branches = list(Hospital.objects.filter(is_active=True).order_by("name")[:6])
+            group_name = "Hospital Healthcare Network"
+
+        branch_metrics = []
+        total_group_enquiries = 0
+        total_group_pipeline_val = 0
+        total_group_converted_val = 0
+        total_group_completed = 0
+
+        now = timezone.now()
+
+        for branch in branches:
+            branch_enquiries = Enquiry.objects.filter(hospital=branch)
+            total_enquiries = branch_enquiries.count()
+            total_group_enquiries += total_enquiries
+
+            stage_counts = {
+                "new": branch_enquiries.filter(stage=Enquiry.Stage.NEW).count(),
+                "contacted": branch_enquiries.filter(stage=Enquiry.Stage.CONTACTED).count(),
+                "scheduled": branch_enquiries.filter(stage=Enquiry.Stage.SCHEDULED).count(),
+                "visited": branch_enquiries.filter(stage=Enquiry.Stage.VISITED).count(),
+                "completed": branch_enquiries.filter(stage=Enquiry.Stage.COMPLETED).count(),
+                "lost": branch_enquiries.filter(stage=Enquiry.Stage.LOST).count(),
+            }
+
+            active_leads = stage_counts["new"] + stage_counts["contacted"] + stage_counts["scheduled"] + stage_counts["visited"]
+
+            active_val = branch_enquiries.filter(
+                stage__in=[Enquiry.Stage.NEW, Enquiry.Stage.CONTACTED, Enquiry.Stage.SCHEDULED, Enquiry.Stage.VISITED]
+            ).aggregate(val=Sum("estimated_value"))["val"] or 0
+
+            converted_val = branch_enquiries.filter(
+                stage=Enquiry.Stage.COMPLETED
+            ).aggregate(val=Sum("estimated_value"))["val"] or 0
+
+            total_group_pipeline_val += float(active_val)
+            total_group_converted_val += float(converted_val)
+            total_group_completed += stage_counts["completed"]
+
+            conversion_rate = round((stage_counts["completed"] / total_enquiries * 100), 1) if total_enquiries > 0 else 0.0
+
+            sla_breaches = branch_enquiries.filter(
+                sla_due_at__lt=now
+            ).exclude(stage__in=[Enquiry.Stage.COMPLETED, Enquiry.Stage.LOST]).count()
+
+            estimates_count = TreatmentEstimate.objects.filter(hospital=branch).count()
+
+            branch_metrics.append({
+                "hospital_id": str(branch.id),
+                "hospital_name": branch.name,
+                "slug": branch.slug,
+                "city": branch.city or "Pune",
+                "is_current": branch.id == current_hospital.id,
+                "total_enquiries": total_enquiries,
+                "active_leads": active_leads,
+                "stages": stage_counts,
+                "pipeline_value": float(active_val),
+                "converted_value": float(converted_val),
+                "conversion_rate": conversion_rate,
+                "sla_breaches": sla_breaches,
+                "treatment_estimates_count": estimates_count,
+            })
+
+        overall_conv_rate = (
+            round((total_group_completed / total_group_enquiries * 100), 1)
+            if total_group_enquiries > 0
+            else 0.0
+        )
+
+        return Response({
+            "group_name": group_name,
+            "total_branches": len(branches),
+            "total_group_enquiries": total_group_enquiries,
+            "total_group_pipeline_value": total_group_pipeline_val,
+            "total_group_converted_value": total_group_converted_val,
+            "overall_conversion_rate": overall_conv_rate,
+            "branches": branch_metrics,
+        })
+
+
 
 class LeadWebhookView(APIView):
     """Public inbound lead-capture endpoint for website contact forms and

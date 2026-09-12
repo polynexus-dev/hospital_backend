@@ -4,7 +4,15 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.enquiries.models import Enquiry, EnquiryAssignmentChange, EnquiryStageChange
-from apps.enquiries.services import assign_enquiry, find_duplicates
+from apps.enquiries.scoring import (
+    MIN_TRAINING_SAMPLES,
+    _heuristic_score,
+    _train_model,
+    extract_features,
+    recompute_hospital_scores,
+    score_enquiry,
+)
+from apps.enquiries.services import assign_enquiry, find_duplicates, move_stage
 
 
 @pytest.mark.django_db
@@ -360,5 +368,180 @@ def test_export_csv_and_history_and_notes(auth_client, hospital):
     assert history_res.status_code == 200
     assert len(history_res.data["stage_changes"]) >= 1
     assert history_res.data["stage_changes"][0]["to_stage"] == "contacted"
+
+
+# --- Lead scoring (apps.enquiries.scoring) ----------------------------------
+#
+# Two tiers, tested separately and deliberately: the heuristic (always
+# available, day-one) and the trained model (only once a hospital has real
+# closed-enquiry history — see MIN_TRAINING_SAMPLES). A test that only
+# compares final scores can't tell which tier actually produced them, since
+# the heuristic and a well-trained model would often agree on direction —
+# so the trained-model tests below call `_train_model`/`score_enquiry`
+# directly with an explicit `model=`, not through the day-one heuristic path.
+
+def _make_closed_enquiry(hospital, *, mobile, good: bool):
+    """`good=True` -> urgent/referral/has-estimate, moved to COMPLETED.
+    `good=False` -> low-priority/other-source/no-estimate, moved to LOST.
+    Deliberately leaves `department` unset on both — apps.enquiries.signals'
+    auto-assignment would otherwise inject `assigned_to` inconsistently and
+    muddy the two groups' features for no reason relevant to this test."""
+    enquiry = Enquiry.objects.create(
+        hospital=hospital,
+        name="Synthetic Lead",
+        mobile=mobile,
+        source=Enquiry.Source.REFERRAL if good else Enquiry.Source.OTHER,
+        urgency=Enquiry.Urgency.URGENT if good else Enquiry.Urgency.LOW,
+        estimated_value=50000 if good else None,
+    )
+    move_stage(enquiry, Enquiry.Stage.COMPLETED if good else Enquiry.Stage.LOST)
+    return enquiry
+
+
+@pytest.mark.django_db
+def test_extract_features_reads_the_documented_signals(hospital, department, user):
+    enquiry = Enquiry.objects.create(
+        hospital=hospital, name="Priya Deshmukh", mobile="9800011111",
+        source=Enquiry.Source.WALK_IN, urgency=Enquiry.Urgency.HIGH,
+        department=department, estimated_value=15000,
+    )
+    features = extract_features(enquiry)
+    assert features["urgency"] == 2  # high
+    assert features["has_department"] == 1
+    assert features["has_estimated_value"] == 1
+    assert features["source"] == Enquiry.Source.WALK_IN
+
+
+@pytest.mark.django_db
+def test_heuristic_score_rewards_urgent_referral_leads_over_low_priority_ones(hospital):
+    strong = Enquiry.objects.create(
+        hospital=hospital, name="A", mobile="9800022221", source=Enquiry.Source.REFERRAL,
+        urgency=Enquiry.Urgency.URGENT, estimated_value=20000,
+    )
+    weak = Enquiry.objects.create(
+        hospital=hospital, name="B", mobile="9800022222", source=Enquiry.Source.OTHER,
+        urgency=Enquiry.Urgency.LOW,
+    )
+    assert _heuristic_score(strong) > _heuristic_score(weak)
+
+
+@pytest.mark.django_db
+def test_heuristic_score_is_capped_between_0_and_100(hospital, department, user):
+    maxed = Enquiry.objects.create(
+        hospital=hospital, name="Maxed", mobile="9800033331", source=Enquiry.Source.REFERRAL,
+        urgency=Enquiry.Urgency.URGENT, department=department, estimated_value=999999,
+    )
+    assert 0 <= _heuristic_score(maxed) <= 100
+
+
+@pytest.mark.django_db
+def test_enquiry_creation_sets_a_score_automatically(hospital):
+    """Pins the signals.py wiring — a plain create() through the ORM (not
+    just the API) must end up with a real, non-zero score for an
+    otherwise-qualified lead, with no caller having to ask for it."""
+    enquiry = Enquiry.objects.create(
+        hospital=hospital, name="Auto Scored", mobile="9800044441",
+        source=Enquiry.Source.REFERRAL, urgency=Enquiry.Urgency.HIGH,
+    )
+    enquiry.refresh_from_db()
+    assert enquiry.score > 0
+
+
+@pytest.mark.django_db
+def test_train_model_returns_none_below_the_minimum_sample_threshold(hospital):
+    for i in range(10):
+        _make_closed_enquiry(hospital, mobile=f"98001{i:05d}", good=(i % 2 == 0))
+    assert _train_model(hospital) is None
+
+
+@pytest.mark.django_db
+def test_train_model_returns_none_for_a_single_class_training_set(hospital):
+    """MIN_TRAINING_SAMPLES rows, but every single one converted — logistic
+    regression has no boundary to learn from a training set with only one
+    outcome, so this must degrade to the heuristic, not raise."""
+    for i in range(MIN_TRAINING_SAMPLES + 5):
+        _make_closed_enquiry(hospital, mobile=f"98002{i:05d}", good=True)
+    assert _train_model(hospital) is None
+
+
+@pytest.mark.django_db
+def test_train_model_fits_a_classifier_that_ranks_a_good_lead_above_a_bad_one(hospital):
+    for i in range(30):
+        _make_closed_enquiry(hospital, mobile=f"98003{i:05d}", good=True)
+    for i in range(30):
+        _make_closed_enquiry(hospital, mobile=f"98004{i:05d}", good=False)
+
+    model = _train_model(hospital)
+    assert model is not None
+
+    good_open = Enquiry.objects.create(
+        hospital=hospital, name="Good Open", mobile="9800055551",
+        source=Enquiry.Source.REFERRAL, urgency=Enquiry.Urgency.URGENT, estimated_value=50000,
+    )
+    bad_open = Enquiry.objects.create(
+        hospital=hospital, name="Bad Open", mobile="9800055552",
+        source=Enquiry.Source.OTHER, urgency=Enquiry.Urgency.LOW,
+    )
+    assert score_enquiry(good_open, model=model) > score_enquiry(bad_open, model=model)
+
+
+@pytest.mark.django_db
+def test_training_never_pools_another_hospitals_enquiries(hospital, other_hospital):
+    """The isolation proof: hospital's own history is too thin to train on
+    by itself, and stays that way even though other_hospital has plenty of
+    well-separated closed enquiries sitting in the same table."""
+    for i in range(30):
+        _make_closed_enquiry(other_hospital, mobile=f"98005{i:05d}", good=True)
+    for i in range(30):
+        _make_closed_enquiry(other_hospital, mobile=f"98006{i:05d}", good=False)
+    for i in range(5):
+        _make_closed_enquiry(hospital, mobile=f"98007{i:05d}", good=(i % 2 == 0))
+
+    assert _train_model(other_hospital) is not None
+    assert _train_model(hospital) is None
+
+
+@pytest.mark.django_db
+def test_recompute_hospital_scores_only_touches_open_stage_enquiries(hospital):
+    closed = _make_closed_enquiry(hospital, mobile="9800066661", good=True)
+    closed_score_before = closed.score
+
+    recompute_hospital_scores(hospital)
+
+    closed.refresh_from_db()
+    assert closed.score == closed_score_before
+
+
+@pytest.mark.django_db
+def test_recompute_hospital_scores_updates_open_enquiries_and_returns_a_change_count(hospital):
+    enquiry = Enquiry.objects.create(
+        hospital=hospital, name="Needs Rescoring", mobile="9800077771",
+        source=Enquiry.Source.REFERRAL, urgency=Enquiry.Urgency.URGENT,
+    )
+    # Force a score that's obviously wrong for this enquiry's own features,
+    # so recompute has something real to correct.
+    Enquiry.objects.filter(pk=enquiry.pk).update(score=0)
+
+    updated_count = recompute_hospital_scores(hospital)
+
+    enquiry.refresh_from_db()
+    assert updated_count >= 1
+    assert enquiry.score > 0
+
+
+@pytest.mark.django_db
+def test_recompute_enquiry_scores_task_skips_inactive_hospitals(hospital):
+    from apps.enquiries.tasks import recompute_enquiry_scores
+
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+
+    enquiry = Enquiry.objects.create(hospital=hospital, name="Inactive Hosp", mobile="9800088881", source=Enquiry.Source.REFERRAL)
+    Enquiry.objects.filter(pk=enquiry.pk).update(score=0)
+
+    recompute_enquiry_scores()
+
+    enquiry.refresh_from_db()
+    assert enquiry.score == 0  # untouched — the hospital is inactive, so the task never reaches it
 
 

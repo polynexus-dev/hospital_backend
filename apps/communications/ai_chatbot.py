@@ -1,10 +1,18 @@
 """
-Interactive 24x7 assistant. This is a scripted (button-driven) flow, not an
-LLM — every branch below reads real tenant data (Doctor/Slot/Hospital) and,
-for bookings, calls the same `book_appointment` service the front-desk UI
-uses, so a confirmed booking here is a real Appointment row, not a canned
-success message. See `AIChatbotView` for how `hospital` gets resolved and
-threaded in.
+Interactive 24x7 assistant. `process_interactive_chat_action` itself is a
+scripted (button-driven) flow, not an LLM — every branch reads real tenant
+data (Doctor/Slot/Hospital) and, for bookings, calls the same
+`book_appointment` service the front-desk UI uses, so a confirmed booking
+here is a real Appointment row, not a canned success message. See
+`AIChatbotView` for how `hospital` gets resolved and threaded in.
+
+`process_free_text_message` is the one entry point that *does* touch a
+model — it hands free text to `llm_router.classify_free_text_intent`
+(a self-hosted Ollama call, see settings.OLLAMA_*) purely to pick which of
+the scripted branches above to jump into. The model never sees the
+conversation again after that single classification, and never generates
+any text a patient reads — this file's hand-written, tested copy still
+owns every word of every reply.
 """
 from typing import Any, Dict, List, Optional
 
@@ -251,6 +259,39 @@ def process_interactive_chat_action(
     return process_interactive_chat_action("main_menu", payload, preferred_language, hospital=hospital)
 
 
+_DIDNT_UNDERSTAND = {
+    "mr": "मला ते नीट समजले नाही — मी खालील गोष्टींमध्ये मदत करू शकतो:",
+    "hi": "मुझे यह ठीक से समझ नहीं आया — मैं इनमें मदद कर सकता हूँ:",
+    "en": "I'm not sure I understood that — here's what I can help with:",
+}
+
+
+def process_free_text_message(
+    message: str,
+    preferred_language: str = "en",
+    hospital=None,
+) -> Dict[str, Any]:
+    """Entry point for free-text input (the widget's text box, or an
+    inbound WhatsApp/SMS message) — classifies `message` into one of the
+    known button actions via Ollama, then hands off to
+    `process_interactive_chat_action` exactly as if that button had been
+    clicked. An unreachable/unclear model just shows the main menu with an
+    acknowledgment that we didn't understand, never an error the patient
+    can't act on — see `llm_router.classify_free_text_intent`'s own
+    fail-safe default."""
+    from .llm_router import classify_free_text_intent
+
+    intent = classify_free_text_intent(message)
+
+    if intent == "unclear":
+        result = process_interactive_chat_action("main_menu", preferred_language=preferred_language, hospital=hospital)
+        prefix = _DIDNT_UNDERSTAND.get(preferred_language, _DIDNT_UNDERSTAND["en"])
+        result["text"] = f"{prefix}\n\n{result['text']}"
+        return result
+
+    return process_interactive_chat_action(intent, preferred_language=preferred_language, hospital=hospital)
+
+
 def generate_ai_chat_response(
     prompt: str,
     patient_name: str = "Patient",
@@ -258,7 +299,8 @@ def generate_ai_chat_response(
     history: Optional[List[Dict[str, str]]] = None,
     hospital=None,
 ) -> str:
-    """Legacy text wrapper for the inbound-webhook auto-reply — returns the
-    main-menu greeting as plain text (free-text NLU is not implemented)."""
-    res = process_interactive_chat_action("main_menu", preferred_language=preferred_language, hospital=hospital)
+    """Inbound-webhook auto-reply wrapper — classifies the inbound message
+    via `process_free_text_message` and returns just the reply text (the
+    webhook only needs a string to log as the outbound Message body)."""
+    res = process_free_text_message(prompt, preferred_language=preferred_language, hospital=hospital)
     return res["text"]

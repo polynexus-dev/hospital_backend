@@ -327,6 +327,18 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
+# Self-hosted Ollama server — see apps.communications.llm_router. Used
+# ONLY to classify free-text patient messages into a fixed set of known
+# intents for the 24x7 assistant (never to compose what a patient reads,
+# diagnose, or give medical advice — see llm_router.py's module docstring).
+# The default below is Ollama's standard local port; point OLLAMA_BASE_URL
+# at your actual VM (e.g. "http://10.x.x.x:11434") via .env in every real
+# deployment — classify_free_text_intent() already degrades to "unclear"
+# (shows the main menu) if the server is unreachable, so a wrong/missing
+# address here fails safe, it just won't route free text yet.
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://localhost:11434")
+OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
+OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=6)
 
 
 # Cache — backs DRF's request throttling (see REST_FRAMEWORK below). Redis,
@@ -411,6 +423,14 @@ CELERY_BEAT_SCHEDULE = {
     "purge-stale-unconverted-enquiries": {
         "task": "apps.automation.tasks.purge_stale_unconverted_enquiries",
         "schedule": crontab(hour=3, minute=15),
+    },
+    # Lead-quality scoring (apps.enquiries.scoring) — retrains each
+    # hospital's model fresh from its own closed enquiries and rescoes
+    # every open one. Runs before the 3am purge jobs above so a lead
+    # doesn't get purged on a score that's a day stale.
+    "recompute-enquiry-scores": {
+        "task": "apps.enquiries.tasks.recompute_enquiry_scores",
+        "schedule": crontab(hour=2, minute=30),
     },
 }
 

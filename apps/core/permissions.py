@@ -14,6 +14,17 @@ class RoleBasedModelPermissions(BasePermission):
     map directly onto Django's add/change/delete model permissions."""
 
     def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        if user.is_superuser:
+            return True
+
+        role = getattr(user, "role", None)
+        if role and getattr(role, "template", None) in ("owner", "admin", "hospital_administrator"):
+            return True
+
         perm_verb = _ACTION_PERM_VERB.get(getattr(view, "action", None))
         if perm_verb is None:
             return True
@@ -24,7 +35,7 @@ class RoleBasedModelPermissions(BasePermission):
 
         model_cls = queryset.model
         permission = f"{model_cls._meta.app_label}.{perm_verb}_{model_cls._meta.model_name}"
-        return request.user.has_perm(permission)
+        return user.has_perm(permission)
 
 
 class ActionPermissionRequired(BasePermission):

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Channel, ConsentOptOut, Message, Template, Thread
+from .models import BroadcastCampaign, Channel, ConsentOptOut, Message, Template, Thread
 
 
 class TemplateSerializer(serializers.ModelSerializer):
@@ -65,3 +65,26 @@ class SendMessageSerializer(serializers.Serializer):
     purpose = serializers.CharField()
     context = serializers.DictField(child=serializers.CharField(), required=False, default=dict)
     fallback_channel = serializers.ChoiceField(choices=Channel.choices, required=False, allow_null=True, default=None)
+
+
+class BroadcastCampaignSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BroadcastCampaign
+        fields = [
+            "id", "title", "channel", "target_audience", "template", "custom_message",
+            "scheduled_for", "status", "total_recipients", "sent_count",
+            "delivered_count", "read_count", "failed_count",
+            "created_by", "created_by_name", "created_at", "updated_at",
+        ]
+        read_only_fields = [
+            "id", "total_recipients", "sent_count", "delivered_count",
+            "read_count", "failed_count", "created_by", "created_at", "updated_at",
+        ]
+
+    def get_created_by_name(self, obj) -> str:
+        if not obj.created_by:
+            return "System"
+        return obj.created_by.get_full_name() or obj.created_by.email
+

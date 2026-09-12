@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.patients.models import record_timeline_event
 
 from .models import Enquiry
+from .scoring import score_enquiry
 from .services import assign_enquiry, find_duplicates
 
 
@@ -12,6 +13,15 @@ from .services import assign_enquiry, find_duplicates
 def on_enquiry_created(sender, instance: Enquiry, created, **kwargs):
     if not created:
         return
+
+    # Day-one heuristic score (see apps.enquiries.scoring's module
+    # docstring) — a brand-new enquiry has no stage-change history yet, so
+    # there's nothing to gain from trying to train/apply a model for just
+    # this one row; the nightly recompute_enquiry_scores task upgrades it
+    # to a trained score once the hospital has enough closed-enquiry
+    # history, and keeps it current as this enquiry ages.
+    instance.score = score_enquiry(instance)
+    instance.save(update_fields=["score"])
 
     if instance.duplicate_of_id is None:
         duplicate = find_duplicates(
