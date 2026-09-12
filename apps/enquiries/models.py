@@ -62,6 +62,10 @@ class Enquiry(TenantScopedModel):
     referrer_url = models.URLField(max_length=500, blank=True)
 
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="enquiries")
+    consulting_doctor = models.ForeignKey(
+        "appointments.Doctor", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="enquiries", help_text="Doctor who consulted / is scheduled with this lead",
+    )
     service_requested = models.CharField(max_length=255, blank=True)
     urgency = models.CharField(max_length=16, choices=Urgency.choices, default=Urgency.NORMAL)
 
@@ -75,6 +79,7 @@ class Enquiry(TenantScopedModel):
     duplicate_of = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="duplicates")
 
     sla_due_at = models.DateTimeField(null=True, blank=True)
+    follow_up_date = models.DateField(null=True, blank=True, help_text="Scheduled callback / follow-up date")
     escalation_level = models.PositiveSmallIntegerField(default=0)
 
     lost_reason = models.CharField(max_length=32, choices=LostReason.choices, blank=True)
@@ -89,6 +94,7 @@ class Enquiry(TenantScopedModel):
         indexes = [
             models.Index(fields=["hospital", "stage", "created_at"]),
             models.Index(fields=["hospital", "mobile"]),
+            models.Index(fields=["hospital", "follow_up_date"]),
         ]
 
     def __str__(self):

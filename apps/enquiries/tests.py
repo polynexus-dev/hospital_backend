@@ -326,3 +326,39 @@ def test_treatment_estimate_lifecycle_and_pdf(auth_client, hospital):
     assert convert_res.status_code == 200
     assert convert_res.data["stage"] == "converted"
 
+
+@pytest.mark.django_db
+def test_export_csv_and_history_and_notes(auth_client, hospital):
+    import datetime
+    today = datetime.date.today()
+    enquiry = Enquiry.objects.create(
+        hospital=hospital,
+        name="Sunil Gavaskar",
+        mobile="9811223344",
+        source=Enquiry.Source.WEBSITE,
+        follow_up_date=today,
+        service_requested="Orthopedics Consultation",
+    )
+
+    # Test export CSV
+    res_csv = auth_client.get("/api/v1/enquiries/export-csv/")
+    assert res_csv.status_code == 200
+    assert "text/csv" in res_csv["Content-Type"]
+    content = res_csv.content.decode("utf-8-sig")
+    assert "Sunil Gavaskar" in content
+    assert "9811223344" in content
+    assert "Orthopedics Consultation" in content
+
+    # Test add note
+    note_res = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/add-note/", {"note": "Called patient, requested Sunday."}, format="json")
+    assert note_res.status_code == 200
+    assert "Called patient, requested Sunday" in note_res.data["notes"]
+
+    # Test move stage and verify history
+    auth_client.post(f"/api/v1/enquiries/{enquiry.id}/move-stage/", {"stage": "contacted"}, format="json")
+    history_res = auth_client.get(f"/api/v1/enquiries/{enquiry.id}/history/")
+    assert history_res.status_code == 200
+    assert len(history_res.data["stage_changes"]) >= 1
+    assert history_res.data["stage_changes"][0]["to_stage"] == "contacted"
+
+

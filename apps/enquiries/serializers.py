@@ -6,6 +6,8 @@ from .models import Enquiry, EnquiryAssignmentChange, EnquiryStageChange, Treatm
 
 
 class EnquirySerializer(serializers.ModelSerializer):
+    consulting_doctor_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Enquiry
         fields = [
@@ -13,27 +15,66 @@ class EnquirySerializer(serializers.ModelSerializer):
             "source", "campaign",
             "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
             "landing_page", "referrer_url",
-            "department", "service_requested", "urgency", "score",
+            "department", "consulting_doctor", "consulting_doctor_name",
+            "service_requested", "urgency", "score",
             "stage", "assigned_to", "duplicate_of",
-            "sla_due_at", "escalation_level", "lost_reason", "lost_notes", "notes",
+            "sla_due_at", "follow_up_date", "escalation_level", "lost_reason", "lost_notes", "notes",
             "estimated_value",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "assigned_to", "duplicate_of", "sla_due_at", "escalation_level", "created_at", "updated_at"]
 
+    def get_consulting_doctor_name(self, obj) -> str:
+        if not obj.consulting_doctor:
+            return ""
+        doc = obj.consulting_doctor
+        return getattr(doc, "name", "Doctor")
+
 
 class EnquiryStageChangeSerializer(serializers.ModelSerializer):
+    changed_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = EnquiryStageChange
-        fields = ["id", "enquiry", "from_stage", "to_stage", "changed_by", "created_at"]
+        fields = ["id", "enquiry", "from_stage", "to_stage", "changed_by", "changed_by_name", "created_at"]
         read_only_fields = fields
+
+    def get_changed_by_name(self, obj) -> str:
+        if not obj.changed_by:
+            return "System"
+        return obj.changed_by.get_full_name() or obj.changed_by.email
 
 
 class EnquiryAssignmentChangeSerializer(serializers.ModelSerializer):
+    changed_by_name = serializers.SerializerMethodField()
+    from_owner_name = serializers.SerializerMethodField()
+    to_owner_name = serializers.SerializerMethodField()
+
     class Meta:
         model = EnquiryAssignmentChange
-        fields = ["id", "enquiry", "from_owner", "to_owner", "changed_by", "reason", "created_at"]
+        fields = [
+            "id", "enquiry",
+            "from_owner", "from_owner_name",
+            "to_owner", "to_owner_name",
+            "changed_by", "changed_by_name",
+            "reason", "created_at",
+        ]
         read_only_fields = fields
+
+    def get_changed_by_name(self, obj) -> str:
+        if not obj.changed_by:
+            return "System"
+        return obj.changed_by.get_full_name() or obj.changed_by.email
+
+    def get_from_owner_name(self, obj) -> str:
+        if not obj.from_owner:
+            return "Unassigned"
+        return obj.from_owner.get_full_name() or obj.from_owner.email
+
+    def get_to_owner_name(self, obj) -> str:
+        if not obj.to_owner:
+            return "Unassigned"
+        return obj.to_owner.get_full_name() or obj.to_owner.email
 
 
 class MoveStageSerializer(serializers.Serializer):

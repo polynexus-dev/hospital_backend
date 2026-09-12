@@ -16,7 +16,9 @@ from apps.core.viewsets import TenantScopedViewSetMixin
 from .models import Enquiry, TreatmentEstimate
 from .serializers import (
     BulkImportRowSerializer,
+    EnquiryAssignmentChangeSerializer,
     EnquirySerializer,
+    EnquiryStageChangeSerializer,
     LeadWebhookSerializer,
     LoseEnquirySerializer,
     MergeEnquirySerializer,
@@ -31,8 +33,96 @@ from .treatment_estimate_pdf import render_treatment_estimate_pdf
 class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = EnquirySerializer
     queryset = Enquiry.objects.all()
-    filterset_fields = ["stage", "source", "department", "assigned_to", "urgency", "patient"]
+    filterset_fields = ["stage", "source", "department", "assigned_to", "urgency", "patient", "follow_up_date"]
     search_fields = ["name", "mobile", "alternate_mobile", "email", "campaign"]
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """Lead 360° audit trail: returns stage change history, ownership
+        history, and any treatment estimates."""
+        enquiry = self.get_object()
+        stage_changes = enquiry.stage_changes.select_related("changed_by").all()
+        assignment_changes = enquiry.assignment_changes.select_related("from_owner", "to_owner", "changed_by").all()
+        estimates = enquiry.treatment_estimates.all()
+
+        return Response({
+            "stage_changes": EnquiryStageChangeSerializer(stage_changes, many=True).data,
+            "assignment_changes": EnquiryAssignmentChangeSerializer(assignment_changes, many=True).data,
+            "estimates": TreatmentEstimateSerializer(estimates, many=True).data,
+        })
+
+    @action(detail=True, methods=["post"], url_path="add-note")
+    def add_note(self, request, pk=None):
+        """Appends a timestamped coordinator note to the enquiry."""
+        enquiry = self.get_object()
+        note_text = request.data.get("note", "").strip()
+        if not note_text:
+            return Response({"detail": "Note content is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.utils import timezone
+        author = request.user.get_full_name() or request.user.email
+        stamp = timezone.now().strftime("%d %b %Y %H:%M")
+        formatted_entry = f"[{stamp} - {author}]: {note_text}"
+
+        if enquiry.notes:
+            enquiry.notes = f"{enquiry.notes}\n{formatted_entry}"
+        else:
+            enquiry.notes = formatted_entry
+
+        enquiry.save(update_fields=["notes", "updated_at"])
+        return Response(EnquirySerializer(enquiry).data)
+
+    @action(detail=False, methods=["get"], url_path="export-csv")
+    def export_csv(self, request):
+        """Exports filtered enquiries to a CSV file with full marketing, doctor,
+        SLA and stage attribution for executive MIS & reporting."""
+        queryset = self.filter_queryset(self.get_queryset()).select_related("department", "consulting_doctor", "assigned_to")
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="hospital_crm_leads.csv"'
+
+        # UTF-8 BOM for Microsoft Excel compatibility
+        response.write('\ufeff')
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "Lead ID", "Patient Name", "Mobile", "Alternate Mobile", "Email",
+            "Stage", "Urgency", "Score", "Estimated Value (INR)",
+            "Department", "Consulting Doctor", "Assigned Owner",
+            "Source", "Campaign", "UTM Source", "UTM Medium", "UTM Campaign",
+            "Service Requested", "Follow-up Date", "SLA Due At",
+            "Lost Reason", "Lost Notes", "Created At", "Internal Notes"
+        ])
+
+        for e in queryset:
+            writer.writerow([
+                e.id,
+                e.name,
+                e.mobile,
+                e.alternate_mobile,
+                e.email,
+                e.get_stage_display(),
+                e.get_urgency_display(),
+                e.score,
+                e.estimated_value or 0,
+                e.department.name if e.department else "",
+                getattr(e.consulting_doctor, "name", "") if e.consulting_doctor else "",
+                e.assigned_to.get_full_name() if e.assigned_to else (e.assigned_to.email if e.assigned_to else "Unassigned"),
+                e.get_source_display(),
+                e.campaign,
+                e.utm_source,
+                e.utm_medium,
+                e.utm_campaign,
+                e.service_requested,
+                e.follow_up_date.isoformat() if e.follow_up_date else "",
+                e.sla_due_at.strftime("%Y-%m-%d %H:%M") if e.sla_due_at else "",
+                e.get_lost_reason_display() if e.lost_reason else "",
+                e.lost_notes,
+                e.created_at.strftime("%Y-%m-%d %H:%M"),
+                e.notes,
+            ])
+
+        return response
 
     @action(detail=True, methods=["post"], url_path="move-stage")
     def move_stage_action(self, request, pk=None):

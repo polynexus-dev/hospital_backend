@@ -581,6 +581,7 @@ class Command(BaseCommand):
                 "name": "Asha Patil",
                 "source": "ivr",
                 "department": opd,
+                "consulting_doctor": doc_kulkarni,
                 "service_requested": "General Medical Checkup",
                 "urgency": "normal",
                 "stage": "scheduled",
@@ -596,6 +597,7 @@ class Command(BaseCommand):
                 "name": "Sanjay Jagtap",
                 "source": "whatsapp",
                 "department": cardiology,
+                "consulting_doctor": doc_joshi,
                 "service_requested": "ECG & Cardiology Consultation",
                 "urgency": "high",
                 "stage": "new",
@@ -615,6 +617,23 @@ class Command(BaseCommand):
                 "stage": "contacted",
                 "assigned_to": frontdesk_user,
                 "notes": "Submitted contact form on hospital landing page.",
+            },
+        )
+        Enquiry.objects.get_or_create(
+            hospital=hospital,
+            mobile="9890998877",
+            defaults={
+                "patient": p2,
+                "name": "Rahul Verma",
+                "source": "walk_in",
+                "department": ortho,
+                "consulting_doctor": doc_sharma,
+                "service_requested": "Arthroscopy & Knee Surgery",
+                "urgency": "high",
+                "stage": "visited",
+                "assigned_to": frontdesk_user,
+                "notes": "Visited OPD, consulted Dr. Sharma, surgical estimate created.",
+                "estimated_value": 85000,
             },
         )
 
