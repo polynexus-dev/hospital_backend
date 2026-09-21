@@ -25,7 +25,9 @@ class RadiologyProcedureViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet)
 class RadiologyOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = RadiologyOrderSerializer
-    queryset = RadiologyOrder.objects.all()
+    # select_related: RadiologyOrderSerializer's patient_name/procedure_name
+    # (source="patient.full_name"/"procedure.name")
+    queryset = RadiologyOrder.objects.select_related("patient", "procedure")
     filterset_fields = ["patient", "procedure", "status"]
 
     def perform_create(self, serializer):

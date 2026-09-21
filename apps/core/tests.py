@@ -277,12 +277,29 @@ def test_custom_actions_are_not_gated_by_the_model_permission_check(restricted_c
 # --- Staff X-Hospital-Id cross-hospital override --------------------------
 
 @pytest.mark.django_db
-def test_staff_with_x_hospital_id_header_sees_that_hospitals_data(api_client, staff_user, other_hospital, other_department):
+def test_hospital_staff_users_x_hospital_id_header_is_ignored(api_client, staff_user, other_hospital, other_department):
+    """staff_user is is_staff=True but hospital-attached and not
+    is_saas_admin — the shape apps.saas_admin.tenant_service gives every
+    hospital's own Owner account. The header must only work for genuine
+    platform ops (User.can_cross_tenant), same boundary as switch-hospital
+    and available_hospitals — otherwise any hospital's Owner could read
+    every other tenant's data with one header."""
     from apps.appointments.models import Doctor
     theirs = Doctor.objects.create(hospital=other_hospital, department=other_department, name="Not staff's own hospital")
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/doctors/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
+
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id not in ids
+
+
+@pytest.mark.django_db
+def test_saas_admin_with_x_hospital_id_header_sees_that_hospitals_data(saas_admin_client, other_hospital, other_department):
+    from apps.appointments.models import Doctor
+    theirs = Doctor.objects.create(hospital=other_hospital, department=other_department, name="Not staff's own hospital")
+
+    response = saas_admin_client.get("/api/v1/doctors/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
 
     ids = {row["id"] for row in response.data["results"]}
     assert theirs.id in ids
@@ -387,6 +404,22 @@ def test_emergency_access_log_list_is_scoped_to_hospital(auth_client, hospital, 
     ids = [row["id"] for row in response.data["results"]]
     assert mine.id in ids
     assert len(ids) == 1
+
+
+@pytest.mark.django_db
+def test_hospital_staff_users_x_hospital_id_header_is_ignored_for_emergency_access_logs(api_client, staff_user, other_hospital):
+    """Same can_cross_tenant boundary as the doctors-list header test above
+    — staff_user (is_staff=True, hospital-attached, not is_saas_admin) must
+    not be able to read another hospital's break-glass review log."""
+    from apps.core.models import EmergencyAccessLog
+
+    theirs = EmergencyAccessLog.objects.create(hospital=other_hospital, model_name="opd.Encounter", object_id="1", reason="unrelated")
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/emergency-access-logs/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
+
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id not in ids
 
 
 @pytest.mark.django_db

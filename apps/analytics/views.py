@@ -96,6 +96,10 @@ class MISExportView(APIView):
     """Export executive MIS report as PDF or CSV."""
 
     permission_classes = [IsAuthenticated]
+    # Per-tenant resource isolation — see apps.integrations.views.
+    # DataExportView.throttle_scope and DEFAULT_THROTTLE_RATES["heavy_ops"]
+    # in settings.
+    throttle_scope = "heavy_ops"
 
     def perform_content_negotiation(self, request, force=False):
         # Return passthrough renderer so DRF does not raise 404 on ?format=pdf or ?format=csv

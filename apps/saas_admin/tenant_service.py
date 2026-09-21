@@ -149,6 +149,16 @@ def onboard_hospital_tenant(data: dict) -> dict:
     )
 
     # 8. Create Owner User
+    #
+    # is_staff=True here only unlocks this hospital's OWN Admin Console
+    # (AuditLogViewSet, IntegrationHealthView — both scoped to
+    # request.user.hospital_id). It must NOT be read anywhere as "can act
+    # across hospitals" — that's apps.accounts.models.User.can_cross_tenant
+    # (is_saas_admin, or a superuser with no hospital), which this Owner
+    # deliberately has neither of. Every cross-tenant surface
+    # (X-Hospital-Id header, switch-hospital, available_hospitals) checks
+    # can_cross_tenant, not is_staff, precisely so this Owner account can't
+    # reach any other tenant's data.
     user = User.objects.create(
         email=owner_email,
         first_name=owner_first_name,

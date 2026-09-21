@@ -88,7 +88,8 @@ class CallViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class CallbackTaskViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = CallbackTaskSerializer
-    queryset = CallbackTask.objects.all()
+    # select_related: CallbackTaskSerializer.ivr_path (source="call.ivr_path")
+    queryset = CallbackTask.objects.select_related("call")
     filterset_fields = ["status", "department", "owner"]
 
     @action(detail=True, methods=["post"])

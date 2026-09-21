@@ -88,6 +88,11 @@ class DataExportView(APIView):
     "open CSV" half of the requirement now."""
 
     permission_classes = [IsAuthenticated]
+    # Per-tenant resource isolation (see DEFAULT_THROTTLE_RATES["heavy_ops"]
+    # in settings) — a full-table export scales with this hospital's own
+    # row count, not with request volume, so the general "user" rate limit
+    # doesn't bound how much DB/worker time one hospital can consume here.
+    throttle_scope = "heavy_ops"
 
     @extend_schema(exclude=True)  # raw CSV download, not a JSON API response — nothing for the schema to describe
     def get(self, request, model_name):
@@ -116,6 +121,8 @@ class FHIRExportView(APIView):
     """HL7 FHIR R4 JSON Export API for Patients and Appointments."""
 
     permission_classes = [IsAuthenticated]
+    # See DataExportView.throttle_scope above — same per-tenant isolation reasoning.
+    throttle_scope = "heavy_ops"
 
     @extend_schema(exclude=True)
     def get(self, request, resource_type="patients"):

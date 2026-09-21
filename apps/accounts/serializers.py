@@ -129,18 +129,25 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.hospital.enabled_modules if obj.hospital_id else []
 
     def get_available_hospitals(self, obj):
-        """Staff (ops/superadmin) get every active hospital on the
-        platform, matching the existing X-Hospital-Id cross-hospital
+        """Platform ops (obj.can_cross_tenant) get every active hospital on
+        the platform, matching the existing X-Hospital-Id cross-hospital
         convention. Everyone else gets only their own — there is no
         "branches of my group" concept in the schema (Hospital has no
         parent/group FK), so listing every tenant on the platform here
         would tell a front-desk user at one hospital the name and city of
         every other hospital sharing this deployment, and feed a
         switch-hospital UI that would let them try to switch into any of
-        them (see UserViewSet.switch_hospital)."""
+        them (see UserViewSet.switch_hospital).
+
+        Deliberately checks can_cross_tenant, not is_staff: is_staff is
+        also granted to every hospital's own Owner account (see
+        apps.saas_admin.tenant_service), so checking is_staff here handed
+        every hospital Owner the full id/name/slug/city list of every
+        other tenant on the platform — everything switch_hospital needed
+        to move into any of them."""
         from apps.core.models import Hospital
 
-        if obj.is_staff:
+        if obj.can_cross_tenant:
             return list(Hospital.objects.filter(is_active=True).values("id", "name", "slug", "city"))
         if obj.hospital_id:
             return list(Hospital.objects.filter(id=obj.hospital_id, is_active=True).values("id", "name", "slug", "city"))

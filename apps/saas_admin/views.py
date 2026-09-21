@@ -35,7 +35,8 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
 
     serializer_class = TenantSubscriptionSerializer
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
-    queryset = TenantSubscription.objects.all()
+    # select_related: TenantSubscriptionSerializer.hospital_name (source="hospital.name")
+    queryset = TenantSubscription.objects.select_related("hospital")
     filterset_fields = ["hospital", "tier", "status"]
     search_fields = ["hospital__name", "hospital__slug", "hospital__city"]
 
@@ -43,7 +44,8 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
 class TenantInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = TenantInvoiceSerializer
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
-    queryset = TenantInvoice.objects.all()
+    # select_related: TenantInvoiceSerializer.hospital_name (source="hospital.name")
+    queryset = TenantInvoice.objects.select_related("hospital")
     filterset_fields = ["hospital", "status"]
     search_fields = ["invoice_number", "hospital__name", "hospital__slug"]
 
@@ -73,7 +75,8 @@ class TenantUsageSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = TenantUsageSnapshotSerializer
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
-    queryset = TenantUsageSnapshot.objects.all()
+    # select_related: TenantUsageSnapshotSerializer.hospital_name (source="hospital.name")
+    queryset = TenantUsageSnapshot.objects.select_related("hospital")
     filterset_fields = ["hospital", "period_start"]
     search_fields = ["hospital__name", "hospital__slug"]
 
@@ -85,7 +88,9 @@ class SaaSSupportTicketViewSet(viewsets.ModelViewSet):
 
     serializer_class = SaaSSupportTicketSerializer
     permission_classes = [IsAuthenticated, IsSaaSAdmin]
-    queryset = SupportTicket.objects.all()
+    # select_related: SaaSSupportTicketSerializer's hospital_name/raised_by_email/
+    # assigned_to_email (source="hospital.name"/"raised_by.email"/"assigned_to.email")
+    queryset = SupportTicket.objects.select_related("hospital", "raised_by", "assigned_to")
     filterset_fields = ["hospital", "status", "priority", "category", "assigned_to"]
     search_fields = ["subject", "hospital__name", "hospital__slug", "raised_by_email"]
 
@@ -139,7 +144,8 @@ class SupportTicketViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     serializer_class = SupportTicketSerializer
     permission_classes = [IsAuthenticated]
-    queryset = SupportTicket.objects.all()
+    # select_related: SupportTicketSerializer.raised_by_email (source="raised_by.email")
+    queryset = SupportTicket.objects.select_related("raised_by")
     http_method_names = ["get", "post", "head", "options"]
     filterset_fields = ["status", "category", "priority"]
 

@@ -152,7 +152,9 @@ class PrescriptionViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, view
     from .serializers import PrescriptionSerializer
 
     serializer_class = PrescriptionSerializer
-    queryset = Prescription.objects.all()
+    # select_related: PrescriptionSerializer's doctor_name/patient_name
+    # (source="doctor.get_full_name"/"patient.full_name")
+    queryset = Prescription.objects.select_related("doctor", "patient")
     # "patients" is a coarse, per-app Django permission (see
     # apps.accounts.permission_templates's module docstring) — many
     # non-clinical roles (front_desk, billing_executive, finance_manager)

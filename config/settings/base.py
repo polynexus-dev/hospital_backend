@@ -275,6 +275,20 @@ REST_FRAMEWORK = {
         # meaningfully affecting a real user who mistypes their password
         # once or twice.
         "login": "5/minute",
+        # Per-tenant resource isolation for expensive, synchronous
+        # operations that scale with a hospital's own data volume rather
+        # than with request count — bulk CSV/FHIR/MIS export and CSV
+        # enquiry import (see apps.enquiries.views.EnquiryViewSet.
+        # bulk_import, apps.integrations.views.DataExportView/
+        # FHIRExportView, apps.analytics.views.MISExportView). All
+        # hospitals share one deployment with no per-tenant compute
+        # quota, so nothing otherwise stops one hospital's staff running
+        # a large export/import repeatedly from tying up app-server
+        # workers and DB connections that every other hospital's ordinary
+        # requests also depend on. 20/hour is well above any legitimate
+        # one-off use (running a report a few times while checking output)
+        # but bounds the worst case.
+        "heavy_ops": "20/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": (

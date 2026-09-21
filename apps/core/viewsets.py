@@ -24,7 +24,7 @@ class TenantScopedViewSetMixin:
     def get_queryset(self):
         manager = self.queryset.model._default_manager
         user = self.request.user
-        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
+        if user.can_cross_tenant and self.request.headers.get("X-Hospital-Id"):
             hospital_id = self.request.headers["X-Hospital-Id"]
         else:
             hospital_id = getattr(user, "hospital_id", None)

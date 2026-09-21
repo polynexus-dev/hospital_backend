@@ -89,17 +89,16 @@ class RequiresViewPermission(BasePermission):
 
 
 class IsSaaSAdmin(BasePermission):
-    """Gates the platform-management surface (apps.saas_admin)."""
+    """Gates the platform-management surface (apps.saas_admin). See
+    apps.accounts.models.User.can_cross_tenant, which this delegates to —
+    every other cross-hospital mechanism in the codebase must use the same
+    check, not a bare is_staff test."""
 
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        if getattr(user, "is_saas_admin", False):
-            return True
-        if user.is_superuser and not getattr(user, "hospital_id", None):
-            return True
-        return False
+        return bool(getattr(user, "can_cross_tenant", False))
 
 
 class CanReviewEmergencyAccess(BasePermission):

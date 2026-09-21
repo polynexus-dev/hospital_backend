@@ -47,9 +47,13 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return User.objects.all()
-        return User.objects.filter(hospital_id=user.hospital_id)
+        # select_related: UserSerializer's role_name/hospital_name/
+        # hospital_address/hospital_city/hospital_state (source="role.name",
+        # "hospital.*") would otherwise re-query per row on every list page.
+        base = User.objects.select_related("role", "hospital")
+        if user.can_cross_tenant:
+            return base
+        return base.filter(hospital_id=user.hospital_id)
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)
@@ -69,18 +73,22 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="switch-hospital", permission_classes=[IsAuthenticated])
     def switch_hospital(self, request):
-        """Staff-only. This used to accept any authenticated user and
-        reassign their `hospital` FK to *any* active hospital's id with no
-        further check — since Hospital has no group/ownership concept in
-        the schema, that meant any front-desk user at any hospital could
-        call this with an arbitrary hospital_id and permanently switch
-        themselves into a completely unrelated hospital's tenant, gaining
-        full read/write access to its data through every other endpoint
-        (verified empirically, not theoretical). Restricting to is_staff
-        matches the only other cross-hospital mechanism already in this
-        codebase (the X-Hospital-Id header in TenantMiddleware)."""
-        if not request.user.is_staff:
-            return Response({"detail": "Only staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
+        """Platform-ops only (User.can_cross_tenant). This used to accept
+        any authenticated user and reassign their `hospital` FK to *any*
+        active hospital's id with no further check — since Hospital has no
+        group/ownership concept in the schema, that meant any front-desk
+        user at any hospital could call this with an arbitrary hospital_id
+        and permanently switch themselves into a completely unrelated
+        hospital's tenant, gaining full read/write access to its data
+        through every other endpoint (verified empirically, not
+        theoretical). That was then "fixed" by restricting to is_staff to
+        match the X-Hospital-Id header in TenantMiddleware — except
+        is_staff is also granted to every hospital's own Owner account
+        (apps.saas_admin.tenant_service), so an ordinary hospital Owner
+        could still do exactly this. can_cross_tenant is the actual
+        platform-ops-only check; see its docstring."""
+        if not request.user.can_cross_tenant:
+            return Response({"detail": "Only platform staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
 
         hospital_id = request.data.get("hospital_id")
         if not hospital_id:
@@ -193,6 +201,6 @@ class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
+        if user.can_cross_tenant:
             return Role.objects.all()
         return Role.objects.filter(hospital_id=user.hospital_id)

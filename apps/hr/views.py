@@ -22,7 +22,12 @@ class EmployeeViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewse
     audited_fields = ("employee_code", "department", "designation", "employment_type")
 
     def get_queryset(self):
-        return Employee.objects.filter(hospital=self.request.user.hospital)
+        # select_related: EmployeeSerializer's nested user_detail/department_detail
+        # (source="user"/"department") — user_detail itself is a full UserSerializer,
+        # so user's role/hospital need joining too (see apps.accounts.serializers).
+        return Employee.objects.filter(hospital=self.request.user.hospital).select_related(
+            "user", "user__role", "user__hospital", "department",
+        )
 
     def perform_create(self, serializer):
         emp = serializer.save(hospital=self.request.user.hospital)
@@ -55,7 +60,8 @@ class AttendanceViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, view
     audited_fields = ("date", "status")
 
     def get_queryset(self):
-        return Attendance.objects.filter(hospital=self.request.user.hospital)
+        # select_related: AttendanceSerializer.employee_code (source="employee.employee_code")
+        return Attendance.objects.filter(hospital=self.request.user.hospital).select_related("employee")
 
     def perform_create(self, serializer):
         att = serializer.save(hospital=self.request.user.hospital)
@@ -77,7 +83,9 @@ class LeaveRequestViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, vi
     audited_fields = ("leave_type", "start_date", "end_date", "status")
 
     def get_queryset(self):
-        return LeaveRequest.objects.filter(hospital=self.request.user.hospital)
+        # select_related: LeaveRequestSerializer's employee_code/approved_by_name
+        # (source="employee.employee_code"/"approved_by.get_full_name")
+        return LeaveRequest.objects.filter(hospital=self.request.user.hospital).select_related("employee", "approved_by")
 
     def perform_create(self, serializer):
         leave = serializer.save(hospital=self.request.user.hospital)
@@ -115,7 +123,8 @@ class ShiftViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.
     audited_fields = ("shift_date", "shift_type")
 
     def get_queryset(self):
-        return Shift.objects.filter(hospital=self.request.user.hospital)
+        # select_related: ShiftSerializer.employee_code (source="employee.employee_code")
+        return Shift.objects.filter(hospital=self.request.user.hospital).select_related("employee")
 
     def perform_create(self, serializer):
         shift = serializer.save(hospital=self.request.user.hospital)

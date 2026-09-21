@@ -97,7 +97,7 @@ class EmergencyAccessLogViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
             return EmergencyAccessLog.objects.none()
         user = self.request.user
-        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
+        if user.can_cross_tenant and self.request.headers.get("X-Hospital-Id"):
             hospital_id = self.request.headers["X-Hospital-Id"]
         else:
             hospital_id = user.hospital_id

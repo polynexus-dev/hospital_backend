@@ -193,6 +193,27 @@ class User(AbstractBaseUser, PermissionsMixin):
             return True
         return bool(self.role_id) and self.role.template in (Role.Template.OWNER, Role.Template.ADMIN)
 
+    @property
+    def can_cross_tenant(self) -> bool:
+        """True only for genuine platform-ops accounts — mirrors
+        apps.core.permissions.IsSaaSAdmin exactly, and is the single check
+        every cross-hospital mechanism (X-Hospital-Id header, switch-hospital,
+        available_hospitals, UserViewSet/RoleViewSet "all hospitals" queries)
+        must use.
+
+        Deliberately narrower than is_staff: is_staff is also granted to
+        ordinary hospital Owner/Admin accounts (see
+        apps.saas_admin.tenant_service, which sets is_staff=True on every
+        new tenant's Owner so they can reach their own hospital's Admin
+        Console — AuditLogViewSet, IntegrationHealthView). Gating
+        cross-hospital reads/writes on bare is_staff let any hospital's
+        Owner read and write every *other* hospital's data on the platform
+        by sending an X-Hospital-Id header — verified empirically, not
+        theoretical."""
+        if self.is_saas_admin:
+            return True
+        return bool(self.is_superuser and not self.hospital_id)
+
     def is_login_ip_allowed(self, ip_address: str) -> bool:
         if not self.allowed_ip_ranges or not ip_address:
             return True

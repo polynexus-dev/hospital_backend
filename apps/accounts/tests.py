@@ -156,14 +156,28 @@ def test_users_list_is_scoped_to_the_authenticated_users_hospital(auth_client, h
 
 
 @pytest.mark.django_db
-def test_staff_user_sees_every_hospitals_users(api_client, staff_user, other_hospital, other_department):
+def test_hospital_staff_user_does_not_see_other_hospitals_users(api_client, staff_user, other_hospital, other_department):
+    """staff_user is is_staff=True but hospital-attached and not
+    is_saas_admin — the tenant_service.py Owner shape. Only
+    User.can_cross_tenant accounts (platform ops) should see every
+    hospital's users; is_staff alone must not."""
     User.objects.create_user(email="other-hospital-staff2@example.com", password="testpass123", hospital=other_hospital, department=other_department)
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/users/")
 
     emails = {row["email"] for row in response.data["results"]}
-    assert "other-hospital-staff2@example.com" in emails
+    assert "other-hospital-staff2@example.com" not in emails
+
+
+@pytest.mark.django_db
+def test_saas_admin_sees_every_hospitals_users(saas_admin_client, other_hospital, other_department):
+    User.objects.create_user(email="other-hospital-staff3@example.com", password="testpass123", hospital=other_hospital, department=other_department)
+
+    response = saas_admin_client.get("/api/v1/users/")
+
+    emails = {row["email"] for row in response.data["results"]}
+    assert "other-hospital-staff3@example.com" in emails
 
 
 @pytest.mark.django_db
@@ -237,7 +251,12 @@ def test_change_password_succeeds_and_new_password_logs_in(auth_client, api_clie
 # Hospital at all) — a non-staff front-desk user could self-escalate into a
 # completely unrelated hospital's full data access. Verified empirically
 # before fixing (a real request round-trip, not a theoretical read of the
-# code), then fixed by requiring is_staff. These tests pin that fix down.
+# code), then "fixed" by requiring is_staff — except is_staff is also
+# granted to every hospital's own Owner account (see
+# apps.saas_admin.tenant_service), so an Owner could still self-escalate
+# into any other tenant the same way (also verified empirically). Gated on
+# User.can_cross_tenant now (is_saas_admin, or a superuser with no
+# hospital) — genuinely platform-ops-only. These tests pin that down.
 
 @pytest.mark.django_db
 def test_non_staff_user_cannot_switch_hospital(auth_client, other_hospital):
@@ -253,30 +272,41 @@ def test_non_staff_users_hospital_is_unchanged_after_a_rejected_switch_attempt(a
 
 
 @pytest.mark.django_db
-def test_staff_user_can_switch_hospital(api_client, staff_user, other_hospital):
+def test_hospital_staff_user_without_saas_admin_cannot_switch_hospital(api_client, staff_user, other_hospital):
+    """staff_user is is_staff=True but hospital-attached and not
+    is_saas_admin — exactly what apps.saas_admin.tenant_service provisions
+    for an ordinary hospital Owner. That must not be enough to reach
+    another tenant."""
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(other_hospital.id)}, format="json")
 
-    assert response.status_code == 200
+    assert response.status_code == 403
     staff_user.refresh_from_db()
-    assert staff_user.hospital_id == other_hospital.id
+    assert staff_user.hospital_id != other_hospital.id
 
 
 @pytest.mark.django_db
-def test_switch_hospital_404s_for_an_unknown_hospital_id(api_client, staff_user):
-    import uuid
-    api_client.force_authenticate(user=staff_user)
+def test_saas_admin_can_switch_hospital(saas_admin_client, saas_admin_user, other_hospital):
+    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(other_hospital.id)}, format="json")
 
-    response = api_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(uuid.uuid4())}, format="json")
+    assert response.status_code == 200
+    saas_admin_user.refresh_from_db()
+    assert saas_admin_user.hospital_id == other_hospital.id
+
+
+@pytest.mark.django_db
+def test_switch_hospital_404s_for_an_unknown_hospital_id(saas_admin_client):
+    import uuid
+
+    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(uuid.uuid4())}, format="json")
 
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
-def test_switch_hospital_400s_when_hospital_id_is_missing(api_client, staff_user):
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post("/api/v1/users/switch-hospital/", {}, format="json")
+def test_switch_hospital_400s_when_hospital_id_is_missing(saas_admin_client):
+    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {}, format="json")
     assert response.status_code == 400
 
 
@@ -356,7 +386,9 @@ def test_create_superuser_can_opt_out_of_the_saas_admin_persona():
 # Companion to the switch-hospital fix above — UserSerializer used to list
 # every active hospital on the platform (name/slug/city) to every logged-in
 # user regardless of role, which is what fed the switch-hospital UI in the
-# first place. Non-staff now only see their own hospital in this list.
+# first place. Only genuinely cross-tenant (platform-ops) users see every
+# hospital in this list — everyone else, including a hospital's own
+# is_staff Owner account, sees only their own.
 
 @pytest.mark.django_db
 def test_non_staff_users_available_hospitals_excludes_other_hospitals(auth_client, hospital, other_hospital):
@@ -368,10 +400,22 @@ def test_non_staff_users_available_hospitals_excludes_other_hospitals(auth_clien
 
 
 @pytest.mark.django_db
-def test_staff_users_available_hospitals_includes_every_active_hospital(api_client, staff_user, hospital, other_hospital):
+def test_hospital_staff_users_available_hospitals_excludes_other_hospitals(api_client, staff_user, hospital, other_hospital):
+    """staff_user is is_staff=True but hospital-attached and not
+    is_saas_admin (the tenant_service.py Owner shape) — must not see the
+    platform's other tenants."""
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/users/me/")
+
+    names = {row["name"] for row in response.data["available_hospitals"]}
+    assert names == {hospital.name}
+    assert other_hospital.name not in names
+
+
+@pytest.mark.django_db
+def test_saas_admin_available_hospitals_includes_every_active_hospital(saas_admin_client, hospital, other_hospital):
+    response = saas_admin_client.get("/api/v1/users/me/")
 
     names = {row["name"] for row in response.data["available_hospitals"]}
     assert names == {hospital.name, other_hospital.name}
@@ -404,6 +448,29 @@ def test_role_crud_and_isolation(auth_client, hospital, other_hospital, other_de
     delete = auth_client.delete(f"/api/v1/roles/{created.id}/")
     assert delete.status_code == 204
     assert not Role.objects.filter(pk=created.id).exists()
+
+
+@pytest.mark.django_db
+def test_hospital_staff_user_does_not_see_other_hospitals_roles(api_client, staff_user, other_hospital, other_department):
+    """Same is_staff-vs-can_cross_tenant boundary as the Users list above,
+    for RoleViewSet."""
+    theirs = Role.objects.create(hospital=other_hospital, department=other_department, name="Their Role")
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/roles/")
+
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id not in ids
+
+
+@pytest.mark.django_db
+def test_saas_admin_sees_every_hospitals_roles(saas_admin_client, other_hospital, other_department):
+    theirs = Role.objects.create(hospital=other_hospital, department=other_department, name="Their Role")
+
+    response = saas_admin_client.get("/api/v1/roles/")
+
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id in ids
 
 
 # --- MFA (Part A #7: admin/bulk-export roles) -------------------------------

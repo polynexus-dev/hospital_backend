@@ -287,6 +287,79 @@ def test_bulk_import_without_a_file_returns_400(auth_client):
     assert response.status_code == 400
 
 
+@pytest.mark.django_db
+def test_bulk_import_rejects_a_file_over_the_row_cap(auth_client, hospital):
+    """Per-tenant resource isolation: bulk_import does one DB insert per row
+    synchronously in a single request — MAX_BULK_IMPORT_ROWS bounds how long
+    one hospital's import can tie up a worker/DB connection that every other
+    hospital's requests also depend on (see EnquiryViewSet.MAX_BULK_IMPORT_ROWS)."""
+    from apps.enquiries.views import EnquiryViewSet
+
+    header = "name,mobile,email,source,service_requested\r\n"
+    rows = "".join(f"Lead {i},9{i:09d},,walk_in,OPD\r\n" for i in range(EnquiryViewSet.MAX_BULK_IMPORT_ROWS + 1))
+    upload = SimpleUploadedFile("leads.csv", (header + rows).encode("utf-8"), content_type="text/csv")
+
+    response = auth_client.post("/api/v1/enquiries/bulk-import/", {"file": upload}, format="multipart")
+
+    assert response.status_code == 400
+    assert Enquiry.objects.filter(hospital=hospital).count() == 0
+
+
+def test_bulk_import_is_scoped_to_the_heavy_ops_throttle():
+    """Only the bulk_import action should carry the heavy_ops scope — proves
+    get_throttles() doesn't leak it onto the rest of this viewset's actions.
+    ScopedRateThrottle resolves its .scope from view.throttle_scope lazily
+    (inside allow_request), so the real assertion is on that attribute, not
+    on the freshly-constructed throttle instance itself."""
+    from rest_framework.throttling import ScopedRateThrottle
+
+    from apps.enquiries.views import EnquiryViewSet
+
+    view = EnquiryViewSet()
+    view.action = "bulk_import"
+    throttles = view.get_throttles()
+    assert len(throttles) == 1
+    assert isinstance(throttles[0], ScopedRateThrottle)
+    assert view.throttle_scope == "heavy_ops"
+
+    other_view = EnquiryViewSet()
+    other_view.action = "list"
+    other_view.get_throttles()
+    assert not hasattr(other_view, "throttle_scope")
+
+
+@pytest.mark.django_db
+def test_heavy_ops_endpoints_are_rate_limited_to_20_per_hour(api_client, user):
+    """config.settings.test disables DEFAULT_THROTTLE_CLASSES suite-wide
+    (see that file's docstring) — re-enable it just for this one test to
+    prove the per-tenant "heavy_ops" ceiling (DEFAULT_THROTTLE_RATES in
+    settings) actually works, same technique as apps.accounts.tests.
+    test_login_is_rate_limited_to_5_per_minute_per_ip. DataExportView is the
+    cheapest heavy_ops-scoped view to exercise repeatedly (an empty CSV of
+    zero patients); FHIRExportView/MISExportView/EnquiryViewSet.bulk_import
+    share the exact same scope+rate, not a separately-configured one."""
+    from django.core.cache import cache
+    from rest_framework.throttling import ScopedRateThrottle
+
+    from apps.integrations.views import DataExportView
+
+    cache.clear()
+    api_client.force_authenticate(user=user)
+
+    original_throttle_classes = DataExportView.throttle_classes
+    DataExportView.throttle_classes = [ScopedRateThrottle]
+    try:
+        for _ in range(20):
+            response = api_client.get("/api/v1/export/patients/")
+            assert response.status_code == 200
+
+        blocked = api_client.get("/api/v1/export/patients/")
+        assert blocked.status_code == 429
+    finally:
+        DataExportView.throttle_classes = original_throttle_classes
+        cache.clear()
+
+
 # --- webhook-config & TreatmentEstimate tests --------------------------------
 
 @pytest.mark.django_db

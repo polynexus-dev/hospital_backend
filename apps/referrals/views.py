@@ -58,13 +58,17 @@ class ReferringDoctorViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class ReferralRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ReferralRecordSerializer
-    queryset = ReferralRecord.objects.all()
+    # select_related: ReferralRecordSerializer's referring_doctor_name/patient_name
+    # (source="referring_doctor.name"/"patient.full_name")
+    queryset = ReferralRecord.objects.select_related("referring_doctor", "patient")
     filterset_fields = ["referring_doctor", "patient", "status", "department"]
 
 
 class FieldVisitViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = FieldVisitSerializer
-    queryset = FieldVisit.objects.all()
+    # select_related: FieldVisitSerializer's referring_doctor_name/visited_by_name
+    # (source="referring_doctor.name"/"visited_by.first_name")
+    queryset = FieldVisit.objects.select_related("referring_doctor", "visited_by")
     filterset_fields = ["referring_doctor", "visited_by"]
 
     def perform_create(self, serializer):

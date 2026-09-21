@@ -14,13 +14,17 @@ class TPACompanyViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class PreAuthRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PreAuthRequestSerializer
-    queryset = PreAuthRequest.objects.all()
+    # select_related: PreAuthRequestSerializer's patient_name/tpa_name
+    # (source="patient.full_name"/"tpa_company.name")
+    queryset = PreAuthRequest.objects.select_related("patient", "tpa_company")
     filterset_fields = ["tpa_company", "status", "patient"]
     search_fields = ["policy_number"]
 
 
 class ClaimViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ClaimSerializer
-    queryset = Claim.objects.all()
+    # select_related: ClaimSerializer's patient_name/tpa_name
+    # (source="patient.full_name"/"tpa_company.name")
+    queryset = Claim.objects.select_related("patient", "tpa_company")
     filterset_fields = ["tpa_company", "status", "patient", "preauth_request"]
     search_fields = ["claim_number"]

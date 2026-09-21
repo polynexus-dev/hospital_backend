@@ -36,6 +36,21 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     filterset_fields = ["stage", "source", "department", "assigned_to", "urgency", "patient", "follow_up_date"]
     search_fields = ["name", "mobile", "alternate_mobile", "email", "campaign"]
 
+    # bulk_import scales with file size (one DB round-trip per row, all
+    # inside a single request) rather than with request count — the
+    # per-action "heavy_ops" scope bounds it separately from this
+    # viewset's ordinary CRUD traffic (see DEFAULT_THROTTLE_RATES in
+    # settings and apps.integrations.views.DataExportView for the same
+    # per-tenant resource-isolation reasoning). ScopedRateThrottle reads
+    # `self.throttle_scope`, which DRF looks up on the view instance, so
+    # setting it only for this one action doesn't affect list/retrieve/etc.
+    def get_throttles(self):
+        if self.action == "bulk_import":
+            self.throttle_scope = "heavy_ops"
+            from rest_framework.throttling import ScopedRateThrottle
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):
         """Lead 360° audit trail: returns stage change history, ownership
@@ -174,6 +189,16 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         merge_enquiries(primary, duplicate, merged_by=request.user)
         return Response(EnquirySerializer(primary).data)
 
+    # Hard ceiling on a single import request — bulk_import does one
+    # BulkImportRowSerializer validation + one Enquiry.objects.create() per
+    # row, synchronously, inside one HTTP request/worker/DB-connection. With
+    # no per-tenant compute quota on this shared deployment, an unbounded
+    # file lets one hospital's "historical enquiry migration" tie up a
+    # worker for as long as it takes to insert an arbitrarily large row
+    # count — this caps the worst case; genuinely larger migrations should
+    # be split into multiple files rather than routed through this endpoint.
+    MAX_BULK_IMPORT_ROWS = 5000
+
     @action(detail=False, methods=["post"], url_path="bulk-import", parser_classes=[MultiPartParser, FormParser])
     def bulk_import(self, request):
         """CSV bulk import / historical enquiry migration (§2). Expects a
@@ -184,10 +209,15 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             return Response({"detail": "file is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         hospital = request.user.hospital
-        reader = csv.DictReader(io.StringIO(upload.read().decode("utf-8-sig")))
+        rows = list(csv.DictReader(io.StringIO(upload.read().decode("utf-8-sig"))))
+        if len(rows) > self.MAX_BULK_IMPORT_ROWS:
+            return Response(
+                {"detail": f"File has {len(rows)} rows; bulk-import is capped at {self.MAX_BULK_IMPORT_ROWS} rows per request. Split it into multiple files."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         created, errors = 0, []
-        for line_number, row in enumerate(reader, start=2):
+        for line_number, row in enumerate(rows, start=2):
             row_serializer = BulkImportRowSerializer(data=row)
             if not row_serializer.is_valid():
                 errors.append({"line": line_number, "errors": row_serializer.errors})

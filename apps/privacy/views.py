@@ -21,7 +21,8 @@ PRIVACY_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, Requir
 
 class DataRightsRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = DataRightsRequestSerializer
-    queryset = DataRightsRequest.objects.all()
+    # select_related: DataRightsRequestSerializer.patient_name (source="patient.full_name")
+    queryset = DataRightsRequest.objects.select_related("patient")
     permission_classes = PRIVACY_PERMISSION_CLASSES
     filterset_fields = ["patient", "request_type", "status"]
 
@@ -79,7 +80,8 @@ class DataRightsRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class GrievanceTicketViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = GrievanceTicketSerializer
-    queryset = GrievanceTicket.objects.all()
+    # select_related: GrievanceTicketSerializer.patient_name (source="patient.full_name")
+    queryset = GrievanceTicket.objects.select_related("patient")
     permission_classes = PRIVACY_PERMISSION_CLASSES
     filterset_fields = ["patient", "status", "priority", "assigned_to"]
 

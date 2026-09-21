@@ -54,10 +54,12 @@ def get_subdomain_from_request(request):
 
 class TenantMiddleware:
     """Resolves the current hospital from the authenticated user and makes
-    it available to TenantManager for the duration of the request. Staff
-    users may switch tenant via the X-Hospital-Id header (used by internal
-    ops tooling / superadmin dashboards that operate across hospitals).
-    Also supports subdomain-based tenant resolution (e.g. demo-hospital.hms.polynexus.in)."""
+    it available to TenantManager for the duration of the request. Users
+    who can act across tenants (apps.accounts.models.User.can_cross_tenant
+    — platform ops, not ordinary hospital staff) may switch tenant via the
+    X-Hospital-Id header (used by internal ops tooling / superadmin
+    dashboards that operate across hospitals). Also supports
+    subdomain-based tenant resolution (e.g. demo-hospital.hms.polynexus.in)."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -76,7 +78,7 @@ class TenantMiddleware:
         request.tenant = tenant_from_subdomain
 
         if user is not None and getattr(user, "is_authenticated", False):
-            if user.is_staff and request.headers.get("X-Hospital-Id"):
+            if user.can_cross_tenant and request.headers.get("X-Hospital-Id"):
                 hospital_id = request.headers["X-Hospital-Id"]
             elif getattr(user, "hospital_id", None):
                 hospital_id = user.hospital_id

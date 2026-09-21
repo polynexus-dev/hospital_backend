@@ -33,7 +33,9 @@ class ExpenseViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewset
     audited_fields = ("category", "amount", "paid_to", "approved_by")
 
     def get_queryset(self):
-        return Expense.objects.filter(hospital=self.request.user.hospital)
+        # select_related: ExpenseSerializer.paid_by_name/approved_by_name
+        # (source="paid_by.get_full_name"/"approved_by.get_full_name")
+        return Expense.objects.filter(hospital=self.request.user.hospital).select_related("paid_by", "approved_by")
 
     def perform_create(self, serializer):
         expense = serializer.save(hospital=self.request.user.hospital, paid_by=self.request.user)

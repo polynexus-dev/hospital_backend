@@ -81,6 +81,7 @@ class WorkflowRunViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet
 
     permission_classes = [IsAuthenticated]
     serializer_class = WorkflowRunSerializer
-    queryset = WorkflowRun.objects.all()
+    # select_related: WorkflowRunSerializer.workflow_name (source="workflow.name")
+    queryset = WorkflowRun.objects.select_related("workflow")
     filterset_fields = ["workflow", "trigger_event", "status"]
 
