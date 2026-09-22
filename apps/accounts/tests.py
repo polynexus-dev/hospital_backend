@@ -60,6 +60,23 @@ def test_login_with_wrong_password_is_rejected(api_client, hospital, department)
 
 
 @pytest.mark.django_db
+def test_logout_blacklists_the_refresh_token_so_it_can_no_longer_be_used(api_client, hospital, department):
+    """rest_framework_simplejwt.token_blacklist must be in INSTALLED_APPS
+    and /auth/logout/ wired to TokenBlacklistView (see apps.accounts.urls)
+    — without both, "logout" only clears the frontend's local state and a
+    stolen/still-held refresh token keeps working for its full lifetime."""
+    User.objects.create_user(email="logout-test@test-hospital.example", password="correct-horse-1", hospital=hospital, department=department)
+    login = api_client.post("/api/v1/auth/login/", {"email": "logout-test@test-hospital.example", "password": "correct-horse-1"}, format="json")
+    refresh = login.data["refresh"]
+
+    logout = api_client.post("/api/v1/auth/logout/", {"refresh": refresh}, format="json")
+    assert logout.status_code == 200
+
+    replay = api_client.post("/api/v1/auth/refresh/", {"refresh": refresh}, format="json")
+    assert replay.status_code == 401
+
+
+@pytest.mark.django_db
 def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, department):
     """config.settings.test disables DEFAULT_THROTTLE_CLASSES suite-wide
     (see that file's docstring) specifically so the other five login tests

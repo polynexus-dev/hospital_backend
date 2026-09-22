@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 
 from apps.core.models import Department
 from apps.core.tenancy import tenant_context
@@ -26,6 +27,43 @@ def test_tenant_manager_is_unscoped_outside_request_context(hospital, other_hosp
     # No tenant_context set — management commands / migrations / Celery
     # beat need to see everything.
     assert Department.objects.count() == 2
+
+
+# --- HospitalActive (suspended-hospital lockout) ---------------------------
+
+def test_cors_allow_all_origins_is_not_enabled():
+    """Regression guard: this exact setting was hardcoded True in base.py
+    once already (silently overriding the CORS_ALLOWED_ORIGINS allow-list
+    for every environment including prod, see docs/SECURITY_COMPLIANCE.md
+    finding C1) and was later reintroduced by an unrelated merge. A
+    settings-level assertion catches that class of regression even if
+    nobody notices during code review."""
+    assert not getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False)
+
+
+@pytest.mark.django_db
+def test_suspended_hospitals_non_staff_user_is_locked_out(auth_client, hospital):
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+
+    response = auth_client.get("/api/v1/doctors/")
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_suspended_hospitals_staff_user_is_not_locked_out(api_client, staff_user, hospital):
+    """Platform ops must still be able to reach a suspended hospital's data
+    (e.g. to actually resolve the suspension) — HospitalActive's is_staff
+    bypass, same reasoning as apps.saas_admin.views.SupportTicketViewSet
+    letting a suspended hospital's own users still raise a ticket."""
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/doctors/")
+
+    assert response.status_code == 200
 
 
 # --- TenantScopedViewSetMixin.get_queryset regression coverage ---------

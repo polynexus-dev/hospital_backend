@@ -66,14 +66,16 @@ jobs:
           path: coverage.xml
 
       - name: Dependency vulnerability scan (pip-audit)
-        # Runs after tests, not blocking merge on its own — a new CVE in an
-        # existing pinned dependency shouldn't silently fail unrelated PRs.
-        # continue-on-error surfaces it in the run summary for a human to
-        # triage rather than gating the merge automatically.
+        # Blocking (see docs/SECURITY_COMPLIANCE.md finding M4, closed
+        # 2026-09-22): a newly-disclosed CVE in a pinned dependency should
+        # stop a merge, not just leave a note in the run summary nobody
+        # reads until it's already deployed. If a specific advisory is a
+        # known false positive or genuinely unfixable right now, suppress
+        # it explicitly with `--ignore-vuln <id>` (and a comment saying
+        # why) rather than reaching for continue-on-error again.
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt
-        continue-on-error: true
 
       - name: Email test report
         # Fires on pass or fail (if: always()) with the full pytest output
@@ -104,10 +106,34 @@ jobs:
 
   django-check:
     runs-on: ubuntu-latest
+    # DJANGO_SETTINGS_MODULE=config.settings.prod, not the manage.py default
+    # (config.settings.dev) — see docs/SECURITY_COMPLIANCE.md finding M4,
+    # closed 2026-09-22. `check --deploy` against dev.py mostly checked
+    # settings dev.py deliberately leaves relaxed (DEBUG=True, no HSTS, no
+    # secure cookies) and was flagged continue-on-error for exactly that
+    # reason — it wasn't testing anything meaningful. Against prod.py it
+    # actually exercises the fail-closed placeholder guards (SECRET_KEY,
+    # FIELD_ENCRYPTION_KEY(S), FIELD_ENCRYPTION_KEY_V2(S), FIELD_HASH_KEY —
+    # see config/settings/prod.py) plus the real HSTS/cookie/SSL-redirect
+    # hardening, which is the whole point of running this job.
     env:
-      SECRET_KEY: ci-test-secret-key-not-for-production-use
-      DEBUG: "True"
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      # 50+ chars, high-entropy — django.core.management.utils.get_random_secret_key()
+      # output, not a real deployment secret. Needs to be genuinely strong,
+      # not just "non-placeholder": security.W009 (part of the `security`
+      # tag this job now fails on) flags short/low-entropy SECRET_KEYs too,
+      # and the previous CI-only value ("ci-test-secret-key-not-for-..."),
+      # while passing prod.py's placeholder guard, tripped that check.
+      SECRET_KEY: "-*kh7_(=_4aq0*f)1h65wncn$r%9$je&djl1j4fp^=^8ykc33o"
       DATABASE_URL: postgres://polynexus:polynexus@localhost:5432/hospital_crm
+      ALLOWED_HOSTS: hms.polynexus.in
+      # CI-only values in valid Fernet/AES-256-GCM key format — not real
+      # secrets, just non-placeholder enough to pass prod.py's guards and
+      # let the encryption module actually initialize during the check.
+      # Never used against real data; regenerate freely if ever rotated.
+      FIELD_ENCRYPTION_KEY: QaTZ1SVvHlAxYApyGGsKYHgDP0gHz9jY6tcLMrd7iA4=
+      FIELD_ENCRYPTION_KEY_V2: d7Ka8csLrq4GSCfK1xrP_uGbg3x6tTinX-K6jqT6vEw=
+      FIELD_HASH_KEY: O31bU4pjbzkB3djMs3VjDqFxFLHgvt6Ajk-irCG7egQ
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -115,6 +141,15 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Django system checks
-        run: python manage.py check --deploy
-        continue-on-error: true # --deploy flags dev-only settings too; informational, not a gate
+      - name: Django system checks (production settings, security-tagged only)
+        # --tag security --fail-level WARNING: scopes this to Django's own
+        # deploy-security checklist (security.W004/W008/W009/W018/... —
+        # HSTS, SECRET_KEY strength, cookie flags, etc.) and fails on any
+        # warning there, not just errors. Deliberately NOT plain
+        # `--deploy` with no filter: that also runs drf_spectacular's
+        # schema-generation checks, which surface ~45 pre-existing,
+        # security-unrelated warnings (unresolved type hints, enum-naming
+        # collisions) on this codebase today — failing the build on those
+        # too would just teach people to ignore or bypass this gate again,
+        # the same failure mode that let C1/H1/H8 regress unnoticed.
+        run: python manage.py check --deploy --tag security --fail-level WARNING

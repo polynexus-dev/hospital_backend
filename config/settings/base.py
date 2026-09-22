@@ -3,7 +3,6 @@ Base settings shared by every environment. Environment-specific overrides
 live in dev.py / prod.py — never put secrets or environment-specific
 values here, read them from the environment instead.
 """
-import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -75,6 +74,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
     "corsheaders",
@@ -174,26 +174,26 @@ if env.bool("USE_SQLITE", default=False):
         }
     }
 else:
+    # A single DATABASE_URL, not individual POSTGRES_USER/PASSWORD/DB_HOST
+    # vars — this is what docker-compose.yml's web/celery-worker/celery-beat
+    # services and this repo's CI workflow both actually set (all three
+    # docker-compose services: `DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm`).
+    # A prior commit switched this block to individual env vars without
+    # updating either of those, which silently broke both: Django fell back
+    # to USER=postgres (an unrelated per-var default, not "whatever the
+    # docker-compose `db` service was actually configured with") against a
+    # Postgres container that only knows the credentials DATABASE_URL
+    # describes — "password authentication failed for user postgres" in CI,
+    # and the same failure mode against docker-compose's `db` service.
     DATABASES = {
-        "default": {
-            "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
-            "NAME": os.environ.get("POSTGRES_DB", "hospital_crm"),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-            "USER": os.environ.get("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
-            # Reuse connections across requests instead of opening a fresh TCP+auth
-            # handshake every time (default is 0 = no reuse). django-tenants'
-            # set_tenant() just issues `SET search_path` on the existing
-            # connection when switching schemas, so this is safe to combine with
-            # multi-tenancy — the schema switch itself stays cheap.
-            # DB_HOST/DB_PORT point at PgBouncer (SESSION pool mode) in
-            # docker-compose, not straight at Postgres — see the pgbouncer
-            # service comment in docker-compose.yml before changing pool mode.
-            # Note: Must be 0 when using PgBouncer to prevent session pool exhaustion.
-            "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", 0)),
-        }
+        "default": env.db(
+            "DATABASE_URL",
+            default="postgres://postgres:postgres@db:5432/hospital_crm",
+        )
     }
+    # Reuse connections across requests instead of opening a fresh TCP+auth
+    # handshake every time (default is 0 = no reuse).
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
 
 
@@ -245,6 +245,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
+        "apps.core.permissions.HospitalActive",
         "apps.core.permissions.RoleBasedModelPermissions",
     ),
     "DEFAULT_FILTER_BACKENDS": (
@@ -333,7 +334,6 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://127.0.0.1:5173",
     ],
 )
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:[0-9]+)?$",
 ]
@@ -500,12 +500,17 @@ HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")
 
 # ABDM (Ayushman Bharat Digital Mission — ABHA linking + HIE-CM consent)
 # and NHCX (National Health Claims Exchange) gateway selection — see
-# apps.abdm.gateway. "stub" (the only implementation that exists so far)
-# raises GatewayNotConfigured on every call rather than fabricating a
-# success; connecting either later is a matter of adding a real
-# ABDMGateway/NHCXGateway subclass and pointing these at it, plus filling
-# in the sandbox/production credentials below once ABDM/NHCX onboarding
-# for this hospital's Health Facility Registry entry is complete.
+# apps.abdm.gateway. "stub" (default) raises GatewayNotConfigured on every
+# call rather than fabricating a success. "real" (apps.abdm.gateway.
+# RealABDMGateway) is a real HTTP client against ABDM's Gateway v3 API —
+# set ABDM_GATEWAY=real plus the credentials below once this facility's
+# NHA sandbox/production onboarding (Health Facility Registry entry,
+# client_id/secret, HIP ID) is complete. See RealABDMGateway's own
+# docstring for exactly what's been verified against ABDM's sandbox vs.
+# still best-effort, and what's deliberately not implemented yet
+# (fetch_health_records — needs an async data-push callback + ABDM's
+# encryption scheme, not just an HTTP call). NHCX has no "real"
+# implementation yet — still stub-only.
 ABDM_GATEWAY = env("ABDM_GATEWAY", default="stub")
 ABDM_BASE_URL = env("ABDM_BASE_URL", default="")
 ABDM_CLIENT_ID = env("ABDM_CLIENT_ID", default="")
@@ -513,6 +518,10 @@ ABDM_CLIENT_SECRET = env("ABDM_CLIENT_SECRET", default="")
 # Health Information Provider ID, assigned once this facility is
 # registered on ABDM's Health Facility Registry.
 ABDM_HIP_ID = env("ABDM_HIP_ID", default="")
+# Applies to every apps.abdm.gateway.RealABDMGateway call (session-token
+# exchange, OTP init/verify, consent init/status). ABDM's own sandbox is
+# occasionally slow; this is a network-call timeout, not a UX budget.
+ABDM_TIMEOUT_SECONDS = env.int("ABDM_TIMEOUT_SECONDS", default=15)
 
 NHCX_GATEWAY = env("NHCX_GATEWAY", default="stub")
 NHCX_BASE_URL = env("NHCX_BASE_URL", default="")

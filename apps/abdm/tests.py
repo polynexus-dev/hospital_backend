@@ -1,11 +1,14 @@
 import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
+from django.core.cache import cache
 
 from apps.patients.models import Patient
 from apps.tpa.models import TPACompany, PreAuthRequest
 
+from .gateway import ABDMGatewayError, GatewayNotConfigured, RealABDMGateway
 from .models import AbhaLink, ConsentRequest, HealthRecordFetch, NHCXTransaction
 
 
@@ -187,3 +190,154 @@ def test_restricted_role_cannot_read_abdm_endpoints(restricted_client, hospital,
     assert restricted_client.get(f"/api/v1/abdm/abha-links/{link.id}/").status_code == 403
     assert restricted_client.get("/api/v1/abdm/consent-requests/").status_code == 403
     assert restricted_client.get("/api/v1/abdm/nhcx-transactions/").status_code == 403
+
+
+# --- RealABDMGateway: the actual HTTP client, mocked at the requests layer
+# --------------------------------------------------------------------------
+#
+# No live ABDM sandbox credentials exist yet (application submitted
+# 2026-09-22, not yet approved), so these can only test "does this gateway
+# construct the request it claims to and parse the response shape it
+# claims to" against a mocked ABDM — not "is this actually correct against
+# the real ABDM sandbox." See RealABDMGateway's docstring (apps/abdm/
+# gateway.py) for exactly which parts are grounded in ABDM's published
+# sandbox Postman collection vs. best-effort. Re-run these mentally (or add
+# a live smoke test) the day real credentials arrive.
+
+def _fake_response(json_data, status_code=200):
+    response = MagicMock()
+    response.status_code = status_code
+    response.json.return_value = json_data
+    response.content = b"non-empty"
+    response.raise_for_status.return_value = None
+    return response
+
+
+@pytest.fixture(autouse=True)
+def _abdm_gateway_settings(settings):
+    """Applies to every test below this point in the file — RealABDMGateway
+    needs these set, and clears the cached session token so tests don't
+    leak state into each other via the real cache backend."""
+    settings.ABDM_BASE_URL = "https://sandbox.abdm.gov.in"
+    settings.ABDM_CLIENT_ID = "cid"
+    settings.ABDM_CLIENT_SECRET = "secret"
+    settings.ABDM_HIP_ID = "HIP-1"
+    cache.delete("abdm_gateway:access_token")
+    yield
+    cache.delete("abdm_gateway:access_token")
+
+
+def test_session_token_is_fetched_once_and_then_cached():
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({"accessToken": "TOKEN-1", "expiresIn": 1800})
+
+        first = gateway._get_access_token()
+        second = gateway._get_access_token()
+
+        assert first == "TOKEN-1"
+        assert second == "TOKEN-1"
+        mock_post.assert_called_once()  # second call served from cache, not a second HTTP round-trip
+        called_url = mock_post.call_args.args[0]
+        assert called_url == "https://sandbox.abdm.gov.in/gateway/v3/sessions"
+        assert mock_post.call_args.kwargs["json"] == {"clientId": "cid", "clientSecret": "secret", "grantType": "client_credentials"}
+
+
+def test_session_token_request_failure_raises_abdm_gateway_error():
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post", side_effect=requests.ConnectionError("simulated network failure")):
+        with pytest.raises(ABDMGatewayError):
+            gateway._get_access_token()
+
+
+def test_initiate_abha_verification_maps_method_to_login_hint_and_returns_txn_id():
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({"txnId": "TXN-999"})
+
+        result = gateway.initiate_abha_verification(identifier="9822011111", method="mobile_otp")
+
+        assert result == {"txn_id": "TXN-999"}
+        called_url, = mock_post.call_args.args
+        assert called_url == "https://sandbox.abdm.gov.in/v3/profile/login/request/otp"
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["loginHint"] == "mobile"  # apps.abdm.models.AbhaLink.VerificationMethod.MOBILE_OTP -> "mobile"
+        assert payload["loginId"] == "9822011111"
+        headers = mock_post.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Bearer TOKEN-1"
+
+
+def test_initiate_abha_verification_raises_on_missing_txn_id_field():
+    """If ABDM's real response doesn't use the "txnId" key this
+    integration guessed, this must fail loudly (ABDMGatewayError), not
+    return a silently-wrong result to the caller."""
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({"somethingElse": "..."})
+
+        with pytest.raises(ABDMGatewayError):
+            gateway.initiate_abha_verification(identifier="9822011111", method="mobile_otp")
+
+
+def test_verify_abha_otp_returns_abha_number_and_address():
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({
+            "accounts": [{"ABHANumber": "12-3456-7890-1234", "preferredAbhaAddress": "asha@abdm"}],
+        })
+
+        result = gateway.verify_abha_otp(txn_id="TXN-999", otp="123456")
+
+        assert result == {"abha_number": "12-3456-7890-1234", "abha_address": "asha@abdm"}
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["authData"]["otp"] == {"txnId": "TXN-999", "otpValue": "123456"}
+
+
+def test_create_consent_request_returns_gateway_request_id():
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({"consentRequestId": "REQ-1"})
+
+        result = gateway.create_consent_request(
+            abha_address="asha@abdm", purpose="CAREMGT", hi_types=["Prescription"],
+            date_from=datetime.date(2026, 1, 1), date_to=datetime.date(2026, 6, 1),
+        )
+
+        assert result == {"gateway_request_id": "REQ-1"}
+        payload = mock_post.call_args.kwargs["json"]["consent"]
+        assert payload["hip"] == {"id": "HIP-1"}
+        assert payload["permission"]["dateRange"] == {"from": "2026-01-01", "to": "2026-06-01"}
+
+
+def test_fetch_consent_status_normalizes_status_to_lowercase():
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    gateway = RealABDMGateway()
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({
+            "status": "GRANTED",
+            "consentArtefacts": [{"id": "ART-1", "expiryTime": "2026-07-01T00:00:00Z"}],
+        })
+
+        result = gateway.fetch_consent_status(gateway_request_id="REQ-1")
+
+        assert result == {"status": "granted", "consent_artifact_id": "ART-1", "expires_at": "2026-07-01T00:00:00Z"}
+
+
+def test_fetch_health_records_still_raises_gateway_not_configured():
+    """Deliberately unimplemented — see RealABDMGateway's docstring
+    point 5. Callers (ConsentRequestViewSet.fetch_records) already
+    turn GatewayNotConfigured into a clean 503, same as the stub."""
+    with pytest.raises(GatewayNotConfigured):
+        RealABDMGateway().fetch_health_records(consent_artifact_id="ART-1")
+
+
+@pytest.mark.django_db
+def test_get_abdm_gateway_returns_real_gateway_when_configured(settings):
+    from .gateway import get_abdm_gateway
+
+    settings.ABDM_GATEWAY = "real"
+    assert isinstance(get_abdm_gateway(), RealABDMGateway)
