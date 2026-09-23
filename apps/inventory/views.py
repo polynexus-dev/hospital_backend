@@ -44,7 +44,8 @@ class ItemViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "partial_update": "inventory.change_item",
     }
     serializer_class = ItemSerializer
-    queryset = Item.objects.all()
+    # select_related: ItemSerializer.category_name (source="category.name")
+    queryset = Item.objects.select_related("category")
     filterset_fields = ["category", "code"]
     audited_fields = ("name", "code", "min_stock_level")
 
@@ -64,7 +65,8 @@ class StockLevelViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, view
         "partial_update": "inventory.change_stocklevel",
     }
     serializer_class = StockLevelSerializer
-    queryset = StockLevel.objects.all()
+    # select_related: StockLevelSerializer.item_name (source="item.name")
+    queryset = StockLevel.objects.select_related("item")
     filterset_fields = ["item", "batch_number"]
     audited_fields = ("batch_number", "quantity_on_hand", "unit_cost")
 
@@ -85,7 +87,9 @@ class PurchaseOrderViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, v
         "add_item": "inventory.change_purchaseorder",
     }
     serializer_class = PurchaseOrderSerializer
-    queryset = PurchaseOrder.objects.all()
+    # prefetch_related: PurchaseOrderSerializer.po_items (reverse FK, many=True),
+    # whose own POItemSerializer.item_name needs item joined too.
+    queryset = PurchaseOrder.objects.prefetch_related("po_items__item")
     filterset_fields = ["status", "vendor_name"]
     audited_fields = ("po_number", "vendor_name", "status")
 
@@ -122,7 +126,8 @@ class StockTransactionViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin
         "create": "inventory.add_stocktransaction",
     }
     serializer_class = StockTransactionSerializer
-    queryset = StockTransaction.objects.all()
+    # select_related: StockTransactionSerializer.item_name (source="item.name")
+    queryset = StockTransaction.objects.select_related("item")
     filterset_fields = ["item", "transaction_type"]
     audited_fields = ("transaction_type", "quantity", "reference")
 

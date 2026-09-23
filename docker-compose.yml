@@ -4,13 +4,13 @@ services:
     environment:
       POSTGRES_DB: hospital_crm
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
+      POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5434:5432"
+      - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hospital_crm"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,6 +27,7 @@ services:
 
   web:
     build: .
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -34,8 +35,11 @@ services:
       - "8001:8000"
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.prod
-      DATABASE_URL: postgres://postgres:admin@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      ALLOWED_HOSTS: ".hms.polynexus.in,localhost,127.0.0.1"
+      # Overrides .env's localhost values — inside the compose network the
+      # DB and broker are reachable by service name, not localhost.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -46,14 +50,15 @@ services:
 
   celery-worker:
     build: .
-    entrypoint: []
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.prod
-      DATABASE_URL: postgres://postgres:admin@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # Overrides .env's localhost values — inside the compose network the
+      # DB and broker are reachable by service name, not localhost.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -66,14 +71,15 @@ services:
 
   celery-beat:
     build: .
-    entrypoint: []
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.prod
-      DATABASE_URL: postgres://postgres:admin@db:5432/hospital_crm
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # Overrides .env's localhost values — inside the compose network the
+      # DB and broker are reachable by service name, not localhost.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:

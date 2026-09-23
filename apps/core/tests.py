@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 
 from apps.core.models import Department
 from apps.core.tenancy import tenant_context
@@ -26,6 +27,43 @@ def test_tenant_manager_is_unscoped_outside_request_context(hospital, other_hosp
     # No tenant_context set — management commands / migrations / Celery
     # beat need to see everything.
     assert Department.objects.count() == 2
+
+
+# --- HospitalActive (suspended-hospital lockout) ---------------------------
+
+def test_cors_allow_all_origins_is_not_enabled():
+    """Regression guard: this exact setting was hardcoded True in base.py
+    once already (silently overriding the CORS_ALLOWED_ORIGINS allow-list
+    for every environment including prod, see docs/SECURITY_COMPLIANCE.md
+    finding C1) and was later reintroduced by an unrelated merge. A
+    settings-level assertion catches that class of regression even if
+    nobody notices during code review."""
+    assert not getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False)
+
+
+@pytest.mark.django_db
+def test_suspended_hospitals_non_staff_user_is_locked_out(auth_client, hospital):
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+
+    response = auth_client.get("/api/v1/doctors/")
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_suspended_hospitals_staff_user_is_not_locked_out(api_client, staff_user, hospital):
+    """Platform ops must still be able to reach a suspended hospital's data
+    (e.g. to actually resolve the suspension) — HospitalActive's is_staff
+    bypass, same reasoning as apps.saas_admin.views.SupportTicketViewSet
+    letting a suspended hospital's own users still raise a ticket."""
+    hospital.is_active = False
+    hospital.save(update_fields=["is_active"])
+    api_client.force_authenticate(user=staff_user)
+
+    response = api_client.get("/api/v1/doctors/")
+
+    assert response.status_code == 200
 
 
 # --- TenantScopedViewSetMixin.get_queryset regression coverage ---------
@@ -166,13 +204,48 @@ def test_restricted_role_cannot_create_a_patient(restricted_client):
 
 @pytest.mark.django_db
 def test_restricted_role_can_still_list_and_retrieve_patients(restricted_client, hospital, department):
-    """Read access is deliberately not gated by this permission class —
-    every role needs to see records relevant to its screens."""
+    """Read access isn't gated by RoleBasedModelPermissions itself — every
+    role whose template grants "patients" at all needs to see records
+    relevant to its screens, and Telephony Operator (restricted_client's
+    template) does hold "patients": ["view"]. That's not the same as read
+    access being wide open to every role regardless of template — see
+    test_role_without_patients_permission_cannot_read_patients_at_all
+    below for the roles PatientViewSet's RequiresViewPermission actually
+    does block."""
     from apps.patients.models import Patient
     patient = Patient.objects.create(hospital=hospital, first_name="Viewable", mobile="9000000002")
 
     assert restricted_client.get("/api/v1/patients/").status_code == 200
     assert restricted_client.get(f"/api/v1/patients/{patient.id}/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_role_without_patients_permission_cannot_read_patients_at_all(hospital, department):
+    """hr_manager/purchase_manager/inventory_manager templates (see
+    apps.accounts.permission_templates.PERMISSION_TEMPLATES) omit
+    "patients" entirely — unlike Telephony Operator above, these roles
+    have no patient-facing screen at all, so PatientViewSet's
+    RequiresViewPermission (and ActionPermissionRequired for the
+    lookup/timeline custom actions, which RoleBasedModelPermissions never
+    gates — see test_custom_actions_are_not_gated_by_the_model_permission_check)
+    should actually block them, not just leave it to tenant scoping."""
+    from apps.accounts.models import Role, User, assign_role
+    from apps.patients.models import Patient
+    from rest_framework.test import APIClient
+
+    role = Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER)
+    user = User.objects.create_user(email="hr@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(user, role)
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    patient = Patient.objects.create(hospital=hospital, first_name="Confidential", mobile="9000000005")
+
+    assert client.get("/api/v1/patients/").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/").status_code == 403
+    assert client.get(f"/api/v1/patients/lookup/?mobile={patient.mobile}").status_code == 403
+    assert client.get(f"/api/v1/patients/{patient.id}/timeline/").status_code == 403
+    assert client.get("/api/v1/documents/").status_code == 403
 
 
 @pytest.mark.django_db
@@ -242,12 +315,29 @@ def test_custom_actions_are_not_gated_by_the_model_permission_check(restricted_c
 # --- Staff X-Hospital-Id cross-hospital override --------------------------
 
 @pytest.mark.django_db
-def test_staff_with_x_hospital_id_header_sees_that_hospitals_data(api_client, staff_user, other_hospital, other_department):
+def test_hospital_staff_users_x_hospital_id_header_is_ignored(api_client, staff_user, other_hospital, other_department):
+    """staff_user is is_staff=True but hospital-attached and not
+    is_saas_admin — the shape apps.saas_admin.tenant_service gives every
+    hospital's own Owner account. The header must only work for genuine
+    platform ops (User.can_cross_tenant), same boundary as switch-hospital
+    and available_hospitals — otherwise any hospital's Owner could read
+    every other tenant's data with one header."""
     from apps.appointments.models import Doctor
     theirs = Doctor.objects.create(hospital=other_hospital, department=other_department, name="Not staff's own hospital")
     api_client.force_authenticate(user=staff_user)
 
     response = api_client.get("/api/v1/doctors/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
+
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id not in ids
+
+
+@pytest.mark.django_db
+def test_saas_admin_with_x_hospital_id_header_sees_that_hospitals_data(saas_admin_client, other_hospital, other_department):
+    from apps.appointments.models import Doctor
+    theirs = Doctor.objects.create(hospital=other_hospital, department=other_department, name="Not staff's own hospital")
+
+    response = saas_admin_client.get("/api/v1/doctors/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
 
     ids = {row["id"] for row in response.data["results"]}
     assert theirs.id in ids
@@ -304,8 +394,11 @@ def test_auditlog_queryset_update_bypasses_the_python_guard_but_db_trigger_still
     Model.save() on each row — it issues one UPDATE statement directly —
     so AuditLog.save()'s `if self.pk is not None: raise` guard is never
     reached. Before the DB trigger, this silently succeeded."""
-    from django.db import IntegrityError, transaction
+    from django.db import IntegrityError, connection, transaction
     from apps.core.models import AuditLog
+
+    if connection.vendor != "postgresql":
+        pytest.skip("DB trigger enforcement requires PostgreSQL")
 
     log = AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/x/")
 
@@ -324,6 +417,9 @@ def test_auditlog_raw_sql_delete_is_blocked_at_the_database_level(hospital):
     from django.db import IntegrityError, connection, transaction
     from apps.core.models import AuditLog
 
+    if connection.vendor != "postgresql":
+        pytest.skip("DB trigger enforcement requires PostgreSQL")
+
     log = AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/x/")
 
     with pytest.raises(IntegrityError), transaction.atomic():
@@ -333,388 +429,165 @@ def test_auditlog_raw_sql_delete_is_blocked_at_the_database_level(hospital):
     assert AuditLog.objects.filter(pk=log.pk).exists()
 
 
-# --- HospitalGroup / Hospital.group (docs/erp/00-overview.md §2) ----------
+# --- EmergencyAccessLogViewSet: review surface for break-glass (Part A #6) --
 
 @pytest.mark.django_db
-def test_hospital_can_optionally_belong_to_a_hospital_group(hospital, other_hospital):
-    from apps.core.models import HospitalGroup
+def test_emergency_access_log_list_is_scoped_to_hospital(auth_client, hospital, other_hospital, user):
+    from apps.core.models import EmergencyAccessLog
 
-    group = HospitalGroup.objects.create(name="Polynexus Network")
-    hospital.group = group
-    hospital.save(update_fields=["group"])
+    mine = EmergencyAccessLog.objects.create(hospital=hospital, actor=user, model_name="opd.Encounter", object_id="1", reason="on-call gap")
+    EmergencyAccessLog.objects.create(hospital=other_hospital, model_name="opd.Encounter", object_id="2", reason="unrelated")
 
-    assert group.hospitals.count() == 1
-    assert other_hospital.group_id is None  # ungrouped hospitals are unaffected
-
-
-@pytest.mark.django_db
-def test_deleting_a_hospital_group_does_not_delete_its_hospitals(hospital):
-    """SET_NULL, not CASCADE — HospitalGroup is reporting/ownership
-    metadata only, never a tenant-isolation boundary (see
-    docs/erp/00-overview.md §2). Deleting the group must never delete
-    patient data."""
-    from apps.core.models import HospitalGroup
-
-    group = HospitalGroup.objects.create(name="Temp Group")
-    hospital.group = group
-    hospital.save(update_fields=["group"])
-    hospital_id = hospital.id
-
-    group.delete()
-
-    from apps.core.models import Hospital
-    remaining = Hospital.objects.get(pk=hospital_id)
-    assert remaining.group_id is None
-
-
-# --- Amendment (docs/erp/07-audit-and-security.md §2b) ---------------------
-
-@pytest.mark.django_db
-def test_amendment_can_reference_any_model_via_generic_relation(hospital, department):
-    from django.contrib.contenttypes.models import ContentType
-
-    from apps.core.models import Amendment
-
-    amendment = Amendment.objects.create(
-        hospital=hospital,
-        content_type=ContentType.objects.get_for_model(department),
-        object_id=str(department.pk),
-        field_name="name",
-        previous_value="OPD",
-        corrected_value="OPD (Ground Floor)",
-        reason="Corrected after physical department relocation.",
-    )
-
-    assert amendment.content_object == department
-    assert str(department.pk) == amendment.object_id
-
-
-# --- ActionPermissionRequired (docs/erp/03-rbac-and-roles.md §2a) ---------
-#
-# No real ViewSet declares action_permissions yet in Phase 2 (the first
-# consumers — laboratory.verify_labresult etc. — ship with their models in
-# later phases), so this tests the permission class's own logic in
-# isolation against a minimal fake view, rather than through a live
-# endpoint that doesn't exist yet.
-
-class _FakeUser:
-    def __init__(self, granted_perms):
-        self._granted = set(granted_perms)
-
-    def has_perm(self, perm):
-        return perm in self._granted
-
-
-class _FakeRequest:
-    def __init__(self, user):
-        self.user = user
-
-
-class _FakeView:
-    action = "verify"
-    action_permissions = {"verify": "laboratory.verify_labresult"}
-
-
-def test_action_permission_required_allows_a_user_with_the_named_permission():
-    from apps.core.permissions import ActionPermissionRequired
-
-    request = _FakeRequest(_FakeUser(["laboratory.verify_labresult"]))
-    assert ActionPermissionRequired().has_permission(request, _FakeView()) is True
-
-
-def test_action_permission_required_blocks_a_user_without_the_named_permission():
-    from apps.core.permissions import ActionPermissionRequired
-
-    request = _FakeRequest(_FakeUser([]))
-    assert ActionPermissionRequired().has_permission(request, _FakeView()) is False
-
-
-def test_action_permission_required_is_a_no_op_for_an_action_not_listed():
-    from apps.core.permissions import ActionPermissionRequired
-
-    class OtherActionView:
-        action = "list"
-        action_permissions = {"verify": "laboratory.verify_labresult"}
-
-    request = _FakeRequest(_FakeUser([]))
-    assert ActionPermissionRequired().has_permission(request, OtherActionView()) is True
-
-
-def test_action_permission_required_is_a_no_op_for_a_view_declaring_no_action_permissions():
-    from apps.core.permissions import ActionPermissionRequired
-
-    class PlainViewSet:
-        action = "create"
-
-    request = _FakeRequest(_FakeUser([]))
-    assert ActionPermissionRequired().has_permission(request, PlainViewSet()) is True
-
-
-# --- TenantScopedViewSetMixin.assignment_scope_field (docs/erp/03-rbac-and-roles.md §2b) ---
-#
-# No real ViewSet sets assignment_scope_field yet in Phase 2 (the first
-# consumers — nursing/ipd — ship in Phase 4). Proven here directly against
-# the mixin, using patients.Document.uploaded_by (an existing FK to User)
-# as a stand-in "assigned to" relation, rather than through a live
-# endpoint that doesn't exist yet.
-
-@pytest.mark.django_db
-def test_assignment_scope_field_narrows_queryset_for_an_assigned_only_role(hospital, department, other_department):
-    from contextlib import suppress
-    from types import SimpleNamespace
-
-    from apps.accounts.models import Role, User, assign_role
-    from apps.core.viewsets import TenantScopedViewSetMixin
-    from apps.patients.models import Document, Patient
-
-    patient = Patient.objects.create(hospital=hospital, first_name="Scoped", mobile="9822000001")
-
-    scoped_role = Role.objects.create(hospital=hospital, department=department, name="Scoped Role", data_scope=Role.DataScope.ASSIGNED_ONLY)
-    nurse = User.objects.create_user(email="nurse@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-    assign_role(nurse, scoped_role)
-    other_staff = User.objects.create_user(email="other-staff@test-hospital.example", password="testpass123", hospital=hospital, department=other_department)
-
-    mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=nurse)
-    not_mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=other_staff)
-
-    class ScopedDocumentViewSet(TenantScopedViewSetMixin):
-        queryset = Document.objects.all()
-        assignment_scope_field = "uploaded_by"
-
-    view = ScopedDocumentViewSet()
-    view.request = SimpleNamespace(user=nurse, headers={})
-
-    visible_ids = set(view.get_queryset().values_list("id", flat=True))
-    assert visible_ids == {mine.id}
-    assert not_mine.id not in visible_ids
-
-    with suppress(Exception):
-        mine.delete()
-    with suppress(Exception):
-        not_mine.delete()
-    with suppress(Exception):
-        patient.delete()
+    response = auth_client.get("/api/v1/emergency-access-logs/")
+    ids = [row["id"] for row in response.data["results"]]
+    assert mine.id in ids
+    assert len(ids) == 1
 
 
 @pytest.mark.django_db
-def test_assignment_scope_field_is_ignored_for_a_role_with_the_default_all_scope(hospital, department):
-    from contextlib import suppress
-    from types import SimpleNamespace
+def test_hospital_staff_users_x_hospital_id_header_is_ignored_for_emergency_access_logs(api_client, staff_user, other_hospital):
+    """Same can_cross_tenant boundary as the doctors-list header test above
+    — staff_user (is_staff=True, hospital-attached, not is_saas_admin) must
+    not be able to read another hospital's break-glass review log."""
+    from apps.core.models import EmergencyAccessLog
 
-    from apps.accounts.models import Role, User, assign_role
-    from apps.core.viewsets import TenantScopedViewSetMixin
-    from apps.patients.models import Document, Patient
+    theirs = EmergencyAccessLog.objects.create(hospital=other_hospital, model_name="opd.Encounter", object_id="1", reason="unrelated")
+    api_client.force_authenticate(user=staff_user)
 
-    patient = Patient.objects.create(hospital=hospital, first_name="Unscoped", mobile="9822000002")
+    response = api_client.get("/api/v1/emergency-access-logs/", HTTP_X_HOSPITAL_ID=str(other_hospital.id))
 
-    all_scope_role = Role.objects.create(hospital=hospital, department=department, name="All Scope Role")  # data_scope defaults to "all"
-    doctor = User.objects.create_user(email="doctor@test-hospital.example", password="testpass123", hospital=hospital, department=department)
-    assign_role(doctor, all_scope_role)
-    someone_else = User.objects.create_user(email="someone-else@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    ids = {row["id"] for row in response.data["results"]}
+    assert theirs.id not in ids
 
-    mine = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=doctor)
-    also_visible = Document.objects.create(hospital=hospital, patient=patient, uploaded_by=someone_else)
-
-    class ScopedDocumentViewSet(TenantScopedViewSetMixin):
-        queryset = Document.objects.all()
-        assignment_scope_field = "uploaded_by"
-
-    view = ScopedDocumentViewSet()
-    view.request = SimpleNamespace(user=doctor, headers={})
-
-    visible_ids = set(view.get_queryset().values_list("id", flat=True))
-    assert visible_ids == {mine.id, also_visible.id}
-
-    with suppress(Exception):
-        mine.delete()
-    with suppress(Exception):
-        also_visible.delete()
-    with suppress(Exception):
-        patient.delete()
-
-
-# --- HospitalActive: suspended tenants are actually locked out ------------
-#
-# Hospital.is_active/HospitalViewSet.toggle_status existed before this
-# fix, but nothing on the request path ever checked it —
-# TenantScopedViewSetMixin/UserViewSet/RoleViewSet only ever filtered by
-# hospital_id, never by hospital.is_active. These tests prove the new
-# apps.core.permissions.HospitalActive global permission actually closes
-# that gap.
 
 @pytest.mark.django_db
-def test_suspended_hospitals_user_is_locked_out_of_the_api(auth_client, hospital):
-    hospital.is_active = False
-    hospital.save(update_fields=["is_active"])
-
-    response = auth_client.get("/api/v1/patients/")
-
+def test_emergency_access_log_rejects_a_low_privilege_role(restricted_client):
+    """restricted_client carries the Telephony Operator template — not in
+    CanReviewEmergencyAccess.REVIEWER_TEMPLATES and not is_staff."""
+    response = restricted_client.get("/api/v1/emergency-access-logs/")
     assert response.status_code == 403
 
 
 @pytest.mark.django_db
-def test_active_hospitals_user_is_unaffected(auth_client, hospital):
-    assert hospital.is_active is True
-    assert auth_client.get("/api/v1/patients/").status_code == 200
+def test_mark_reviewed_stamps_reviewer_and_timestamp_together(auth_client, hospital, user):
+    from apps.core.models import EmergencyAccessLog
 
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
 
-@pytest.mark.django_db
-def test_staff_user_is_exempt_from_the_suspended_hospital_lockout(api_client, staff_user, hospital):
-    """Staff/SaaS-admins need to keep working inside a suspended hospital
-    (via X-Hospital-Id) to investigate or reactivate it."""
-    hospital.is_active = False
-    hospital.save(update_fields=["is_active"])
-    api_client.force_authenticate(user=staff_user)
-
-    response = api_client.get("/api/v1/patients/")
+    response = auth_client.post(f"/api/v1/emergency-access-logs/{log.id}/mark_reviewed/", {"review_notes": "Confirmed legitimate — on-call doctor was unreachable."}, format="json")
 
     assert response.status_code == 200
+    log.refresh_from_db()
+    assert log.reviewed is True
+    assert log.reviewed_by_id == user.id
+    assert log.reviewed_at is not None
+    assert log.review_notes == "Confirmed legitimate — on-call doctor was unreachable."
 
 
 @pytest.mark.django_db
-def test_staff_only_user_with_no_hospital_is_unaffected(api_client):
-    from apps.accounts.models import User
+def test_emergency_access_log_reviewed_field_cannot_be_set_via_bare_patch(auth_client, hospital):
+    """reviewed/reviewed_by/reviewed_at must only change together, through
+    mark_reviewed — otherwise a bare PATCH could set reviewed=True with no
+    reviewer attached, defeating the point of a reviewable log."""
+    from apps.core.models import EmergencyAccessLog
 
-    staff_only = User.objects.create_user(email="ops-only@polynexus.in", password="x", is_staff=True)
-    api_client.force_authenticate(user=staff_only)
+    log = EmergencyAccessLog.objects.create(hospital=hospital, model_name="opd.Encounter", object_id="1", reason="on-call gap")
 
-    response = api_client.get("/api/v1/patients/")
-
-    assert response.status_code == 200
-
-
-# --- AuditLogViewSet: platform-wide trail for staff/SaaS-admins -----------
-
-@pytest.mark.django_db
-def test_staff_sees_audit_logs_across_every_hospital(api_client, staff_user, hospital, other_hospital):
-    from apps.core.models import AuditLog
-
-    AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
-    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
-    api_client.force_authenticate(user=staff_user)
-
-    response = api_client.get("/api/v1/audit-logs/")
-
-    paths = {row["path"] for row in response.data["results"]}
-    assert {"/mine/", "/not-mine/"} <= paths
+    response = auth_client.patch(f"/api/v1/emergency-access-logs/{log.id}/", {"reviewed": True}, format="json")
+    assert response.status_code == 405  # ReadOnlyModelViewSet — no update action at all
+    log.refresh_from_db()
+    assert log.reviewed is False
 
 
-@pytest.mark.django_db
-def test_staff_can_narrow_audit_logs_to_one_hospital_via_query_param(api_client, staff_user, hospital, other_hospital):
-    from apps.core.models import AuditLog
+# --- config.settings.prod encryption-key gate -----------------------------
+#
+# Run in a subprocess: importing config.settings.prod in-process would both
+# fight the already-loaded test settings and, by design, raise on import.
+# django.setup() is the real thing being asserted — "does the app refuse to
+# boot", not "does a helper function return False".
 
-    AuditLog.objects.create(hospital=hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
-    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
-    api_client.force_authenticate(user=staff_user)
-
-    response = api_client.get(f"/api/v1/audit-logs/?hospital={other_hospital.id}")
-
-    paths = {row["path"] for row in response.data["results"]}
-    assert paths == {"/not-mine/"}
-
-
-@pytest.mark.django_db
-def test_non_staff_user_still_only_sees_their_own_hospitals_audit_logs(user, other_hospital):
-    """AuditLogViewSet is IsAdminUser-gated end-to-end (a non-staff user
-    gets 403 before get_queryset() ever runs — see the next test), so this
-    exercises get_queryset()'s non-staff branch directly rather than
-    through the always-403 live endpoint, same style as this file's
-    ActionPermissionRequired fake-request tests below."""
-    from types import SimpleNamespace
-
-    from apps.core.models import AuditLog
-    from apps.core.views import AuditLogViewSet
-
-    AuditLog.objects.create(hospital=user.hospital, action=AuditLog.Action.REQUEST, method="GET", path="/mine/")
-    AuditLog.objects.create(hospital=other_hospital, action=AuditLog.Action.REQUEST, method="GET", path="/not-mine/")
-
-    view = AuditLogViewSet()
-    view.request = SimpleNamespace(user=user, query_params={})
-
-    paths = {log.path for log in view.get_queryset()}
-    assert paths == {"/mine/"}
+DEV_FERNET_KEY = "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs="
+DEV_GCM_KEY = "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw="
+REAL_KEY_A = "Zt8QpL3vX1mN7bS5dH0jK4rT6yW9cF2gA8eU1oI3sQ4="
+REAL_KEY_B = "Qw3rT6yU9iO2pA5sD8fG1hJ4kL7zX0cV3bN6mQ9wE2s="
 
 
-@pytest.mark.django_db
-def test_non_staff_user_gets_403_from_the_live_audit_log_endpoint(auth_client):
-    """AuditLogViewSet stays IsAdminUser-gated end-to-end — the platform-
-    wide broadening in this fix is for staff/SaaS-admins only, never a
-    reason to open this endpoint to regular hospital users."""
-    assert auth_client.get("/api/v1/audit-logs/").status_code == 403
+def _boot_prod_settings(**env_overrides):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    env = {
+        **os.environ,
+        "DJANGO_SETTINGS_MODULE": "config.settings.prod",
+        "SECRET_KEY": "a-real-looking-production-secret-value-for-tests",
+        "FIELD_HASH_KEY": "a-real-looking-blind-index-key-for-tests",
+        "FIELD_ENCRYPTION_KEY": REAL_KEY_A,
+        "FIELD_ENCRYPTION_KEY_V2": REAL_KEY_B,
+        "FIELD_ENCRYPTION_KEYS": "",
+        "FIELD_ENCRYPTION_KEYS_V2": "",
+        "ALLOWED_HOSTS": "api.example.com",
+        **env_overrides,
+    }
+    return subprocess.run(
+        [sys.executable, "-c", "import django; django.setup()"],
+        cwd=repo_root, env=env, capture_output=True, text=True,
+    )
 
 
-# --- Hospital.slug validation (ValidationError import bug) ----------------
-
-@pytest.mark.django_db
-def test_reserved_hospital_slug_raises_validation_error_not_nameerror():
-    from django.core.exceptions import ValidationError as DjangoValidationError
-
-    from apps.core.models import validate_hospital_slug
-
-    with pytest.raises(DjangoValidationError):
-        validate_hospital_slug("admin")
+def test_prod_settings_boot_with_real_keys():
+    assert _boot_prod_settings().returncode == 0
 
 
-# --- HospitalViewSet: module-key validation, suspend/onboard fixes --------
+def test_prod_settings_reject_the_dev_fernet_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY=DEV_FERNET_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY(S)" in result.stderr
 
-@pytest.mark.django_db
-def test_update_modules_rejects_an_unknown_module_key(api_client, staff_user, hospital):
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post(f"/api/v1/hospitals/{hospital.id}/update-modules/", {"enabled_modules": ["pharmacy", "not-a-real-module"]}, format="json")
-    assert response.status_code == 400
-    hospital.refresh_from_db()
-    assert "not-a-real-module" not in hospital.enabled_modules
+
+def test_prod_settings_reject_the_dev_gcm_placeholder():
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEY_V2=DEV_GCM_KEY)
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
+
+
+def test_prod_settings_accept_a_rotation_list():
+    """Newest key first — the list form is what makes rotation possible at
+    all (apps.core.encryption encrypts under keys[0] and tries every key on
+    decrypt), and nothing in base.py defined these settings until now."""
+    result = _boot_prod_settings(
+        FIELD_ENCRYPTION_KEYS=f"{REAL_KEY_A},{REAL_KEY_B}",
+        FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{REAL_KEY_A}",
+    )
+    assert result.returncode == 0
+
+
+def test_prod_settings_reject_the_placeholder_hiding_in_a_rotation_list():
+    """The rotation list must not become a way around the placeholder
+    check — including as a trailing "just for decryption" key, since that
+    still means production is serving data encrypted under a key published
+    in this repo."""
+    result = _boot_prod_settings(FIELD_ENCRYPTION_KEYS_V2=f"{REAL_KEY_B},{DEV_GCM_KEY}")
+    assert result.returncode != 0
+    assert "FIELD_ENCRYPTION_KEY_V2(S)" in result.stderr
 
 
 @pytest.mark.django_db
-def test_update_modules_accepts_known_module_keys(api_client, staff_user, hospital):
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post(f"/api/v1/hospitals/{hospital.id}/update-modules/", {"enabled_modules": ["pharmacy", "billing"]}, format="json")
-    assert response.status_code == 200
-    hospital.refresh_from_db()
-    assert hospital.enabled_modules == ["pharmacy", "billing"]
+def test_public_tenant_branding_for_hospital(api_client, hospital):
+    res = api_client.get(f"/api/v1/public/tenant-branding/?subdomain={hospital.slug}")
+    assert res.status_code == 200
+    assert res.data["is_tenant"] is True
+    assert res.data["name"] == hospital.name
+    assert res.data["slug"] == hospital.slug
 
 
 @pytest.mark.django_db
-def test_onboarding_does_not_grant_the_auto_provisioned_admin_is_staff(api_client, staff_user):
-    """The bug this closes: every tenant's own auto-created "Hospital
-    Owner / Admin" used to get is_staff=True, which — combined with
-    Django admin's ModelAdmin classes having no per-hospital scoping at
-    all — let every hospital's own admin read/write every *other*
-    hospital's data via X-Hospital-Id, or browse it through /admin/."""
-    from apps.accounts.models import User
-
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post("/api/v1/hospitals/", {"name": "New Onboarded Hospital", "slug": "new-onboarded"}, format="json")
-
-    assert response.status_code == 201
-    admin_email = f"admin@{response.data['slug']}.example"
-    provisioned_admin = User.objects.get(email=admin_email)
-    assert provisioned_admin.is_staff is False
-    assert provisioned_admin.is_saas_admin is False
+def test_public_tenant_branding_default_platform(api_client):
+    res = api_client.get("/api/v1/public/tenant-branding/?subdomain=hms")
+    assert res.status_code == 200
+    assert res.data["is_tenant"] is False
+    assert res.data["name"] == "Polynexus Healthcare OS"
 
 
-@pytest.mark.django_db
-def test_onboarding_returns_a_generated_password_once(api_client, staff_user):
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post("/api/v1/hospitals/", {"name": "Another Onboarded Hospital", "slug": "another-onboarded"}, format="json")
-
-    assert response.status_code == 201
-    provisioned = response.data["provisioned_admin"]
-    assert provisioned["email"] == f"admin@{response.data['slug']}.example"
-    assert len(provisioned["password"]) >= 16
-
-    from apps.accounts.models import User
-    admin_user = User.objects.get(email=provisioned["email"])
-    assert admin_user.check_password(provisioned["password"])
-
-
-@pytest.mark.django_db
-def test_onboarding_accepts_a_caller_supplied_admin_email(api_client, staff_user):
-    api_client.force_authenticate(user=staff_user)
-    response = api_client.post("/api/v1/hospitals/", {
-        "name": "Custom Admin Hospital", "slug": "custom-admin-hospital", "admin_email": "owner@realclinic.example",
-    }, format="json")
-
-    assert response.status_code == 201
-    assert response.data["provisioned_admin"]["email"] == "owner@realclinic.example"

@@ -367,6 +367,99 @@ def test_data_export_unknown_model_name_returns_400(auth_client):
     assert response.status_code == 400
 
 
+# --- RBAC: exports require view permission on the exported model, not
+# just IsAuthenticated -------------------------------------------------
+
+@pytest.mark.django_db
+def test_role_without_patients_permission_cannot_export_patients(hospital, department, patient):
+    """hr_manager's template (apps.accounts.permission_templates) grants
+    none of patients/enquiries/appointments — a bulk CSV/FHIR export of
+    any of them must 403, the same as reading them one at a time already
+    does elsewhere, not just require *some* login."""
+    from apps.accounts.models import Role, User, assign_role
+    from rest_framework.test import APIClient
+
+    role = Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER)
+    user = User.objects.create_user(email="hr-export@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(user, role)
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    assert client.get("/api/v1/export/patients/").status_code == 403
+    assert client.get("/api/v1/export/enquiries/").status_code == 403
+    assert client.get("/api/v1/export/appointments/").status_code == 403
+    assert client.get("/api/v1/export/fhir/patients/").status_code == 403
+    assert client.get("/api/v1/export/fhir/appointments/").status_code == 403
+    assert client.get("/api/v1/export/fhir/all/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_role_with_only_patients_permission_can_export_patients_but_not_appointments(restricted_client, hospital, department, patient):
+    """restricted_client carries Telephony Operator, which holds
+    "patients": ["view"] but no "appointments" entry at all — the export
+    permission check should track that difference per resource, not treat
+    the endpoint as all-or-nothing."""
+    assert restricted_client.get("/api/v1/export/patients/").status_code == 200
+    assert restricted_client.get("/api/v1/export/appointments/").status_code == 403
+    assert restricted_client.get("/api/v1/export/fhir/patients/").status_code == 200
+    assert restricted_client.get("/api/v1/export/fhir/appointments/").status_code == 403
+    # "all" needs every constituent resource's permission — missing one
+    # (appointments) must still 403 the whole bundle rather than silently
+    # returning only the patients half.
+    assert restricted_client.get("/api/v1/export/fhir/all/").status_code == 403
+
+
+# --- Audit logging: every successful export leaves a record of who
+# exported what, when, and how many rows -------------------------------
+
+@pytest.mark.django_db
+def test_data_export_writes_an_audit_log_entry(auth_client, user, hospital, patient):
+    from apps.core.models import AuditLog
+
+    response = auth_client.get("/api/v1/export/patients/")
+    assert response.status_code == 200
+
+    log = AuditLog.objects.get(action=AuditLog.Action.EXPORT, hospital=hospital)
+    assert log.actor_id == user.id
+    assert log.model_name == "Patient"
+    assert log.changes["row_count"] == 1
+    assert log.path == "/api/v1/export/patients/"
+
+
+@pytest.mark.django_db
+def test_data_export_denied_by_permission_writes_no_audit_log_entry(hospital, department):
+    """A 403 means nothing was actually exported — logging it as an
+    EXPORT would misrepresent what happened (see _log_export's docstring:
+    only a genuine export is logged, the same "real access, not every
+    attempt" principle apps.core.models.EmergencyAccessLog follows)."""
+    from apps.accounts.models import Role, User, assign_role
+    from apps.core.models import AuditLog
+    from rest_framework.test import APIClient
+
+    role = Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER)
+    hr_user = User.objects.create_user(email="hr-audit@test-hospital.example", password="testpass123", hospital=hospital, department=department)
+    assign_role(hr_user, role)
+    client = APIClient()
+    client.force_authenticate(user=hr_user)
+
+    response = client.get("/api/v1/export/patients/")
+    assert response.status_code == 403
+    assert not AuditLog.objects.filter(action=AuditLog.Action.EXPORT).exists()
+
+
+@pytest.mark.django_db
+def test_fhir_export_all_writes_one_audit_log_entry_covering_both_resources(auth_client, hospital, doctor, patient, slot):
+    from apps.core.models import AuditLog
+
+    book_appointment(patient=patient, slot=slot)
+    response = auth_client.get("/api/v1/export/fhir/all/")
+    assert response.status_code == 200
+
+    log = AuditLog.objects.get(action=AuditLog.Action.EXPORT, hospital=hospital)
+    assert log.model_name == "FHIRBundle"
+    assert log.changes == {"row_count": 2, "resource_type": "all"}
+
+
 # --- IntegrationHealthView --------------------------------------------------
 #
 # IsAdminUser-gated (is_staff), unlike every other view in this app.

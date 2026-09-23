@@ -125,6 +125,8 @@ class WorkflowStep(models.Model):
     # Config options e.g. {"condition": "score <= 6"}, {"action": "send_whatsapp", "template": "reminder"}
     config = models.JSONField(default=dict, blank=True)
 
+    objects = models.Manager()
+
     class Meta:
         ordering = ["order"]
 

@@ -42,7 +42,8 @@ class LabTestPackageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 class LabOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = LabOrderSerializer
-    queryset = LabOrder.objects.all()
+    # select_related: LabOrderSerializer.patient_name (source="patient.full_name")
+    queryset = LabOrder.objects.select_related("patient")
     filterset_fields = ["patient", "status", "investigation_order"]
 
     def perform_create(self, serializer):
@@ -70,7 +71,8 @@ class LabResultViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
     action_permissions = {"verify": "laboratory.verify_labresult"}
     audited_fields = ("value", "flag")
     serializer_class = LabResultSerializer
-    queryset = LabResult.objects.all()
+    # select_related: LabResultSerializer.lab_test_name (source="lab_test.name")
+    queryset = LabResult.objects.select_related("lab_test")
     filterset_fields = ["lab_order", "lab_test", "flag"]
 
     def perform_create(self, serializer):

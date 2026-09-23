@@ -240,6 +240,64 @@ def test_a_doctor_with_assigned_only_scope_sees_only_their_own_encounters(hospit
 
 
 @pytest.mark.django_db
+def test_break_glass_emergency_reason_lets_a_doctor_retrieve_an_unassigned_encounter(hospital, department, doctor, doctor_user, patient):
+    from apps.core.models import EmergencyAccessLog
+
+    other_doctor = Doctor.objects.create(hospital=hospital, department=department, name="Iyer")
+    other_slot = Slot.objects.create(hospital=hospital, doctor=other_doctor, date=datetime.date.today() + datetime.timedelta(days=1), start_time=datetime.time(11, 0), end_time=datetime.time(11, 15))
+    other_appt = book_appointment(patient=patient, slot=other_slot)
+    check_in(other_appt)
+    other_encounter = Encounter.objects.get(appointment=other_appt)
+
+    from rest_framework.test import APIClient
+    client = APIClient()
+    client.force_authenticate(user=doctor_user)
+
+    without_header = client.get(f"/api/v1/opd/encounters/{other_encounter.id}/")
+    assert without_header.status_code == 404
+
+    with_header = client.get(
+        f"/api/v1/opd/encounters/{other_encounter.id}/",
+        HTTP_X_EMERGENCY_REASON="Patient collapsed, on-call doctor unavailable",
+    )
+    assert with_header.status_code == 200
+
+    log = EmergencyAccessLog.objects.get(model_name="opd.Encounter", object_id=str(other_encounter.id))
+    assert log.actor_id == doctor_user.id
+    assert log.reason == "Patient collapsed, on-call doctor unavailable"
+    assert log.reviewed is False
+
+
+@pytest.mark.django_db
+def test_break_glass_does_not_log_or_engage_for_a_record_already_in_scope(doctor_client, doctor_user, encounter):
+    from apps.core.models import EmergencyAccessLog
+
+    response = doctor_client.get(f"/api/v1/opd/encounters/{encounter.id}/", HTTP_X_EMERGENCY_REASON="not actually needed")
+    assert response.status_code == 200
+    assert not EmergencyAccessLog.objects.filter(model_name="opd.Encounter", object_id=str(encounter.id)).exists()
+
+
+@pytest.mark.django_db
+def test_break_glass_does_not_bypass_the_list_action(hospital, department, doctor, doctor_user, patient):
+    """Break-glass only ever applies to `retrieve` of an already-identified
+    record — an emergency header on `list` must not turn into a way to
+    browse every patient in the hospital."""
+    other_doctor = Doctor.objects.create(hospital=hospital, department=department, name="Rao")
+    other_slot = Slot.objects.create(hospital=hospital, doctor=other_doctor, date=datetime.date.today() + datetime.timedelta(days=1), start_time=datetime.time(12, 0), end_time=datetime.time(12, 15))
+    other_appt = book_appointment(patient=patient, slot=other_slot)
+    check_in(other_appt)
+    other_encounter = Encounter.objects.get(appointment=other_appt)
+
+    from rest_framework.test import APIClient
+    client = APIClient()
+    client.force_authenticate(user=doctor_user)
+
+    response = client.get("/api/v1/opd/encounters/", HTTP_X_EMERGENCY_REASON="trying to browse everything")
+    ids = [e["id"] for e in response.data["results"]]
+    assert other_encounter.id not in ids
+
+
+@pytest.mark.django_db
 def test_receptionist_role_is_blocked_from_every_opd_endpoint(receptionist_client, encounter):
     assert receptionist_client.get("/api/v1/opd/encounters/").status_code == 403
     assert receptionist_client.get("/api/v1/opd/clinical-notes/").status_code == 403

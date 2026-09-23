@@ -110,8 +110,10 @@ def check_in(appointment: Appointment) -> Appointment:
         appointment.save(update_fields=["status", "checked_in_at", "queue_token"])
     else:
         appointment.save(update_fields=["status", "checked_in_at"])
+
     appointment_checked_in.send(sender=Appointment, appointment=appointment)
     return appointment
+
 
 
 def doctor_queue(doctor: Doctor, date) -> dict:
@@ -135,19 +137,8 @@ def block_doctor_slots(doctor: Doctor, *, start_date, end_date, reason: str = ""
     currently-unbooked slots — already-booked ones are left alone and
     counted separately so front desk knows how many patients still need a
     manual reschedule/callback."""
-    # Locking and the booked/unbooked check have to be two separate
-    # queries: Appointment.slot is a nullable reverse OneToOne (a slot may
-    # have no appointment), so select_related("appointment") below is a
-    # LEFT OUTER JOIN — and Postgres rejects "SELECT ... FOR UPDATE"
-    # combined with an outer join on its nullable side. Lock the candidate
-    # slot ids first (no join), then re-fetch those same rows with the
-    # join to inspect is_booked.
-    slot_ids = list(
-        Slot.objects.select_for_update()
-        .filter(doctor=doctor, date__gte=start_date, date__lte=end_date, is_blocked=False)
-        .values_list("id", flat=True)
-    )
-    bookable = Slot.objects.filter(id__in=slot_ids).select_related("appointment")
+    slots = Slot.objects.select_for_update().filter(doctor=doctor, date__gte=start_date, date__lte=end_date)
+    bookable = slots.select_related("appointment").filter(is_blocked=False)
 
     blocked_ids, booked_ids = [], []
     for slot in bookable:

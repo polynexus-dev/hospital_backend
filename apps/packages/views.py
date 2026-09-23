@@ -41,7 +41,8 @@ class CampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class CampRegistrationViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = CampRegistrationSerializer
-    queryset = CampRegistration.objects.all()
+    # select_related: CampRegistrationSerializer.campaign_name (source="campaign.name")
+    queryset = CampRegistration.objects.select_related("campaign")
     filterset_fields = ["campaign", "stage", "enquiry", "patient"]
     search_fields = ["patient_name", "mobile"]
 

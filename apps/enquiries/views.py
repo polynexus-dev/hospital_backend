@@ -1,6 +1,7 @@
 import csv
 import io
 
+from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -12,24 +13,131 @@ from rest_framework.views import APIView
 from apps.core.models import Hospital
 from apps.core.viewsets import TenantScopedViewSetMixin
 
-from .models import Enquiry
+from .models import Enquiry, TreatmentEstimate
 from .serializers import (
     BulkImportRowSerializer,
+    EnquiryAssignmentChangeSerializer,
     EnquirySerializer,
+    EnquiryStageChangeSerializer,
     LeadWebhookSerializer,
     LoseEnquirySerializer,
     MergeEnquirySerializer,
     MoveStageSerializer,
     ReassignEnquirySerializer,
+    TreatmentEstimateSerializer,
 )
 from .services import merge_enquiries, move_stage, reassign_enquiry
+from .treatment_estimate_pdf import render_treatment_estimate_pdf
 
 
 class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = EnquirySerializer
     queryset = Enquiry.objects.all()
-    filterset_fields = ["stage", "source", "department", "assigned_to", "urgency", "patient"]
+    filterset_fields = ["stage", "source", "department", "assigned_to", "urgency", "patient", "follow_up_date"]
     search_fields = ["name", "mobile", "alternate_mobile", "email", "campaign"]
+
+    # bulk_import scales with file size (one DB round-trip per row, all
+    # inside a single request) rather than with request count — the
+    # per-action "heavy_ops" scope bounds it separately from this
+    # viewset's ordinary CRUD traffic (see DEFAULT_THROTTLE_RATES in
+    # settings and apps.integrations.views.DataExportView for the same
+    # per-tenant resource-isolation reasoning). ScopedRateThrottle reads
+    # `self.throttle_scope`, which DRF looks up on the view instance, so
+    # setting it only for this one action doesn't affect list/retrieve/etc.
+    def get_throttles(self):
+        if self.action == "bulk_import":
+            self.throttle_scope = "heavy_ops"
+            from rest_framework.throttling import ScopedRateThrottle
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """Lead 360° audit trail: returns stage change history, ownership
+        history, and any treatment estimates."""
+        enquiry = self.get_object()
+        stage_changes = enquiry.stage_changes.select_related("changed_by").all()
+        assignment_changes = enquiry.assignment_changes.select_related("from_owner", "to_owner", "changed_by").all()
+        estimates = enquiry.treatment_estimates.all()
+
+        return Response({
+            "stage_changes": EnquiryStageChangeSerializer(stage_changes, many=True).data,
+            "assignment_changes": EnquiryAssignmentChangeSerializer(assignment_changes, many=True).data,
+            "estimates": TreatmentEstimateSerializer(estimates, many=True).data,
+        })
+
+    @action(detail=True, methods=["post"], url_path="add-note")
+    def add_note(self, request, pk=None):
+        """Appends a timestamped coordinator note to the enquiry."""
+        enquiry = self.get_object()
+        note_text = request.data.get("note", "").strip()
+        if not note_text:
+            return Response({"detail": "Note content is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.utils import timezone
+        author = request.user.get_full_name() or request.user.email
+        stamp = timezone.now().strftime("%d %b %Y %H:%M")
+        formatted_entry = f"[{stamp} - {author}]: {note_text}"
+
+        if enquiry.notes:
+            enquiry.notes = f"{enquiry.notes}\n{formatted_entry}"
+        else:
+            enquiry.notes = formatted_entry
+
+        enquiry.save(update_fields=["notes", "updated_at"])
+        return Response(EnquirySerializer(enquiry).data)
+
+    @action(detail=False, methods=["get"], url_path="export-csv")
+    def export_csv(self, request):
+        """Exports filtered enquiries to a CSV file with full marketing, doctor,
+        SLA and stage attribution for executive MIS & reporting."""
+        queryset = self.filter_queryset(self.get_queryset()).select_related("department", "consulting_doctor", "assigned_to")
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="hospital_crm_leads.csv"'
+
+        # UTF-8 BOM for Microsoft Excel compatibility
+        response.write('\ufeff')
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "Lead ID", "Patient Name", "Mobile", "Alternate Mobile", "Email",
+            "Stage", "Urgency", "Score", "Estimated Value (INR)",
+            "Department", "Consulting Doctor", "Assigned Owner",
+            "Source", "Campaign", "UTM Source", "UTM Medium", "UTM Campaign",
+            "Service Requested", "Follow-up Date", "SLA Due At",
+            "Lost Reason", "Lost Notes", "Created At", "Internal Notes"
+        ])
+
+        for e in queryset:
+            writer.writerow([
+                e.id,
+                e.name,
+                e.mobile,
+                e.alternate_mobile,
+                e.email,
+                e.get_stage_display(),
+                e.get_urgency_display(),
+                e.score,
+                e.estimated_value or 0,
+                e.department.name if e.department else "",
+                getattr(e.consulting_doctor, "name", "") if e.consulting_doctor else "",
+                e.assigned_to.get_full_name() if e.assigned_to else (e.assigned_to.email if e.assigned_to else "Unassigned"),
+                e.get_source_display(),
+                e.campaign,
+                e.utm_source,
+                e.utm_medium,
+                e.utm_campaign,
+                e.service_requested,
+                e.follow_up_date.isoformat() if e.follow_up_date else "",
+                e.sla_due_at.strftime("%Y-%m-%d %H:%M") if e.sla_due_at else "",
+                e.get_lost_reason_display() if e.lost_reason else "",
+                e.lost_notes,
+                e.created_at.strftime("%Y-%m-%d %H:%M"),
+                e.notes,
+            ])
+
+        return response
 
     @action(detail=True, methods=["post"], url_path="move-stage")
     def move_stage_action(self, request, pk=None):
@@ -81,6 +189,16 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         merge_enquiries(primary, duplicate, merged_by=request.user)
         return Response(EnquirySerializer(primary).data)
 
+    # Hard ceiling on a single import request — bulk_import does one
+    # BulkImportRowSerializer validation + one Enquiry.objects.create() per
+    # row, synchronously, inside one HTTP request/worker/DB-connection. With
+    # no per-tenant compute quota on this shared deployment, an unbounded
+    # file lets one hospital's "historical enquiry migration" tie up a
+    # worker for as long as it takes to insert an arbitrarily large row
+    # count — this caps the worst case; genuinely larger migrations should
+    # be split into multiple files rather than routed through this endpoint.
+    MAX_BULK_IMPORT_ROWS = 5000
+
     @action(detail=False, methods=["post"], url_path="bulk-import", parser_classes=[MultiPartParser, FormParser])
     def bulk_import(self, request):
         """CSV bulk import / historical enquiry migration (§2). Expects a
@@ -91,10 +209,15 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             return Response({"detail": "file is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         hospital = request.user.hospital
-        reader = csv.DictReader(io.StringIO(upload.read().decode("utf-8-sig")))
+        rows = list(csv.DictReader(io.StringIO(upload.read().decode("utf-8-sig"))))
+        if len(rows) > self.MAX_BULK_IMPORT_ROWS:
+            return Response(
+                {"detail": f"File has {len(rows)} rows; bulk-import is capped at {self.MAX_BULK_IMPORT_ROWS} rows per request. Split it into multiple files."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         created, errors = 0, []
-        for line_number, row in enumerate(reader, start=2):
+        for line_number, row in enumerate(rows, start=2):
             row_serializer = BulkImportRowSerializer(data=row)
             if not row_serializer.is_valid():
                 errors.append({"line": line_number, "errors": row_serializer.errors})
@@ -103,6 +226,126 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             created += 1
 
         return Response({"created": created, "errors": errors}, status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path="webhook-config")
+    def webhook_config(self, request):
+        hospital = request.user.hospital
+        if not hospital:
+            return Response({"detail": "No hospital tenant configured."}, status=status.HTTP_400_BAD_REQUEST)
+        token = str(hospital.lead_webhook_token)
+        webhook_url = request.build_absolute_uri(f"/api/v1/enquiries/lead-webhook/{token}/")
+        return Response({
+            "token": token,
+            "webhook_url": webhook_url,
+            "supported_sources": [c[0] for c in Enquiry.Source.choices],
+            "sample_payload": {
+                "name": "Suresh Patel",
+                "mobile": "+919876543210",
+                "email": "suresh.patel@example.com",
+                "source": "meta",
+                "campaign": "Orthopedics Joint Replacement Campaign 2026",
+                "service_requested": "Total Knee Replacement",
+                "utm_source": "facebook",
+                "utm_medium": "cpc",
+                "utm_campaign": "joint_pain_pune",
+            },
+        })
+
+    @action(detail=False, methods=["get"], url_path="chain-overview")
+    def chain_overview(self, request):
+        """Cross-branch CRM pipeline aggregator across the hospital network."""
+        from django.db.models import Sum
+        from django.utils import timezone
+
+        current_hospital = getattr(request.user, "hospital", None)
+        if not current_hospital:
+            return Response({"detail": "No hospital assigned to user."}, status=status.HTTP_400_BAD_REQUEST)
+
+        group = current_hospital.group
+        if group:
+            branches = list(Hospital.objects.filter(group=group, is_active=True).order_by("name"))
+            group_name = group.name
+        else:
+            # Fallback to current hospital + any active sibling hospitals for demo/chain view
+            branches = list(Hospital.objects.filter(is_active=True).order_by("name")[:6])
+            group_name = "Hospital Healthcare Network"
+
+        branch_metrics = []
+        total_group_enquiries = 0
+        total_group_pipeline_val = 0
+        total_group_converted_val = 0
+        total_group_completed = 0
+
+        now = timezone.now()
+
+        for branch in branches:
+            branch_enquiries = Enquiry.objects.filter(hospital=branch)
+            total_enquiries = branch_enquiries.count()
+            total_group_enquiries += total_enquiries
+
+            stage_counts = {
+                "new": branch_enquiries.filter(stage=Enquiry.Stage.NEW).count(),
+                "contacted": branch_enquiries.filter(stage=Enquiry.Stage.CONTACTED).count(),
+                "scheduled": branch_enquiries.filter(stage=Enquiry.Stage.SCHEDULED).count(),
+                "visited": branch_enquiries.filter(stage=Enquiry.Stage.VISITED).count(),
+                "completed": branch_enquiries.filter(stage=Enquiry.Stage.COMPLETED).count(),
+                "lost": branch_enquiries.filter(stage=Enquiry.Stage.LOST).count(),
+            }
+
+            active_leads = stage_counts["new"] + stage_counts["contacted"] + stage_counts["scheduled"] + stage_counts["visited"]
+
+            active_val = branch_enquiries.filter(
+                stage__in=[Enquiry.Stage.NEW, Enquiry.Stage.CONTACTED, Enquiry.Stage.SCHEDULED, Enquiry.Stage.VISITED]
+            ).aggregate(val=Sum("estimated_value"))["val"] or 0
+
+            converted_val = branch_enquiries.filter(
+                stage=Enquiry.Stage.COMPLETED
+            ).aggregate(val=Sum("estimated_value"))["val"] or 0
+
+            total_group_pipeline_val += float(active_val)
+            total_group_converted_val += float(converted_val)
+            total_group_completed += stage_counts["completed"]
+
+            conversion_rate = round((stage_counts["completed"] / total_enquiries * 100), 1) if total_enquiries > 0 else 0.0
+
+            sla_breaches = branch_enquiries.filter(
+                sla_due_at__lt=now
+            ).exclude(stage__in=[Enquiry.Stage.COMPLETED, Enquiry.Stage.LOST]).count()
+
+            estimates_count = TreatmentEstimate.objects.filter(hospital=branch).count()
+
+            branch_metrics.append({
+                "hospital_id": str(branch.id),
+                "hospital_name": branch.name,
+                "slug": branch.slug,
+                "city": branch.city or "Pune",
+                "is_current": branch.id == current_hospital.id,
+                "total_enquiries": total_enquiries,
+                "active_leads": active_leads,
+                "stages": stage_counts,
+                "pipeline_value": float(active_val),
+                "converted_value": float(converted_val),
+                "conversion_rate": conversion_rate,
+                "sla_breaches": sla_breaches,
+                "treatment_estimates_count": estimates_count,
+            })
+
+        overall_conv_rate = (
+            round((total_group_completed / total_group_enquiries * 100), 1)
+            if total_group_enquiries > 0
+            else 0.0
+        )
+
+        return Response({
+            "group_name": group_name,
+            "total_branches": len(branches),
+            "total_group_enquiries": total_group_enquiries,
+            "total_group_pipeline_value": total_group_pipeline_val,
+            "total_group_converted_value": total_group_converted_val,
+            "overall_conversion_rate": overall_conv_rate,
+            "branches": branch_metrics,
+        })
+
 
 
 class LeadWebhookView(APIView):
@@ -127,3 +370,31 @@ class LeadWebhookView(APIView):
 
         enquiry = Enquiry.objects.create(hospital=hospital, **serializer.validated_data)
         return Response({"id": enquiry.id}, status=status.HTTP_201_CREATED)
+
+
+class TreatmentEstimateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """IPD & Surgical counseling conversion pipeline & estimate generator."""
+
+    serializer_class = TreatmentEstimateSerializer
+    queryset = TreatmentEstimate.objects.all().select_related("patient", "enquiry", "doctor", "department", "hospital")
+    filterset_fields = ["stage", "insurance_preauth_status", "payment_mode", "doctor", "department", "patient"]
+    search_fields = ["procedure_name", "diagnosis", "patient__first_name", "patient__last_name", "enquiry__name", "notes"]
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def download_pdf(self, request, pk=None):
+        estimate = self.get_object()
+        pdf_bytes = render_treatment_estimate_pdf(estimate)
+        sanitized_name = "".join(c for c in estimate.procedure_name if c.isalnum() or c in (" ", "_", "-")).strip().replace(" ", "_")
+        filename = f"Estimate_EST-{estimate.pk:05d}_{sanitized_name or 'Surgical_Estimate'}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=["post"], url_path="convert-admission")
+    def convert_admission(self, request, pk=None):
+        """Marks estimate as converted to admission / OT schedule."""
+        estimate = self.get_object()
+        estimate.stage = TreatmentEstimate.Stage.CONVERTED
+        estimate.save(update_fields=["stage"])
+        return Response(TreatmentEstimateSerializer(estimate).data)
+

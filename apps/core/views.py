@@ -1,12 +1,131 @@
-import secrets
+import uuid
 
+from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import ALL_MODULE_KEYS, AuditLog, Hospital
-from .serializers import AuditLogSerializer, HospitalSerializer
+from .models import AuditLog, EmergencyAccessLog
+from .payload_crypto import derive_shared_aes_key, get_server_public_key_b64
+from .permissions import CanReviewEmergencyAccess
+from .serializers import AuditLogSerializer, EmergencyAccessLogSerializer
+
+# Session TTL matches the refresh token lifetime (12 h by default).
+_SESSION_TTL_SECONDS = 60 * 60 * 12
+_SESSION_CACHE_PREFIX = "payload_enc_session:"
+
+
+class SessionKeyView(APIView):
+    """
+    POST /api/v1/session-key/
+
+    ECDH key-exchange handshake. The client sends its ephemeral P-256 public
+    key; the server derives the shared AES-256 key via ECDH + HKDF, caches it
+    under a random session_id, and returns its own public key so the client can
+    derive the same shared secret independently.
+
+    No authentication required -- the handshake happens before login.
+    The AuditMiddleware / TenantMiddleware are intentionally bypassed for this
+    endpoint (no user context yet).
+
+    Request body:
+        { "client_public_key": "<urlsafe-base64 uncompressed P-256 point>" }
+
+    Response:
+        {
+            "session_id": "<uuid>",
+            "server_public_key": "<urlsafe-base64 uncompressed P-256 point>"
+        }
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []  # rate-limit via nginx/WAF upstream
+
+    def get(self, request):
+        """Provides a session key for frontend clients requesting /api/v1/session-key/."""
+        if not request.session.session_key:
+            request.session.create()
+        key = request.session.session_key
+        return Response(
+            {
+                "session_key": key,
+                "sessionKey": key,
+                "status": "success",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        if not getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False):
+            return Response(
+                {"detail": "Payload encryption is not enabled on this server."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        client_public_key = request.data.get("client_public_key", "")
+        if not client_public_key:
+            return Response(
+                {"detail": "client_public_key is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            aes_key = derive_shared_aes_key(client_public_key)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        session_id = str(uuid.uuid4())
+        # Store as hex string — bytes are not JSON-serializable in all cache backends.
+        cache.set(
+            f"{_SESSION_CACHE_PREFIX}{session_id}",
+            aes_key.hex(),
+            timeout=_SESSION_TTL_SECONDS,
+        )
+
+        return Response(
+            {
+                "session_id": session_id,
+                "server_public_key": get_server_public_key_b64(),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class EmergencyAccessLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """Review surface for break-glass access (Part A #6). Read-only by
+    design — the only write path is mark_reviewed below, which stamps
+    reviewed/reviewed_by/reviewed_at together rather than allowing a bare
+    PATCH to set `reviewed=True` with no reviewer attached."""
+
+    serializer_class = EmergencyAccessLogSerializer
+    permission_classes = [CanReviewEmergencyAccess]
+    queryset = EmergencyAccessLog.objects.none()  # schema-generation fallback; get_queryset() below does the real filtering
+    filterset_fields = ["reviewed", "model_name", "actor"]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
+            return EmergencyAccessLog.objects.none()
+        user = self.request.user
+        if user.can_cross_tenant and self.request.headers.get("X-Hospital-Id"):
+            hospital_id = self.request.headers["X-Hospital-Id"]
+        else:
+            hospital_id = user.hospital_id
+        return EmergencyAccessLog.objects.filter(hospital_id=hospital_id)
+
+    @action(detail=True, methods=["post"])
+    def mark_reviewed(self, request, pk=None):
+        log = self.get_object()
+        log.reviewed = True
+        log.reviewed_by = request.user
+        log.reviewed_at = timezone.now()
+        log.review_notes = str(request.data.get("review_notes", ""))
+        log.save(update_fields=["reviewed", "reviewed_by", "reviewed_at", "review_notes"])
+        return Response(EmergencyAccessLogSerializer(log).data, status=status.HTTP_200_OK)
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -15,15 +134,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     UserViewSet/RoleViewSet already elevate staff users elsewhere.
     AuditLog isn't a TenantScopedModel (hospital is nullable, since some
     entries — failed logins, etc. — may predate tenant resolution), so it's
-    scoped by hand rather than via TenantManager.
-
-    Staff/SaaS-admins get the platform-wide trail (optionally narrowed to
-    one hospital via ?hospital=<id>) — the same X-Hospital-Id-style
-    broadening every other staff-aware view in this codebase gives, and
-    the reason AuditLogSerializer already carries PII-redaction logic for
-    a cross-tenant viewer (get_object_repr/get_changes) that had no real
-    caller before this. Everyone else stays hard-scoped to their own
-    hospital, unchanged."""
+    scoped by hand rather than via TenantManager."""
 
     serializer_class = AuditLogSerializer
     permission_classes = [IsAdminUser]
@@ -33,112 +144,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
             return AuditLog.objects.none()
-        user = self.request.user
-        if user.is_staff:
-            hospital_id = self.request.query_params.get("hospital")
-            queryset = AuditLog.objects.all()
-            return queryset.filter(hospital_id=hospital_id) if hospital_id else queryset
-        return AuditLog.objects.filter(hospital_id=user.hospital_id)
+        return AuditLog.objects.filter(hospital_id=self.request.user.hospital_id)
 
 
-class HospitalViewSet(viewsets.ModelViewSet):
-    """SaaS Management ViewSet for Hospital tenants & enabled module subscriptions.
-    Staff/Superusers can update enabled_modules for any hospital."""
-
-    serializer_class = HospitalSerializer
-    permission_classes = [IsAdminUser]
-    queryset = Hospital.objects.all()
-
-    def perform_create(self, serializer):
-        hospital = serializer.save()
-
-        # Auto-provision default Hospital Owner / Admin role & admin user account
-        from apps.accounts.models import Role, User
-        from apps.accounts.permission_templates import apply_permission_template
-
-        role, _ = Role.objects.get_or_create(
-            hospital=hospital,
-            name="Hospital Owner / Admin",
-            defaults={"template": Role.Template.HOSPITAL_ADMINISTRATOR},
-        )
-        role.template = Role.Template.HOSPITAL_ADMINISTRATOR
-        role.save()
-        apply_permission_template(role.group, Role.Template.HOSPITAL_ADMINISTRATOR)
-
-        # `is_staff` in this codebase means "platform-ops account" — it's
-        # what TenantScopedViewSetMixin/UserViewSet.switch_hospital/
-        # HospitalViewSet/AuditLogViewSet all treat as a cross-hospital
-        # override via X-Hospital-Id (see apps.core.viewsets docstring).
-        # This used to set is_staff=True on every tenant's own auto-created
-        # admin, which — combined with Django admin's ModelAdmin classes
-        # having no per-hospital scoping at all — meant every hospital's
-        # "Hospital Owner / Admin" could pass X-Hospital-Id and read/write
-        # every *other* hospital's data, or browse every other hospital's
-        # Users/Patients/etc. through /admin/. This account's permissions
-        # come entirely from its Role/Group (apply_permission_template
-        # above) like every other hospital user — it doesn't need, and
-        # must not get, the platform-staff flag.
-        requested_email = (self.request.data.get("admin_email") or "").strip().lower()
-        admin_email = requested_email or f"admin@{hospital.slug}.example"
-        generated_password = secrets.token_urlsafe(18)
-        admin_user, created = User.objects.get_or_create(
-            email=admin_email,
-            defaults={
-                "first_name": "Hospital",
-                "last_name": "Admin",
-                "hospital": hospital,
-                "role": role,
-            },
-        )
-        if created:
-            admin_user.set_password(generated_password)
-            admin_user.groups.add(role.group)
-            admin_user.save()
-            self._provisioned_admin_credentials = {"email": admin_email, "password": generated_password}
-
-    def create(self, request, *args, **kwargs):
-        self._provisioned_admin_credentials = None
-        response = super().create(request, *args, **kwargs)
-        if self._provisioned_admin_credentials:
-            # Returned once, here, only — never logged or persisted in
-            # plaintext (the password itself is only ever passed through
-            # set_password() above).
-            response.data["provisioned_admin"] = self._provisioned_admin_credentials
-        return response
-
-    @action(detail=True, methods=["post", "patch"], url_path="update-modules")
-    def update_modules(self, request, pk=None):
-        hospital = self.get_object()
-        modules = request.data.get("enabled_modules")
-        if not isinstance(modules, list) or not all(isinstance(key, str) for key in modules):
-            return Response({"error": "enabled_modules must be a list of module keys"}, status=status.HTTP_400_BAD_REQUEST)
-        unknown = sorted(set(modules) - set(ALL_MODULE_KEYS))
-        if unknown:
-            return Response({"error": f"Unknown module key(s): {', '.join(unknown)}"}, status=status.HTTP_400_BAD_REQUEST)
-        hospital.enabled_modules = modules
-        hospital.save(update_fields=["enabled_modules"])
-        return Response(HospitalSerializer(hospital).data)
-
-    @action(detail=True, methods=["post", "patch"], url_path="toggle-status")
-    def toggle_status(self, request, pk=None):
-        hospital = self.get_object()
-        hospital.is_active = not hospital.is_active
-        hospital.save(update_fields=["is_active"])
-        return Response(HospitalSerializer(hospital).data)
-
-
-from django.views.decorators.csrf import csrf_exempt
-
-
-@csrf_exempt
-def session_key_view(request):
-    """Provides a session key for frontend clients requesting /api/v1/session-key/."""
-    if not request.session.session_key:
-        request.session.create()
-    key = request.session.session_key
-    from django.http import JsonResponse
-    return JsonResponse({
-        "session_key": key,
-        "sessionKey": key,
-        "status": "success",
-    })
+session_key_view = SessionKeyView.as_view()

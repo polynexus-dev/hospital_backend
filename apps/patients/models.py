@@ -5,26 +5,37 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
-from apps.core.encryption import EncryptedTextField
-from apps.core.models import TenantScopedModel
+from apps.core.encryption import blind_index, normalize_phone
+from apps.core.fields import EncryptedCharField, EncryptedJSONField, EncryptedTextField
+from apps.core.managers import SoftDeleteManager, SoftDeleteQuerySet
+from apps.core.models import SoftDeleteModel, TenantScopedModel
 
-# Patient documents (reports, prescriptions, ID proofs, consent forms) are
-# clinical/PII records — restrict uploads to the file types this app
-# actually needs to display/preview, and cap size so a single upload can't
-# exhaust disk on the shared media volume.
+MAX_DOCUMENT_SIZE_MB = 10
 ALLOWED_DOCUMENT_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "doc", "docx"]
-MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
-def validate_document_size(file):
-    if file.size > MAX_DOCUMENT_SIZE_BYTES:
-        raise ValidationError(
-            f"File is too large ({file.size / (1024 * 1024):.1f} MB) — "
-            f"maximum allowed size is {MAX_DOCUMENT_SIZE_BYTES // (1024 * 1024)} MB."
-        )
+def validate_document_size(value):
+    filesize = value.size
+    if filesize > MAX_DOCUMENT_SIZE_MB * 1024 * 1024:
+        raise ValidationError(f"Maximum file size is {MAX_DOCUMENT_SIZE_MB}MB.")
 
 
-class Patient(TenantScopedModel):
+class PatientQuerySet(SoftDeleteQuerySet):
+    def by_mobile(self, mobile):
+        """Exact-match lookup by phone number against the blind-index
+        columns — mobile/alternate_mobile are encrypted (Part A #2) and
+        therefore not directly filterable, see apps.core.fields."""
+        digest = blind_index(normalize_phone(mobile))
+        if not digest:
+            return self.none()
+        return self.filter(models.Q(mobile_hash=digest) | models.Q(alternate_mobile_hash=digest))
+
+
+class PatientManager(SoftDeleteManager):
+    queryset_class = PatientQuerySet
+
+
+class Patient(TenantScopedModel, SoftDeleteModel):
     class Gender(models.TextChoices):
         MALE = "male", "Male"
         FEMALE = "female", "Female"
@@ -35,57 +46,6 @@ class Patient(TenantScopedModel):
         MARATHI = "mr", "Marathi"
         HINDI = "hi", "Hindi"
         ENGLISH = "en", "English"
-
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=16, choices=Gender.choices, blank=True)
-
-    mobile = models.CharField(max_length=20, db_index=True)
-    alternate_mobile = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
-
-    address = models.TextField(blank=True)
-    city = models.CharField(max_length=120, blank=True)
-
-    national_id_type = models.CharField(max_length=32, blank=True, help_text="e.g. Aadhaar, PAN, Passport")
-    # Encrypted at rest (apps.core.encryption) — Aadhaar/PAN/Passport
-    # numbers are sensitive personal data under the DPDP Act / SPDI Rules.
-    # Not filterable/searchable as a result — never add this to a
-    # filterset_fields/search_fields list.
-    national_id_number = EncryptedTextField(blank=True)
-
-    insurance_provider = models.CharField(max_length=150, blank=True)
-    # Encrypted at rest — same reasoning as national_id_number above.
-    insurance_policy_number = EncryptedTextField(blank=True)
-    employer = models.CharField(max_length=150, blank=True)
-
-    attendant_name = models.CharField(max_length=150, blank=True)
-    attendant_phone = models.CharField(max_length=20, blank=True)
-    attendant_relation = models.CharField(max_length=50, blank=True, help_text="e.g. daughter, spouse")
-    referring_doctor_name = models.CharField(
-        max_length=150,
-        blank=True,
-        help_text="External referring doctor, free text — not necessarily in this hospital's Doctor table.",
-    )
-
-    preferred_language = models.CharField(max_length=8, choices=PreferredLanguage.choices, default=PreferredLanguage.MARATHI)
-
-    is_active = models.BooleanField(default=True)
-
-    # Household linking — e.g. a parent as the primary contact for a minor,
-    # or a family sharing one phone number under one main contact.
-    guardian = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="dependents",
-        help_text="Primary contact/household head for this patient, if any.",
-    )
-    relationship_to_guardian = models.CharField(max_length=50, blank=True, help_text="e.g. child, spouse, parent")
-
-    # Preventive-care / follow-up recall (§ retention) — swept by
-    # apps.automation.tasks.sweep_patient_recalls, which creates a Task and
-    # fires the patient_recall_due workflow trigger once this falls due.
-    next_recall_due_at = models.DateTimeField(null=True, blank=True)
-    recall_reason = models.CharField(max_length=255, blank=True, help_text="e.g. annual checkup, post-surgery follow-up, chronic-care review")
 
     class RegistrationType(models.TextChoices):
         OPD = "opd", "OPD"
@@ -102,42 +62,81 @@ class Patient(TenantScopedModel):
         O_POSITIVE = "o_positive", "O+"
         O_NEGATIVE = "o_negative", "O-"
 
-    # ERP identity — see docs/erp/02-domain-model.md. uhid is assigned once,
-    # automatically, on first save (see save() below); it is the one
-    # identifier this Patient row keeps for life, shared by every CRM and
-    # ERP app that references this patient (docs/erp/00-overview.md §3 —
-    # one Patient row, not a CRM/ERP duplicate).
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=16, choices=Gender.choices, blank=True)
+
+    # Encrypted at rest (Part A #2)
+    mobile = EncryptedCharField(max_length=20)
+    alternate_mobile = EncryptedCharField(max_length=20, blank=True)
+    mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
+    alternate_mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
+    email = models.EmailField(blank=True)
+
+    address = EncryptedTextField(blank=True)
+    city = models.CharField(max_length=120, blank=True)
+
+    national_id_type = models.CharField(max_length=32, blank=True, help_text="e.g. Aadhaar, PAN, Passport")
+    national_id_number = EncryptedCharField(max_length=64, blank=True)
+
+    insurance_provider = models.CharField(max_length=150, blank=True)
+    # Encrypted at rest (Part A #2) — same reasoning as national_id_number
+    # above. Was briefly reverted to plaintext by a merge conflict
+    # resolution; restored here, see apps.patients.migrations.0014.
+    insurance_policy_number = EncryptedCharField(max_length=100, blank=True)
+    employer = models.CharField(max_length=150, blank=True)
+
+    attendant_name = models.CharField(max_length=150, blank=True)
+    # Encrypted at rest (Part A #2) — a phone number identifying a
+    # non-patient third party (attendant/guardian), same sensitivity class
+    # as Patient.mobile.
+    attendant_phone = EncryptedCharField(max_length=20, blank=True)
+    attendant_relation = models.CharField(max_length=50, blank=True, help_text="e.g. daughter, spouse")
+    referring_doctor_name = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="External referring doctor, free text — not necessarily in this hospital's Doctor table.",
+    )
+
+    preferred_language = models.CharField(max_length=8, choices=PreferredLanguage.choices, default=PreferredLanguage.MARATHI)
+
+    is_active = models.BooleanField(default=True)
+
+    guardian = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="dependents",
+        help_text="Primary contact/household head for this patient, if any.",
+    )
+    relationship_to_guardian = models.CharField(max_length=50, blank=True, help_text="e.g. child, spouse, parent")
+
+    next_recall_due_at = models.DateTimeField(null=True, blank=True)
+    recall_reason = models.CharField(max_length=255, blank=True, help_text="e.g. annual checkup, post-surgery follow-up, chronic-care review")
+
     uhid = models.CharField(max_length=32, unique=True, null=True, blank=True, editable=False)
     mrn = models.CharField(max_length=64, blank=True, help_text="Legacy/external MRN, for hospitals migrating from another system.")
     registration_type = models.CharField(max_length=16, choices=RegistrationType.choices, blank=True)
     blood_group = models.CharField(max_length=16, choices=BloodGroup.choices, blank=True)
 
+    objects = PatientManager()
+
     class Meta:
         indexes = [
-            models.Index(fields=["hospital", "mobile"]),
+            models.Index(fields=["hospital", "mobile_hash"]),
             models.Index(fields=["hospital", "next_recall_due_at"]),
         ]
         permissions = [
-            # Capability flag, not tied to a CRUD verb — gates whether a
-            # role's serializer includes clinical fields (diagnosis,
-            # prescriptions, national ID) at all, vs. the CRM-safe subset.
-            # See docs/erp/03-rbac-and-roles.md §2c. Codename deliberately
-            # does NOT start with "view_"/"add_"/"change_"/"delete_" — a
-            # permission_templates.py app-level verb sweep (e.g. any role
-            # granted "patients": ["view", ...]) matches by codename
-            # prefix, and "view_clinical_detail" would have been silently
-            # swept into every such grant, including front_desk's.
             ("access_clinical_detail", "Can access clinical detail on patient records"),
         ]
 
     def save(self, *args, **kwargs):
+        self.mobile_hash = blind_index(normalize_phone(self.mobile))
+        self.alternate_mobile_hash = blind_index(normalize_phone(self.alternate_mobile))
         if not self.uhid and self.hospital_id:
             self.uhid = self._generate_uhid()
         super().save(*args, **kwargs)
 
     def _generate_uhid(self):
         from django.db import transaction
-
         from apps.core.models import Hospital
 
         with transaction.atomic():
@@ -155,7 +154,7 @@ class Patient(TenantScopedModel):
         return str(self)
 
 
-class Document(TenantScopedModel):
+class Document(TenantScopedModel, SoftDeleteModel):
     class Category(models.TextChoices):
         REPORT = "report", "Diagnostic report"
         PRESCRIPTION = "prescription", "Prescription"
@@ -174,20 +173,16 @@ class Document(TenantScopedModel):
             validate_document_size,
         ],
     )
-    notes = models.TextField(blank=True)
+    notes = EncryptedTextField(blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    objects = SoftDeleteManager()
 
     def __str__(self):
         return self.title or self.file.name
 
 
 class TimelineEvent(TenantScopedModel):
-    """Denormalized read model for the patient's full interaction timeline
-    (§3). Other apps write into this via signals when a Call, Enquiry,
-    Appointment, Message or Feedback happens, so the patient record can
-    render one chronological feed with a single query instead of a fan-out
-    across apps."""
-
     class EventType(models.TextChoices):
         CALL = "call", "Call"
         ENQUIRY = "enquiry", "Enquiry"
@@ -218,7 +213,6 @@ class TimelineEvent(TenantScopedModel):
 
 
 def record_timeline_event(*, patient, event_type, summary, occurred_at, source=None, created_by=None):
-    """Convenience helper for other apps' signal handlers."""
     return TimelineEvent.objects.create(
         hospital_id=patient.hospital_id,
         patient=patient,
@@ -231,28 +225,23 @@ def record_timeline_event(*, patient, event_type, summary, occurred_at, source=N
     )
 
 
-class Prescription(TenantScopedModel):
-    """Lightweight OPD Doctor E-Prescription (e-Rx) model."""
-
+class Prescription(TenantScopedModel, SoftDeleteModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="prescriptions")
     doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    # String FK, not a direct import — apps.opd imports apps.patients
-    # (Patient), so apps.patients importing apps.opd.Encounter back would
-    # be circular. Nullable: pre-Phase-3 prescriptions and any created
-    # outside a formal OPD encounter (phone-in refill, etc.) have none.
     encounter = models.ForeignKey("opd.Encounter", on_delete=models.SET_NULL, null=True, blank=True, related_name="prescriptions")
 
-    diagnosis = models.CharField(max_length=500)
-    symptoms = models.TextField(blank=True)
-    medications = models.JSONField(default=list, blank=True)  # [{"name": "Paracetamol 500mg", "dosage": "1-0-1", "duration": "5 Days"}]
-    lab_orders = models.JSONField(default=list, blank=True)   # ["CBC", "Chest X-Ray", "Lipid Profile"]
-    notes = models.TextField(blank=True)
-    
+    diagnosis = EncryptedCharField(max_length=500)
+    symptoms = EncryptedTextField(blank=True)
+    medications = EncryptedJSONField(default=list, blank=True)
+    lab_orders = EncryptedJSONField(default=list, blank=True)
+    notes = EncryptedTextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return f"e-Rx for {self.patient.full_name} - {self.diagnosis}"
-

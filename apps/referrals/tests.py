@@ -493,3 +493,34 @@ def test_create_still_stamps_the_requesting_users_hospital(auth_client, hospital
     assert response.status_code == 201
     created = ReferringDoctor.objects.get(pk=response.data["id"])
     assert created.hospital_id == hospital.id
+
+
+@pytest.mark.django_db
+def test_referral_statement_pdf_and_settle(auth_client, hospital, patient, referring_doctor):
+    r1 = ReferralRecord.objects.create(
+        hospital=hospital, referring_doctor=referring_doctor, patient=patient,
+        attributed_revenue=Decimal("45000.00"), commission_percentage=Decimal("10.00"),
+        status=ReferralRecord.Status.CONVERTED,
+    )
+    r2 = ReferralRecord.objects.create(
+        hospital=hospital, referring_doctor=referring_doctor, patient=patient,
+        attributed_revenue=Decimal("80000.00"), commission_percentage=Decimal("12.00"),
+        status=ReferralRecord.Status.CONVERTED,
+    )
+
+    # 1. Download statement PDF
+    pdf_res = auth_client.get(f"/api/v1/referrals/doctors/{referring_doctor.id}/statement-pdf/")
+    assert pdf_res.status_code == 200
+    assert pdf_res["Content-Type"] == "application/pdf"
+    assert len(pdf_res.content) > 1000
+
+    # 2. Settle payout
+    settle_res = auth_client.post(f"/api/v1/referrals/doctors/{referring_doctor.id}/settle/")
+    assert settle_res.status_code == 200
+    assert settle_res.data["settled_count"] == 2
+
+    r1.refresh_from_db()
+    r2.refresh_from_db()
+    assert r1.status == ReferralRecord.Status.PAID
+    assert r2.status == ReferralRecord.Status.PAID
+

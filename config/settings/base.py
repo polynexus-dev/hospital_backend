@@ -3,7 +3,6 @@ Base settings shared by every environment. Environment-specific overrides
 live in dev.py / prod.py — never put secrets or environment-specific
 values here, read them from the environment instead.
 """
-import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,31 +18,46 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 
-# Key(s) for apps.core.encryption.EncryptedTextField (Aadhaar/PAN, insurance
-# policy numbers on Patient — see docs/SECURITY_COMPLIANCE.md finding C2).
-# A list, not a single key, so a key can be rotated by adding a new one
-# without losing the ability to decrypt rows written under an old one — the
-# first key is used for new writes, every key is tried on read.
-#
-# This default is a fixed, publicly-visible-in-this-repo placeholder — same
-# reasoning as SECRET_KEY above — and prod.py refuses to boot on it.
-INSECURE_DEV_FIELD_ENCRYPTION_KEY = "BBmuajpTCVZ3-ipNWvktB4oH2E94T_wb2YrDTVX6IoI="
-FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=["HcAQkwPlEzycVUsf-Ya9mb16TgvfuStY6_iDDcVFON0="])
+# Field-level encryption (Part A #2) — see apps.core.encryption /
+# apps.core.fields. FIELD_ENCRYPTION_KEY must be a urlsafe-base64 32-byte
+# Fernet key (`Fernet.generate_key()`); FIELD_HASH_KEY is an independent
+# secret used only for one-way blind-index hashes (exact-match lookups on
+# encrypted columns, e.g. phone number matching) and is never used to
+# recover data, so it can be any sufficiently random string. The dev
+# defaults below are fixed (not randomly generated per-run) so local data
+# stays decryptable across restarts, and are rejected outright in prod.py
+# if left unchanged.
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs=")
+FIELD_HASH_KEY = env("FIELD_HASH_KEY", default="dev-only-insecure-blind-index-key-change-me")
 
-# HMAC key for apps.core.encryption.compute_blind_index() — deterministic
-# exact-match lookup alongside an EncryptedTextField (e.g.
-# PreAuthRequest.policy_number_lookup), for fields that need search but
-# can't expose plaintext at rest. Not rotatable via a list the way
-# FIELD_ENCRYPTION_KEYS is — changing this key changes every hash it
-# produces, so rotating it means recomputing every existing lookup column
-# in one pass, not gradually. Same insecure-placeholder-in-repo /
-# fail-closed-in-prod pattern as SECRET_KEY and FIELD_ENCRYPTION_KEYS.
-INSECURE_DEV_BLIND_INDEX_KEY = "79bba20118d39806042130385b486531af8d8069a51976294eb4cc7c5a206469"
-BLIND_INDEX_KEY = env("BLIND_INDEX_KEY", default=INSECURE_DEV_BLIND_INDEX_KEY)
+# Rotation list, newest key first — the primary encrypts, every key is
+# tried on decrypt, so old ciphertext stays readable until each row is
+# re-saved under the new key. apps.core.encryption has always looked for
+# these (see _build_fernet / _build_gcm_keys) but nothing here defined
+# them, so the getattr always returned None and rotation was impossible
+# to configure: putting FIELD_ENCRYPTION_KEYS in a .env populated
+# os.environ without ever becoming a Django setting. Empty by default,
+# which falls back to the single-key settings above.
+FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS", default=[])
+
+# AES-256-GCM key for new field encryption (apps.core.encryption._gcm_*) —
+# FIELD_ENCRYPTION_KEY/Fernet above is only still consulted to decrypt
+# values written before this key existed. Must be a urlsafe-base64
+# 32-byte key: `base64.urlsafe_b64encode(os.urandom(32))`. Same
+# fixed-dev-default / rejected-in-prod treatment as FIELD_ENCRYPTION_KEY.
+FIELD_ENCRYPTION_KEY_V2 = env("FIELD_ENCRYPTION_KEY_V2", default="UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw=")
+# Rotation list for the AES-256-GCM key — same newest-first semantics as
+# FIELD_ENCRYPTION_KEYS above (apps.core.encryption._gcm_encrypt always
+# encrypts under keys[0]).
+FIELD_ENCRYPTION_KEYS_V2 = env.list("FIELD_ENCRYPTION_KEYS_V2", default=[])
 
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+_allowed_hosts = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+for h in [".hms.polynexus.in", "app.hms.polynexus.in", "localhost", "127.0.0.1"]:
+    if h not in _allowed_hosts:
+        _allowed_hosts.append(h)
+ALLOWED_HOSTS = _allowed_hosts
 
 
 # Application definition
@@ -98,12 +112,19 @@ LOCAL_APPS = [
     "apps.billing",
     "apps.inventory",
     "apps.saas_admin",
+    "apps.privacy",
+    "apps.abdm",
 ]
+
 
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    # Layer-2 payload encryption -- must be FIRST so it can rewrite
+    # request.body before SecurityMiddleware or any other middleware reads it.
+    # Transparent no-op when PAYLOAD_ENCRYPTION_ENABLED=False.
+    "apps.core.middleware.PayloadEncryptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -140,6 +161,11 @@ ASGI_APPLICATION = "config.asgi.application"
 
 
 # Database
+# Payload encryption toggle (Layer 2 -- application-layer encrypt/decrypt).
+# Set True in production to hide all API payloads from browser DevTools.
+# Set False (default) in dev / Postman -- middleware becomes a no-op.
+PAYLOAD_ENCRYPTION_ENABLED = env.bool("PAYLOAD_ENCRYPTION_ENABLED", default=False)
+
 if env.bool("USE_SQLITE", default=False):
     DATABASES = {
         "default": {
@@ -148,12 +174,25 @@ if env.bool("USE_SQLITE", default=False):
         }
     }
 else:
+    # A single DATABASE_URL, not individual POSTGRES_USER/PASSWORD/DB_HOST
+    # vars — this is what docker-compose.yml's web/celery-worker/celery-beat
+    # services and this repo's CI workflow both actually set (all three
+    # docker-compose services: `DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm`).
+    # A prior commit switched this block to individual env vars without
+    # updating either of those, which silently broke both: Django fell back
+    # to USER=postgres (an unrelated per-var default, not "whatever the
+    # docker-compose `db` service was actually configured with") against a
+    # Postgres container that only knows the credentials DATABASE_URL
+    # describes — "password authentication failed for user postgres" in CI,
+    # and the same failure mode against docker-compose's `db` service.
     DATABASES = {
         "default": env.db(
             "DATABASE_URL",
-            default="postgres://polynexus:polynexus_secure_password@db:5432/hospital_crm",
+            default="postgres://postgres:postgres@db:5432/hospital_crm",
         )
     }
+    # Reuse connections across requests instead of opening a fresh TCP+auth
+    # handshake every time (default is 0 = no reuse).
     DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
 
@@ -208,7 +247,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
         "apps.core.permissions.HospitalActive",
         "apps.core.permissions.RoleBasedModelPermissions",
-        "apps.core.permissions.ActionPermissionRequired",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -238,6 +276,20 @@ REST_FRAMEWORK = {
         # meaningfully affecting a real user who mistypes their password
         # once or twice.
         "login": "5/minute",
+        # Per-tenant resource isolation for expensive, synchronous
+        # operations that scale with a hospital's own data volume rather
+        # than with request count — bulk CSV/FHIR/MIS export and CSV
+        # enquiry import (see apps.enquiries.views.EnquiryViewSet.
+        # bulk_import, apps.integrations.views.DataExportView/
+        # FHIRExportView, apps.analytics.views.MISExportView). All
+        # hospitals share one deployment with no per-tenant compute
+        # quota, so nothing otherwise stops one hospital's staff running
+        # a large export/import repeatedly from tying up app-server
+        # workers and DB connections that every other hospital's ordinary
+        # requests also depend on. 20/hour is well above any legitimate
+        # one-off use (running a report a few times while checking output)
+        # but bounds the worst case.
+        "heavy_ops": "20/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": (
@@ -246,8 +298,18 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Part A #7 — "session timeout on clinical workstations". Was 8h/7d: a
+    # front-desk/nurse-station terminal left logged in stayed a valid
+    # session for a week via silent refresh, well past any single shift.
+    # 1h/12h means an abandoned browser session dies within the same
+    # working day even if nobody touches it, while ROTATE_REFRESH_TOKENS
+    # below keeps re-auth invisible to a genuinely active user. This is a
+    # partial mitigation, not the full control: a stolen *access* token is
+    # only ever good for up to an hour, but nothing here notices an idle
+    # tab and locks it mid-shift — that needs a frontend inactivity timer,
+    # which is a separate (frontend) change from this one.
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=env.int("ACCESS_TOKEN_LIFETIME_HOURS", default=1)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=env.int("REFRESH_TOKEN_LIFETIME_HOURS", default=12)),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "USER_ID_FIELD": "id",
@@ -273,24 +335,24 @@ CORS_ALLOWED_ORIGINS = env.list(
     ],
 )
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in$",
-    r"^http://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:\d+)?$",
+    r"^https?://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:[0-9]+)?$",
 ]
 
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
-# Self-hosted Ollama — powers free-text understanding for the 24x7
-# assistant (apps.communications.llm_router): classifying what a patient
-# typed into one of the assistant's known actions. It is never used to
-# generate clinical/medical content itself — process_interactive_chat_action
-# still owns every word a patient actually sees. No API key: Ollama has no
-# built-in auth, so this must only ever point at a server on a trusted
-# network, never a public one.
-OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://13.235.143.251:11435")
-OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")
-OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=30)
-
+# Self-hosted Ollama server — see apps.communications.llm_router. Used
+# ONLY to classify free-text patient messages into a fixed set of known
+# intents for the 24x7 assistant (never to compose what a patient reads,
+# diagnose, or give medical advice — see llm_router.py's module docstring).
+# The default below is Ollama's standard local port; point OLLAMA_BASE_URL
+# at your actual VM (e.g. "http://10.x.x.x:11434") via .env in every real
+# deployment — classify_free_text_intent() already degrades to "unclear"
+# (shows the main menu) if the server is unreachable, so a wrong/missing
+# address here fails safe, it just won't route free text yet.
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://localhost:11434")
+OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
+OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=6)
 
 
 # Cache — backs DRF's request throttling (see REST_FRAMEWORK below). Redis,
@@ -300,22 +362,20 @@ OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=30)
 # `configured rate x worker count` — not the hard ceiling it's meant to be.
 # Same Redis instance Celery already requires, separate logical DB (1, not
 # Celery's 0) so cache keys and broker traffic don't collide.
-cache_url = env("CACHE_URL", default="redis://localhost:6379/1")
-if cache_url.startswith("locmem") or env.bool("USE_SQLITE", default=False):
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
-        }
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
+        # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
+        # attempting a HELLO handshake (RESP3) on connect, which errors
+        # with "unknown command 'HELLO'" against any Redis server older
+        # than 6.0 (verified against this project's own local dev Redis,
+        # 3.0.504) — RESP2 is a strict subset every version understands,
+        # including whatever a given hospital's ops team ends up running,
+        # so there's no reason to require RESP3 here.
+        "OPTIONS": {"protocol": 2},
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": cache_url,
-            "OPTIONS": {"protocol": 2},
-        }
-    }
+}
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -367,14 +427,24 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.integrations.tasks.sync_all_hospitals_his_data",
         "schedule": 3600.0,  # hourly
     },
-    # SaaS admin — monthly per-tenant usage metering (active staff,
-    # patient registrations, bills generated, storage) for the platform
-    # usage/billing dashboard. Runs early on the 1st for the month that
-    # just ended — see apps.saas_admin.tasks for why it's computed once
-    # rather than derived on-demand.
-    "compute-monthly-tenant-usage": {
-        "task": "apps.saas_admin.tasks.compute_monthly_tenant_usage",
-        "schedule": crontab(hour=3, minute=0, day_of_month=1),
+    # DPDP Act 2023 (Part A #12) — completes right-to-erasure requests by
+    # hard-deleting records past their soft-delete grace period.
+    "purge-expired-soft-deleted-records": {
+        "task": "apps.automation.tasks.purge_expired_soft_deleted_records",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    # DPDP Act 2023 (Part A #12) — stale, never-converted leads.
+    "purge-stale-unconverted-enquiries": {
+        "task": "apps.automation.tasks.purge_stale_unconverted_enquiries",
+        "schedule": crontab(hour=3, minute=15),
+    },
+    # Lead-quality scoring (apps.enquiries.scoring) — retrains each
+    # hospital's model fresh from its own closed enquiries and rescoes
+    # every open one. Runs before the 3am purge jobs above so a lead
+    # doesn't get purged on a score that's a day stale.
+    "recompute-enquiry-scores": {
+        "task": "apps.enquiries.tasks.recompute_enquiry_scores",
+        "schedule": crontab(hour=2, minute=30),
     },
 }
 
@@ -384,6 +454,24 @@ CELERY_BEAT_SCHEDULE = {
 # DPDP Act 2023 default retention window for interaction data (days).
 # Overridable per-hospital in future phases; a single default is enough for P1.
 DEFAULT_DATA_RETENTION_DAYS = env.int("DEFAULT_DATA_RETENTION_DAYS", default=365 * 3)
+
+# How long a soft-deleted patient-identifying/clinical record (Part A #1)
+# stays soft-deleted before apps.automation.tasks.
+# purge_expired_soft_deleted_records removes it outright — completing a
+# right-to-erasure request (Part A #12) rather than leaving it soft-deleted
+# forever. Deliberately short and separate from DEFAULT_DATA_RETENTION_DAYS
+# above: this only ever applies to a record someone already decided should
+# go, not to live clinical data subject to medical-record retention law.
+SOFT_DELETE_PURGE_GRACE_DAYS = env.int("SOFT_DELETE_PURGE_GRACE_DAYS", default=30)
+
+# DPDP Act 2023 data-principal rights (Part A #11) — see apps.privacy.
+# These are operational SLAs this codebase enforces, not a specific legal
+# deadline quoted from the DPDP Rules 2025 (that's a compliance/legal
+# question outside what a settings default can responsibly assert) —
+# 30 days is a conservative, commonly-used baseline; a hospital's legal
+# counsel should confirm the number that actually applies to it.
+DATA_RIGHTS_REQUEST_SLA_DAYS = env.int("DATA_RIGHTS_REQUEST_SLA_DAYS", default=30)
+GRIEVANCE_SLA_DAYS = env.int("GRIEVANCE_SLA_DAYS", default=30)
 
 # Appointment reminder offsets, hours-before-slot.
 APPOINTMENT_REMINDER_OFFSETS_HOURS = [24, 2]
@@ -409,3 +497,94 @@ TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="stub")
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")
+
+# ABDM (Ayushman Bharat Digital Mission — ABHA linking + HIE-CM consent)
+# and NHCX (National Health Claims Exchange) gateway selection — see
+# apps.abdm.gateway. "stub" (default) raises GatewayNotConfigured on every
+# call rather than fabricating a success. "real" (apps.abdm.gateway.
+# RealABDMGateway) is a real HTTP client against ABDM's Gateway v3 API —
+# set ABDM_GATEWAY=real plus the credentials below once this facility's
+# NHA sandbox/production onboarding (Health Facility Registry entry,
+# client_id/secret, HIP ID) is complete. See RealABDMGateway's own
+# docstring for exactly what's been verified against ABDM's sandbox vs.
+# still best-effort, and what's deliberately not implemented yet
+# (fetch_health_records — needs an async data-push callback + ABDM's
+# encryption scheme, not just an HTTP call). NHCX has no "real"
+# implementation yet — still stub-only.
+ABDM_GATEWAY = env("ABDM_GATEWAY", default="stub")
+ABDM_BASE_URL = env("ABDM_BASE_URL", default="")
+ABDM_CLIENT_ID = env("ABDM_CLIENT_ID", default="")
+ABDM_CLIENT_SECRET = env("ABDM_CLIENT_SECRET", default="")
+# Health Information Provider ID, assigned once this facility is
+# registered on ABDM's Health Facility Registry.
+ABDM_HIP_ID = env("ABDM_HIP_ID", default="")
+# Applies to every apps.abdm.gateway.RealABDMGateway call (session-token
+# exchange, OTP init/verify, consent init/status). ABDM's own sandbox is
+# occasionally slow; this is a network-call timeout, not a UX budget.
+ABDM_TIMEOUT_SECONDS = env.int("ABDM_TIMEOUT_SECONDS", default=15)
+
+NHCX_GATEWAY = env("NHCX_GATEWAY", default="stub")
+NHCX_BASE_URL = env("NHCX_BASE_URL", default="")
+NHCX_PARTICIPANT_CODE = env("NHCX_PARTICIPANT_CODE", default="")
+
+
+# --- Logging (Part A #3: no patient data in logs by default) -------------
+#
+# Deliberately explicit rather than relying on Django's built-in logging
+# config. Django's default wires the `django.request` logger to an
+# AdminEmailHandler on any 5xx — which, on a Django app whose views mostly
+# take and return patient data, means emailing whoever's in ADMINS a page
+# containing the failing request's full POST body (mobile numbers,
+# national IDs, clinical notes) every time a request errors. ADMINS is not
+# set anywhere in this project (grep confirms it), so that handler is
+# currently a no-op — but "currently a no-op because nobody's configured
+# ADMINS yet" is not a control, it's an accident waiting for someone to set
+# ADMINS for on-call paging and get patient data in their inbox as a side
+# effect. Routing straight to console/file instead removes that trap.
+#
+# This does NOT redact patient fields from application log lines — no
+# logging filter can know which fields in an arbitrary `logger.info(...)`
+# call are patient data. The actual control is upstream of logging: don't
+# pass patient-identifying values (mobile, national_id_number, address,
+# diagnosis/symptoms/notes, or a whole model instance/serializer.data) into
+# a log call. If a log line needs to reference a record, log its id, not
+# its content.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Overrides Django's built-in AdminEmailHandler wiring for this
+        # logger specifically — see the module comment above.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}

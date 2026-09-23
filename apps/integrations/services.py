@@ -18,7 +18,7 @@ def sync_his_data(hospital, *, since=None) -> dict:
     visits_synced, billing_synced, unmatched = 0, 0, 0
 
     for row in connector.fetch_visits(since=since):
-        patient = Patient.objects.filter(hospital=hospital, mobile=row["patient_mobile"]).first()
+        patient = Patient.objects.filter(hospital=hospital).by_mobile(row["patient_mobile"]).first()
         if patient is None:
             unmatched += 1
             continue
@@ -37,7 +37,7 @@ def sync_his_data(hospital, *, since=None) -> dict:
         visits_synced += 1
 
     for row in connector.fetch_billing(since=since):
-        patient = Patient.objects.filter(hospital=hospital, mobile=row["patient_mobile"]).first()
+        patient = Patient.objects.filter(hospital=hospital).by_mobile(row["patient_mobile"]).first()
         if patient is None:
             unmatched += 1
             continue

@@ -1,7 +1,8 @@
 from decimal import Decimal
 
 from django.db import models
-from apps.core.encryption import EncryptedTextField, compute_blind_index
+from apps.core.fields import EncryptedTextField
+from apps.core.encryption import compute_blind_index
 from apps.core.models import TenantScopedModel
 from apps.patients.models import Patient
 
@@ -39,19 +40,12 @@ class PreAuthRequest(TenantScopedModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="preauth_requests")
     tpa_company = models.ForeignKey(TPACompany, on_delete=models.CASCADE, related_name="preauth_requests")
 
-    # Encrypted at rest (apps.core.encryption) — insurance policy numbers
-    # are sensitive personal data under the DPDP Act / SPDI Rules, same as
-    # Patient.insurance_policy_number. policy_number_lookup is a
-    # deterministic HMAC of the same value, kept in sync in save() below,
-    # so exact-match search still works despite the encrypted column being
-    # unsearchable — see PreAuthRequestViewSet.get_queryset(). Never add
-    # policy_number itself back to filterset_fields/search_fields.
     policy_number = EncryptedTextField()
     policy_number_lookup = models.CharField(max_length=64, db_index=True, editable=False, blank=True)
     claim_amount = models.DecimalField(max_digits=12, decimal_places=2)
     approved_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.SUBMITTED)
-    
+
     checklist = models.JSONField(default=dict, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -68,13 +62,6 @@ class PreAuthRequest(TenantScopedModel):
 
 
 class Claim(TenantScopedModel):
-    """Post-treatment claim submission and settlement tracking — the
-    continuation PreAuthRequest deliberately stops short of: pre-auth only
-    covers the pre-treatment approval, not what the insurer actually pays
-    out afterwards. Optionally linked back to the PreAuthRequest that
-    preceded it, but not required (cashless emergency admissions can skip
-    pre-auth and go straight to a claim)."""
-
     class Status(models.TextChoices):
         SUBMITTED = "submitted", "Claim Submitted"
         UNDER_REVIEW = "under_review", "Under Review"

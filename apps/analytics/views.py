@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.http import HttpResponse
 from . import services
 from .models import DailyMISLog
 from .serializers import DailyMISLogSerializer
@@ -52,11 +53,6 @@ class DepartmentDoctorVolumeView(BaseReportView):
         return {"rows": services.department_doctor_volume(hospital, start, end)}
 
 
-class EnquiriesByDepartmentView(BaseReportView):
-    def build_report(self, hospital, start, end):
-        return {"rows": services.enquiries_by_department(hospital, start, end)}
-
-
 class NoShowEffectivenessView(BaseReportView):
     def build_report(self, hospital, start, end):
         return services.no_show_recall_effectiveness(hospital, start, end)
@@ -78,71 +74,95 @@ class ReminderDeliverySummaryView(BaseReportView):
 
 
 class DailyMISPreviewView(APIView):
-    """Lets the front desk / owner preview today's MIS without waiting for
-    the Celery beat schedule to fire."""
+    """Lets the front desk / owner preview MIS for today or any requested window."""
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
-        summary = services.daily_mis_summary(request.user.hospital)
-        return Response({"summary": summary, "text": services.render_daily_mis_text(request.user.hospital, summary)})
+        hospital = request.user.hospital
+        start_param = request.query_params.get("start")
+        end_param = request.query_params.get("end")
+        if start_param or end_param:
+            start, end = _parse_window(request)
+        else:
+            start, end = services._today_range()
+
+        summary = services.daily_mis_summary(hospital, start=start, end=end)
+        return Response({"summary": summary, "text": services.render_daily_mis_text(hospital, summary)})
 
 
-class OPDSnapshotView(APIView):
-    """ERP ops dashboard, OPD metrics only (docs/erp/06-navigation-and-dashboards.md
-    §4) — today's counts, not a date-range report like the CRM views
-    above, so it doesn't extend BaseReportView."""
-
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.opd_snapshot(request.user.hospital))
-
-
-class BedOccupancyView(APIView):
-    """ERP ops dashboard, bed occupancy (Phase 4 addition — see
-    OPDSnapshotView above for the same "today, not a date-range report"
-    reasoning)."""
+class MISExportView(APIView):
+    """Export executive MIS report as PDF or CSV."""
 
     permission_classes = [IsAuthenticated]
+    # Per-tenant resource isolation — see apps.integrations.views.
+    # DataExportView.throttle_scope and DEFAULT_THROTTLE_RATES["heavy_ops"]
+    # in settings.
+    throttle_scope = "heavy_ops"
 
-    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def perform_content_negotiation(self, request, force=False):
+        # Return passthrough renderer so DRF does not raise 404 on ?format=pdf or ?format=csv
+        from rest_framework.renderers import BaseRenderer
+        return (BaseRenderer(), "*/*")
+
     def get(self, request):
-        return Response(services.bed_occupancy_snapshot(request.user.hospital))
+        import csv
+        hospital = request.user.hospital
+        start, end = _parse_window(request)
+        start_str = start.strftime("%Y-%m-%d")
+        end_str = end.strftime("%Y-%m-%d")
 
+        summary = services.daily_mis_summary(hospital, start=start, end=end)
+        export_format = request.query_params.get("format", "pdf").lower()
 
-class ICUOccupancyView(APIView):
-    permission_classes = [IsAuthenticated]
+        dept_doctor_rows = services.department_doctor_volume(hospital, start, end)
+        rev_data = services.revenue_by_source(hospital, start, end)
 
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.icu_occupancy_snapshot(request.user.hospital))
+        if export_format == "csv":
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = f'attachment; filename="MIS_Report_{start_str}_to_{end_str}.csv"'
+            writer = csv.writer(response)
+            writer.writerow(["HOSPITAL EXECUTIVE MIS REPORT", hospital.name])
+            writer.writerow(["Period", f"{start_str} to {end_str}"])
+            writer.writerow([])
 
+            calls = summary.get("calls", {})
+            writer.writerow(["TELEPHONY PERFORMANCE"])
+            writer.writerow(["Metric", "Value"])
+            writer.writerow(["Calls Received", calls.get("received", 0)])
+            writer.writerow(["Calls Answered", calls.get("answered", 0)])
+            writer.writerow(["Calls Missed", calls.get("missed", 0)])
+            writer.writerow(["Pending Callbacks", summary.get("pending_callbacks", 0)])
+            writer.writerow([])
 
-class OTUtilizationView(APIView):
-    permission_classes = [IsAuthenticated]
+            writer.writerow(["DEPARTMENT & DOCTOR CLINICAL FOOTFALL"])
+            writer.writerow(["Doctor", "Department", "Booked", "Completed", "No-Show"])
+            for r in dept_doctor_rows:
+                writer.writerow([r.get("doctor__name", "—"), r.get("doctor__department__name", "—"), r.get("booked", 0), r.get("completed", 0), r.get("no_show", 0)])
+            writer.writerow([])
 
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.ot_utilization_snapshot(request.user.hospital))
+            writer.writerow(["ACQUISITION CHANNEL & REVENUE ATTRIBUTION"])
+            writer.writerow(["Source", "Enquiries", "Conversions", "Billed Amount (INR)"])
+            for r in rev_data.get("rows", []):
+                writer.writerow([r.get("source", ""), r.get("enquiry_count", 0), r.get("conversion_count", 0), r.get("billed_amount", 0)])
 
+            return response
 
-class LabTATView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.lab_tat_snapshot(request.user.hospital))
-
-
-class PharmacyLowStockView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(responses=OpenApiTypes.OBJECT)
-    def get(self, request):
-        return Response(services.pharmacy_low_stock_snapshot(request.user.hospital))
+        # Default: PDF
+        from .mis_pdf import render_mis_pdf
+        pdf_bytes = render_mis_pdf(
+            hospital=hospital,
+            summary=summary,
+            dept_doctor_rows=dept_doctor_rows,
+            revenue_rows=rev_data.get("rows", []),
+            start_date=start_str,
+            end_date=end_str,
+            period_label="Executive",
+        )
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="MIS_Report_{start_str}_to_{end_str}.pdf"'
+        return response
 
 
 class DailyMISLogViewSet(viewsets.ReadOnlyModelViewSet):

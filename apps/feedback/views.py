@@ -46,6 +46,84 @@ class NPSResponseViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet
         )
         return Response(list(rows))
 
+    @action(detail=False, methods=["get"], url_path="reputation-summary")
+    def reputation_summary(self, request):
+        """5-Star Google Review Booster & Overall Reputation Metrics."""
+        qs = self.get_queryset()
+        total = qs.count()
+        promoters = qs.filter(category=NPSResponse.Category.PROMOTER).count()
+        passives = qs.filter(category=NPSResponse.Category.PASSIVE).count()
+        detractors = qs.filter(category=NPSResponse.Category.DETRACTOR).count()
+
+        # NPS = % Promoters - % Detractors
+        nps_score = round(((promoters - detractors) / total) * 100, 1) if total > 0 else 0
+        hospital = request.user.hospital
+        review_url = getattr(hospital, "google_review_url", "") or "https://g.page/polynexus-hospital/review"
+
+        # Count how many prompts have been sent via WhatsApp
+        prompts_sent = 0
+        try:
+            from apps.communications.models import Message
+            prompts_sent = Message.objects.filter(
+                hospital=hospital,
+                channel="whatsapp",
+                body__contains="Google Maps",
+            ).count()
+        except Exception:
+            pass
+
+        return Response({
+            "total_responses": total,
+            "promoters_count": promoters,
+            "passives_count": passives,
+            "detractors_count": detractors,
+            "nps_score": nps_score,
+            "google_review_url": review_url,
+            "prompts_sent_count": prompts_sent,
+        })
+
+    @action(detail=False, methods=["post"], url_path="update-google-review-url")
+    def update_google_review_url(self, request):
+        """Updates the hospital's public Google Business / Review profile URL."""
+        url = request.data.get("google_review_url", "").strip()
+        hospital = request.user.hospital
+        if not hospital:
+            return Response({"detail": "No hospital found."}, status=400)
+        hospital.google_review_url = url
+        hospital.save(update_fields=["google_review_url", "updated_at"])
+        return Response({"google_review_url": hospital.google_review_url})
+
+    @action(detail=True, methods=["post"], url_path="send-google-review-prompt")
+    def send_google_review_prompt(self, request, pk=None):
+        """Dispatches an automated WhatsApp 5-Star review prompt to a promoter."""
+        nps_response = self.get_object()
+        patient = nps_response.patient
+        hospital = request.user.hospital
+        review_url = getattr(hospital, "google_review_url", "") or "https://g.page/polynexus-hospital/review"
+        doctor_str = f" with Dr. {nps_response.doctor.name}" if nps_response.doctor else ""
+
+        message_body = (
+            f"Dear {patient.full_name}, thank you for rating your visit{doctor_str} {nps_response.score}/10! "
+            f"Would you mind taking 30 seconds to share your review on Google Maps to help others in our community? "
+            f"{review_url}"
+        )
+
+        from apps.communications.models import Message
+        msg = Message.objects.create(
+            hospital=hospital,
+            patient=patient,
+            channel="whatsapp",
+            direction="outbound",
+            body=message_body,
+            status="sent",
+        )
+
+        return Response({
+            "detail": f"Google Review prompt sent to {patient.full_name} via WhatsApp!",
+            "message_id": msg.id,
+            "google_review_url": review_url,
+        })
+
 
 class ComplaintViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ComplaintSerializer

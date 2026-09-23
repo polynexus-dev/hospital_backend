@@ -1,14 +1,18 @@
 """
-Interactive 24x7 assistant. Every branch below is a scripted flow that
-reads real tenant data (Doctor/Slot/Hospital) and, for bookings, calls the
-same `book_appointment` service the front-desk UI uses, so a confirmed
-booking here is a real Appointment row, not a canned success message.
+Interactive 24x7 assistant. `process_interactive_chat_action` itself is a
+scripted (button-driven) flow, not an LLM — every branch reads real tenant
+data (Doctor/Slot/Hospital) and, for bookings, calls the same
+`book_appointment` service the front-desk UI uses, so a confirmed booking
+here is a real Appointment row, not a canned success message. See
+`AIChatbotView` for how `hospital` gets resolved and threaded in.
 
-The "classify_free_text" action is the one exception: it hands the
-patient's typed message to a self-hosted Ollama model (see
-apps.communications.llm_router) purely to pick which of the scripted
-branches above applies — the model never writes anything a patient sees.
-See `AIChatbotView` for how `hospital` gets resolved and threaded in.
+`process_free_text_message` is the one entry point that *does* touch a
+model — it hands free text to `llm_router.classify_free_text_intent`
+(a self-hosted Ollama call, see settings.OLLAMA_*) purely to pick which of
+the scripted branches above to jump into. The model never sees the
+conversation again after that single classification, and never generates
+any text a patient reads — this file's hand-written, tested copy still
+owns every word of every reply.
 """
 from typing import Any, Dict, List, Optional
 
@@ -69,11 +73,11 @@ def process_interactive_chat_action(
 
     if action in ("main_menu", "start", "welcome"):
         if preferred_language == "mr":
-            text = "नमस्कार! मी पॉलिनेक्सस HMS बॉट आहे, तुमच्या मदतीसाठी २४x७ उपलब्ध आहे. कृपया खालीलपैकी एक पर्याय निवडा:"
+            text = "नमस्कार! आमच्या हॉस्पिटल असिस्टंटमध्ये आपले स्वागत आहे. कृपया खालीलपैकी एक पर्याय निवडा:"
         elif preferred_language == "hi":
-            text = "नमस्ते! मैं पॉलिनेक्सस HMS बॉट हूं, आपकी मदद के लिए 24x7 उपलब्ध हूं। कृपया नीचे दिए गए विकल्पों में से चुनें:"
+            text = "नमस्ते! हमारे हॉस्पिटल असिस्टेंट में आपका स्वागत है। कृपया नीचे दिए गए विकल्पों में से चुनें:"
         else:
-            text = "Hello! I'm Polynexus HMS Bot, here to help 24x7. Please select an option below:"
+            text = "Hello! Welcome to your hospital's 24x7 Assistant. Please select an option below:"
         return {"text": text, "options": MAIN_OPTIONS, "step": "main_menu"}
 
     if action == "book_opd":
@@ -163,7 +167,7 @@ def process_interactive_chat_action(
         if slot is None:
             return {"text": "That slot could not be found — let's start again.", "options": [{"id": "book_opd", "label": "📅 Book OPD Appointment"}], "step": "book_opd"}
 
-        patient = Patient.objects.filter(hospital=hospital, mobile=mobile).first()
+        patient = Patient.objects.filter(hospital=hospital).by_mobile(mobile).first()
         if patient is None:
             patient = Patient.objects.create(
                 hospital=hospital,
@@ -175,7 +179,7 @@ def process_interactive_chat_action(
         try:
             appointment = book_appointment(
                 patient=patient, slot=slot, source=Appointment.Source.WHATSAPP,
-                reason="Booked via Polynexus HMS Bot",
+                reason="Booked via 24x7 Assistant",
             )
         except SlotUnavailable:
             return {
@@ -251,23 +255,41 @@ def process_interactive_chat_action(
             "step": "lab_reports",
         }
 
-    if action == "classify_free_text":
-        # The widget's free-text box (and generate_ai_chat_response below)
-        # both land here: an Ollama model only decides WHICH of the actions
-        # above best matches what the patient typed — it never generates the
-        # reply itself, so the result is exactly as safe as a button click.
-        from .llm_router import classify_free_text_intent
-
-        message = str(payload.get("message") or "").strip()
-        intent = classify_free_text_intent(message)
-        result = process_interactive_chat_action(intent, payload, preferred_language, hospital=hospital)
-        if intent == "unclear" and message:
-            prefix = "Sorry, I didn't quite catch that — here's what I can help with:\n\n"
-            result = {**result, "text": prefix + result["text"]}
-        return result
-
     # Fallback to main menu
     return process_interactive_chat_action("main_menu", payload, preferred_language, hospital=hospital)
+
+
+_DIDNT_UNDERSTAND = {
+    "mr": "मला ते नीट समजले नाही — मी खालील गोष्टींमध्ये मदत करू शकतो:",
+    "hi": "मुझे यह ठीक से समझ नहीं आया — मैं इनमें मदद कर सकता हूँ:",
+    "en": "I'm not sure I understood that — here's what I can help with:",
+}
+
+
+def process_free_text_message(
+    message: str,
+    preferred_language: str = "en",
+    hospital=None,
+) -> Dict[str, Any]:
+    """Entry point for free-text input (the widget's text box, or an
+    inbound WhatsApp/SMS message) — classifies `message` into one of the
+    known button actions via Ollama, then hands off to
+    `process_interactive_chat_action` exactly as if that button had been
+    clicked. An unreachable/unclear model just shows the main menu with an
+    acknowledgment that we didn't understand, never an error the patient
+    can't act on — see `llm_router.classify_free_text_intent`'s own
+    fail-safe default."""
+    from .llm_router import classify_free_text_intent
+
+    intent = classify_free_text_intent(message)
+
+    if intent == "unclear":
+        result = process_interactive_chat_action("main_menu", preferred_language=preferred_language, hospital=hospital)
+        prefix = _DIDNT_UNDERSTAND.get(preferred_language, _DIDNT_UNDERSTAND["en"])
+        result["text"] = f"{prefix}\n\n{result['text']}"
+        return result
+
+    return process_interactive_chat_action(intent, preferred_language=preferred_language, hospital=hospital)
 
 
 def generate_ai_chat_response(
@@ -277,15 +299,8 @@ def generate_ai_chat_response(
     history: Optional[List[Dict[str, str]]] = None,
     hospital=None,
 ) -> str:
-    """Text wrapper for the inbound-webhook auto-reply (apps.communications.
-    views.InboundWebhookView) — an inbound WhatsApp/SMS message has no
-    buttons to click, so this classifies the free text the same way the
-    widget's text box does (see the "classify_free_text" action above) and
-    returns just the resulting message body. `history` isn't threaded into
-    the classifier: each inbound message gets one independent reply rather
-    than a stateful multi-turn conversation — see the module docstring on
-    why the model is kept to routing, not conversation, in the first place."""
-    res = process_interactive_chat_action(
-        "classify_free_text", {"message": prompt}, preferred_language=preferred_language, hospital=hospital,
-    )
+    """Inbound-webhook auto-reply wrapper — classifies the inbound message
+    via `process_free_text_message` and returns just the reply text (the
+    webhook only needs a string to log as the outbound Message body)."""
+    res = process_free_text_message(prompt, preferred_language=preferred_language, hospital=hospital)
     return res["text"]

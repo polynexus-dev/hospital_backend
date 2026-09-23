@@ -152,3 +152,44 @@ class Thread(TenantScopedModel):
 
     def __str__(self):
         return f"{self.patient or self.enquiry} {self.get_channel_display()} thread"
+
+
+class BroadcastCampaign(TenantScopedModel):
+    """WhatsApp & SMS marketing/outreach campaign broadcast engine."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SCHEDULED = "scheduled", "Scheduled"
+        SENDING = "sending", "Sending"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
+    class TargetAudience(models.TextChoices):
+        ALL_PATIENTS = "all_patients", "All Registered Patients"
+        UNCONVERTED_LEADS = "unconverted_leads", "Unconverted CRM Leads"
+        FOLLOW_UP_LEADS = "follow_up_leads", "Leads in Follow-up Queue"
+        CHRONIC_CARE = "chronic_care", "Chronic Care & Recalls Due"
+        SENIOR_CITIZENS = "senior_citizens", "Senior Citizens (60+)"
+
+    title = models.CharField(max_length=255)
+    channel = models.CharField(max_length=16, choices=Channel.choices, default=Channel.WHATSAPP)
+    target_audience = models.CharField(max_length=32, choices=TargetAudience.choices)
+    template = models.ForeignKey(Template, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    custom_message = models.TextField(help_text="Broadcast message content with placeholders")
+    scheduled_for = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
+
+    total_recipients = models.PositiveIntegerField(default=0)
+    sent_count = models.PositiveIntegerField(default=0)
+    delivered_count = models.PositiveIntegerField(default=0)
+    read_count = models.PositiveIntegerField(default=0)
+    failed_count = models.PositiveIntegerField(default=0)
+
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Campaign: {self.title} ({self.status})"
+

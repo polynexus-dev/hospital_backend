@@ -7,11 +7,14 @@ from django_celery_beat.models import PeriodicTask
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.appointments.models import Appointment
+from apps.core.models import AuditLog
+from apps.core.request_utils import get_client_ip
 from apps.enquiries.models import Enquiry
 from apps.patients.models import Patient
 
@@ -34,6 +37,50 @@ EXPORTERS = {
 }
 
 
+def _require_view_permission(request, model):
+    """A bulk export is a one-shot way to read every row of `model` a
+    role's normal screens would otherwise show it one at a time — it must
+    require exactly the same `view_<model>` permission RequiresViewPermission
+    already enforces for reading that model elsewhere (see apps.privacy.
+    views/apps.patients.views.PrescriptionViewSet), not merely
+    IsAuthenticated. Raising here (rather than returning a Response) fails
+    fast before any row is queried, and — for FHIRExportView's
+    resource_type="all" — aborts before a later resource type's data is
+    appended to a response that's now going to 403 anyway."""
+    permission = f"{model._meta.app_label}.view_{model._meta.model_name}"
+    if not request.user.has_perm(permission):
+        raise PermissionDenied(f"You do not have permission to export {model._meta.model_name} data.")
+
+
+def _log_export(request, *, model_name, row_count, **extra):
+    """A bulk export is exactly the kind of access DPDP's own accountability
+    principle exists for — logged deliberately here rather than relying on
+    apps.core.middleware.AuditMiddleware, which only auto-logs GET/HEAD
+    under PATIENT_RECORD_READ_PREFIXES (/patients/, /documents/,
+    /prescriptions/) and never covered /export/... at all. Uses
+    request.user.hospital_id directly rather than apps.core.tenancy.
+    get_current_hospital_id() (what apps.core.audit.log_action relies on):
+    that contextvar is set by TenantMiddleware before DRF's lazy JWT
+    authentication has run, so it's still None for every JWT-authenticated
+    request by the time a view executes — see apps.patients.views.
+    PatientViewSet.lookup's docstring for the same gotcha found the hard
+    way elsewhere. Only called after a successful export — a 403 from
+    _require_view_permission above logs nothing, matching AuditLog's
+    "something genuinely happened" convention (see apps.core.models.
+    EmergencyAccessLog's docstring for the same principle)."""
+    AuditLog.objects.create(
+        hospital_id=getattr(request.user, "hospital_id", None),
+        actor=request.user,
+        action=AuditLog.Action.EXPORT,
+        model_name=model_name,
+        object_repr=f"{row_count} row(s) exported",
+        changes={"row_count": row_count, **extra},
+        method=request.method,
+        path=request.path,
+        ip_address=get_client_ip(request),
+    )
+
+
 class DataExportView(APIView):
     """Self-service full export in open CSV, no exit fee, no vendor
     lock-in — the DPDP-era selling point in §13 / Part C. FHIR R4 export is
@@ -41,6 +88,11 @@ class DataExportView(APIView):
     "open CSV" half of the requirement now."""
 
     permission_classes = [IsAuthenticated]
+    # Per-tenant resource isolation (see DEFAULT_THROTTLE_RATES["heavy_ops"]
+    # in settings) — a full-table export scales with this hospital's own
+    # row count, not with request volume, so the general "user" rate limit
+    # doesn't bound how much DB/worker time one hospital can consume here.
+    throttle_scope = "heavy_ops"
 
     @extend_schema(exclude=True)  # raw CSV download, not a JSON API response — nothing for the schema to describe
     def get(self, request, model_name):
@@ -49,14 +101,19 @@ class DataExportView(APIView):
             return HttpResponse(f"Unknown export model '{model_name}'. Choose from: {', '.join(EXPORTERS)}.", status=400)
 
         model, fields = exporter
+        _require_view_permission(request, model)
         queryset = model.objects.filter(hospital_id=request.user.hospital_id).values(*fields)
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{model_name}_export.csv"'
         writer = csv.DictWriter(response, fieldnames=fields)
         writer.writeheader()
+        row_count = 0
         for row in queryset.iterator():
             writer.writerow(row)
+            row_count += 1
+
+        _log_export(request, model_name=model.__name__, row_count=row_count)
         return response
 
 
@@ -64,6 +121,8 @@ class FHIRExportView(APIView):
     """HL7 FHIR R4 JSON Export API for Patients and Appointments."""
 
     permission_classes = [IsAuthenticated]
+    # See DataExportView.throttle_scope above — same per-tenant isolation reasoning.
+    throttle_scope = "heavy_ops"
 
     @extend_schema(exclude=True)
     def get(self, request, resource_type="patients"):
@@ -72,6 +131,15 @@ class FHIRExportView(APIView):
 
         hospital_id = request.user.hospital_id
         fhir_resources = []
+
+        # Checked upfront, before either resource type is queried — a
+        # resource_type="all" caller missing just one of the two
+        # permissions gets a clean 403 rather than a bundle silently
+        # missing the resource they weren't allowed to see.
+        if resource_type in ("patients", "all"):
+            _require_view_permission(request, Patient)
+        if resource_type in ("appointments", "all"):
+            _require_view_permission(request, Appointment)
 
         if resource_type in ("patients", "all"):
             patients = Patient.objects.filter(hospital_id=hospital_id)
@@ -84,6 +152,7 @@ class FHIRExportView(APIView):
                 fhir_resources.append(appointment_to_fhir_resource(appt))
 
         bundle = to_fhir_bundle(fhir_resources)
+        _log_export(request, model_name="FHIRBundle", row_count=len(fhir_resources), resource_type=resource_type)
         response = JsonResponse(bundle)
         response["Content-Disposition"] = f'attachment; filename="fhir_{resource_type}_bundle.json"'
         return response

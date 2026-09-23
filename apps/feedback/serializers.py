@@ -11,10 +11,27 @@ class FeedbackRequestSerializer(serializers.ModelSerializer):
 
 
 class NPSResponseSerializer(serializers.ModelSerializer):
+    patient_name = serializers.SerializerMethodField()
+    patient_mobile = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField()
+
     class Meta:
         model = NPSResponse
-        fields = ["id", "feedback_request", "patient", "doctor", "department", "score", "category", "comment", "created_at"]
+        fields = [
+            "id", "feedback_request", "patient", "patient_name", "patient_mobile",
+            "doctor", "doctor_name", "department",
+            "score", "category", "comment", "created_at",
+        ]
         read_only_fields = ["id", "patient", "doctor", "department", "category", "created_at"]
+
+    def get_patient_name(self, obj) -> str:
+        return obj.patient.full_name if obj.patient else ""
+
+    def get_patient_mobile(self, obj) -> str:
+        return obj.patient.mobile if obj.patient else ""
+
+    def get_doctor_name(self, obj) -> str:
+        return getattr(obj.doctor, "name", "") if obj.doctor else ""
 
 
 class SubmitNPSSerializer(serializers.Serializer):

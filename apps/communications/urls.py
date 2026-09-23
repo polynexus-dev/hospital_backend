@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AIChatbotView,
+    BroadcastCampaignViewSet,
     ConsentOptOutViewSet,
     InboundWebhookView,
     MessageViewSet,
@@ -15,6 +16,7 @@ router.register("templates", TemplateViewSet, basename="template")
 router.register("consent", ConsentOptOutViewSet, basename="consentoptout")
 router.register("messages", MessageViewSet, basename="message")
 router.register("threads", ThreadViewSet, basename="thread")
+router.register("broadcasts", BroadcastCampaignViewSet, basename="broadcast")
 
 urlpatterns = [
     path("messages/ai-chat/", AIChatbotView.as_view(), name="ai-chat"),

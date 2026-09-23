@@ -16,16 +16,35 @@ DEBUG = False
 if not SECRET_KEY or "change-me" in SECRET_KEY or "insecure" in SECRET_KEY:  # noqa: F405
     raise RuntimeError("SECRET_KEY is still a placeholder — set a real SECRET_KEY in the production environment before starting.")
 
-# Same reasoning as SECRET_KEY above: base.py's FIELD_ENCRYPTION_KEYS falls
-# back to a fixed, checked-into-this-repo placeholder so local dev works
-# with no .env at all. Reaching production on that default would mean every
-# deployment that forgot to set a real key encrypts patient PII with a key
-# anyone can read straight out of version control.
-if not FIELD_ENCRYPTION_KEYS or INSECURE_DEV_FIELD_ENCRYPTION_KEY in FIELD_ENCRYPTION_KEYS:  # noqa: F405
-    raise RuntimeError("FIELD_ENCRYPTION_KEYS is still the placeholder (or unset) — set real key(s) in the production environment before starting.")
+# Same reasoning as SECRET_KEY above: base.py's defaults for these are
+# fixed, checked-into-this-repo placeholders so local dev works with no
+# .env at all. Reaching production with either unchanged would mean every
+# deployment that forgot to set them encrypts patient data (and hashes
+# phone numbers for lookup) under a key anyone can read in this repo's
+# history.
+_DEV_FERNET_KEY = "t2NvOpAA9rQ6Ud5hsyk6sSLsAILgnltwzOoMfsExWKs="
+_DEV_GCM_KEY = "UKErull4TB4qeyWpzXSwrna10cg0exEhKiCdBAa6zAw="
 
-if not BLIND_INDEX_KEY or BLIND_INDEX_KEY == INSECURE_DEV_BLIND_INDEX_KEY:  # noqa: F405
-    raise RuntimeError("BLIND_INDEX_KEY is still the placeholder (or unset) — set a real key in the production environment before starting.")
+# Resolved the same way apps.core.encryption resolves them: the rotation
+# list wins when set, otherwise the single key. Checking only the singular
+# would leave FIELD_ENCRYPTION_KEYS_V2="<placeholder>" as a way to boot
+# production encrypting under a key that is public in this repo — i.e. the
+# rotation settings would be a hole in the check that exists to stop
+# exactly that.
+#
+# The placeholder is rejected anywhere in the list, not just as the
+# primary. Keeping it for decryption would mean production is still
+# serving data encrypted under a public key; that situation calls for
+# re-encrypting before deploying, not for carrying the key forward.
+_fernet_keys = FIELD_ENCRYPTION_KEYS or [FIELD_ENCRYPTION_KEY]  # noqa: F405
+_gcm_keys = FIELD_ENCRYPTION_KEYS_V2 or [FIELD_ENCRYPTION_KEY_V2]  # noqa: F405
+
+if not any(_fernet_keys) or _DEV_FERNET_KEY in _fernet_keys:
+    raise RuntimeError("FIELD_ENCRYPTION_KEY(S) is unset or still the dev placeholder — set a real key in the production environment before starting.")
+if not any(_gcm_keys) or _DEV_GCM_KEY in _gcm_keys:
+    raise RuntimeError("FIELD_ENCRYPTION_KEY_V2(S) is unset or still the dev placeholder — set a real key in the production environment before starting.")
+if not FIELD_HASH_KEY or "change-me" in FIELD_HASH_KEY or "insecure" in FIELD_HASH_KEY:  # noqa: F405
+    raise RuntimeError("FIELD_HASH_KEY is still a placeholder — set a real key in the production environment before starting.")
 
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)  # noqa: F405
 SESSION_COOKIE_SECURE = True
@@ -44,4 +63,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # session-authenticated POST/PUT/PATCH/DELETE from the real frontend
 # origin gets rejected in production even though CORS allowed the request
 # through.
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=CORS_ALLOWED_ORIGINS)  # noqa: F405
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "https://*.hms.polynexus.in",
+        "https://hms.polynexus.in",
+        "http://*.hms.polynexus.in",
+        "http://hms.polynexus.in",
+    ] + CORS_ALLOWED_ORIGINS,  # noqa: F405
+)

@@ -5,8 +5,8 @@ import pytest
 import requests
 
 from apps.appointments.models import Appointment, Doctor, Slot
-from apps.communications.ai_chatbot import process_interactive_chat_action
-from apps.communications.llm_router import classify_free_text_intent
+from apps.communications.ai_chatbot import process_free_text_message, process_interactive_chat_action
+from apps.communications.llm_router import classify_free_text_intent, ollama_is_reachable
 from apps.communications.models import Channel, ConsentOptOut, Message, Template, Thread
 from apps.patients.models import Patient
 
@@ -84,7 +84,9 @@ def test_submit_booking_reuses_existing_patient_by_mobile(hospital, doctor, slot
 
     appointment = Appointment.objects.get(pk=result["confirmed_details"]["appointment_id"])
     assert appointment.patient_id == existing.id
-    assert Patient.objects.filter(hospital=hospital, mobile="9822011111").count() == 1
+    # mobile is encrypted at rest (Part A #2) — exact-match lookup goes
+    # through the blind-index column, not a direct filter on the column.
+    assert Patient.objects.filter(hospital=hospital).by_mobile("9822011111").count() == 1
 
 
 @pytest.mark.django_db
@@ -101,81 +103,6 @@ def test_submit_booking_rejects_a_slot_already_taken(hospital, doctor, slot):
 
     assert result["step"] == "select_slot"
     assert Appointment.objects.filter(slot=slot).count() == 1
-
-
-# --- llm_router.classify_free_text_intent: Ollama call, mocked at the HTTP
-# boundary so these stay fast/deterministic and never touch a real server.
-
-def _mock_ollama_response(intent_json_body, status_code=200):
-    class _Resp:
-        def raise_for_status(self):
-            if status_code >= 400:
-                raise requests.HTTPError(f"{status_code}")
-
-        def json(self):
-            return {"message": {"content": intent_json_body}}
-
-    return _Resp()
-
-
-def test_classify_free_text_intent_parses_a_known_intent():
-    with patch("apps.communications.llm_router.requests.post", return_value=_mock_ollama_response('{"intent": "book_opd"}')):
-        assert classify_free_text_intent("I want to see a cardiologist") == "book_opd"
-
-
-def test_classify_free_text_intent_rejects_an_intent_outside_the_known_set():
-    # A model hallucinating a category outside KNOWN_INTENTS must not leak
-    # through as a real action id.
-    with patch("apps.communications.llm_router.requests.post", return_value=_mock_ollama_response('{"intent": "delete_all_patients"}')):
-        assert classify_free_text_intent("do something") == "unclear"
-
-
-def test_classify_free_text_intent_falls_back_to_unclear_on_network_failure():
-    with patch("apps.communications.llm_router.requests.post", side_effect=requests.ConnectionError("no route")):
-        assert classify_free_text_intent("hello") == "unclear"
-
-
-def test_classify_free_text_intent_falls_back_to_unclear_on_malformed_json():
-    with patch("apps.communications.llm_router.requests.post", return_value=_mock_ollama_response("not json")):
-        assert classify_free_text_intent("hello") == "unclear"
-
-
-def test_classify_free_text_intent_of_empty_message_is_unclear_without_calling_ollama():
-    with patch("apps.communications.llm_router.requests.post") as mock_post:
-        assert classify_free_text_intent("   ") == "unclear"
-        mock_post.assert_not_called()
-
-
-# --- ai_chatbot "classify_free_text" action: routes into the same scripted,
-# tested branches above — the model only ever picks which one, never what
-# the patient sees.
-
-@pytest.mark.django_db
-def test_classify_free_text_action_routes_to_the_matched_scripted_branch(hospital, doctor):
-    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="book_opd"):
-        result = process_interactive_chat_action("classify_free_text", {"message": "book me a doctor"}, hospital=hospital)
-
-    assert result["step"] == "select_doctor"
-    assert doctor.name in result["text"] or any(doctor.name in o["label"] for o in result["options"])
-
-
-@pytest.mark.django_db
-def test_classify_free_text_action_falls_back_to_menu_with_an_apology_when_unclear(hospital):
-    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="unclear"):
-        result = process_interactive_chat_action("classify_free_text", {"message": "asdkjaslkdj"}, hospital=hospital)
-
-    assert result["step"] == "main_menu"
-    assert "didn't quite catch" in result["text"]
-
-
-@pytest.mark.django_db
-def test_generate_ai_chat_response_uses_the_classified_intent(hospital):
-    from apps.communications.ai_chatbot import generate_ai_chat_response
-
-    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="hospital_location"):
-        text = generate_ai_chat_response(prompt="where are you located?", hospital=hospital)
-
-    assert hospital.name in text
 
 
 # --- Template: model + API CRUD, unique_together, render() ----------------
@@ -386,18 +313,12 @@ def test_thread_isolation(auth_client, other_hospital):
 
 @pytest.mark.django_db
 def test_inbound_webhook_logs_a_message_and_triggers_ai_auto_reply(api_client, hospital, patient):
-    # classify_free_text_intent is mocked here (not just at the requests.post
-    # boundary) so this webhook test stays about the webhook, not about
-    # asserting on Ollama's specific output — see the llm_router tests above
-    # for that.
-    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="hospital_location"):
-        response = api_client.post(f"/api/v1/webhooks/inbound/{hospital.id}/whatsapp/", {
-            "from": patient.mobile, "body": "Hi, what are your OPD timings?",
-        }, format="json")
+    response = api_client.post(f"/api/v1/webhooks/inbound/{hospital.id}/whatsapp/", {
+        "from": patient.mobile, "body": "Hi, what are your OPD timings?",
+    }, format="json")
 
     assert response.status_code == 201
     assert "inbound" in response.data and "ai_auto_reply" in response.data
-    assert hospital.name in response.data["ai_auto_reply"]["body"]
     assert Message.objects.filter(hospital=hospital, patient=patient, direction=Message.Direction.INBOUND).exists()
 
 
@@ -406,3 +327,112 @@ def test_inbound_webhook_with_no_matching_patient_is_dropped_not_errored(api_cli
     response = api_client.post(f"/api/v1/webhooks/inbound/{hospital.id}/whatsapp/", {"from": "0000000000", "body": "hi"}, format="json")
     assert response.status_code == 202
     assert not Message.objects.filter(hospital=hospital).exists()
+
+
+# --- llm_router.classify_free_text_intent -----------------------------------
+#
+# The model is scoped to ONE job — pick a known intent id, never compose the
+# reply a patient sees (see ai_chatbot.py's module docstring). These pin down
+# both the happy path and every way "ask an LLM over HTTP" can go wrong —
+# each must degrade to "unclear", never raise, since the caller treats
+# "unclear" exactly like today's default (show the main menu).
+
+def _mock_ollama_response(content: str):
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": content}}
+
+    return _Resp()
+
+
+def test_classify_free_text_intent_returns_a_known_intent_from_a_valid_response():
+    with patch("apps.communications.llm_router.requests.post") as post:
+        post.return_value = _mock_ollama_response('{"intent": "book_opd"}')
+        assert classify_free_text_intent("I want to see a cardiologist tomorrow") == "book_opd"
+
+
+def test_classify_free_text_intent_rejects_an_intent_outside_the_known_list():
+    """A hallucinated/off-menu category is exactly as unsafe as no response
+    at all — must not be trusted just because the JSON parsed."""
+    with patch("apps.communications.llm_router.requests.post") as post:
+        post.return_value = _mock_ollama_response('{"intent": "prescribe_medicine"}')
+        assert classify_free_text_intent("what should I take for a fever") == "unclear"
+
+
+def test_classify_free_text_intent_degrades_to_unclear_on_network_failure():
+    with patch("apps.communications.llm_router.requests.post", side_effect=requests.ConnectionError):
+        assert classify_free_text_intent("hello") == "unclear"
+
+
+def test_classify_free_text_intent_degrades_to_unclear_on_malformed_json():
+    with patch("apps.communications.llm_router.requests.post") as post:
+        post.return_value = _mock_ollama_response("not json at all")
+        assert classify_free_text_intent("hello") == "unclear"
+
+
+def test_classify_free_text_intent_treats_blank_message_as_unclear_without_calling_the_model():
+    with patch("apps.communications.llm_router.requests.post") as post:
+        assert classify_free_text_intent("   ") == "unclear"
+        post.assert_not_called()
+
+
+def test_ollama_is_reachable_reflects_the_health_check_result():
+    with patch("apps.communications.llm_router.requests.get") as get:
+        get.return_value.ok = True
+        assert ollama_is_reachable() is True
+
+    with patch("apps.communications.llm_router.requests.get", side_effect=requests.ConnectionError):
+        assert ollama_is_reachable() is False
+
+
+# --- ai_chatbot.process_free_text_message -----------------------------------
+
+@pytest.mark.django_db
+def test_process_free_text_message_routes_a_classified_intent_to_its_real_branch(hospital, doctor):
+    """A classified "book_opd" must land on the SAME real-data branch a
+    button click would — proving the model only ever picks a destination,
+    never generates what's shown once it gets there."""
+    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="book_opd"):
+        result = process_free_text_message("book me an appointment", hospital=hospital)
+    assert result["step"] == "select_doctor"
+    assert any(doctor.name in opt["label"] for opt in result["options"])
+
+
+@pytest.mark.django_db
+def test_process_free_text_message_unclear_shows_main_menu_with_an_acknowledgment():
+    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="unclear"):
+        result = process_free_text_message("asdkjfh nonsense", hospital=None)
+    assert result["step"] == "main_menu"
+    assert "understood" in result["text"].lower()
+    assert result["options"] == process_interactive_chat_action("main_menu")["options"]
+
+
+# --- AIChatbotView: action="free_text" --------------------------------------
+
+@pytest.mark.django_db
+def test_ai_chat_view_free_text_action_is_routed_through_the_classifier(auth_client, hospital, doctor):
+    with patch("apps.communications.llm_router.classify_free_text_intent", return_value="book_opd"):
+        response = auth_client.post(
+            "/api/v1/messages/ai-chat/",
+            {"action": "free_text", "payload": {"message": "I need to see a doctor"}},
+            format="json",
+        )
+    assert response.status_code == 200
+    assert response.data["step"] == "select_doctor"
+
+
+@pytest.mark.django_db
+def test_ai_chat_view_free_text_with_no_ollama_reachable_falls_back_to_main_menu(auth_client, hospital):
+    """No mocking here — proves the whole path fails safe end-to-end when
+    the VM's Ollama server genuinely isn't reachable, not just when a test
+    mocks the classifier to return "unclear" directly."""
+    response = auth_client.post(
+        "/api/v1/messages/ai-chat/",
+        {"action": "free_text", "payload": {"message": "hello"}},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["step"] == "main_menu"

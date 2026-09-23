@@ -66,3 +66,13 @@ class BillingComprehensiveTestCase(TestCase):
 
         self.bill_a.refresh_from_db()
         self.assertEqual(self.bill_a.status, Bill.Status.PAID)
+
+    def test_download_bill_pdf(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user_a)
+        res = client.get(f"/api/v1/billing/bills/{self.bill_a.id}/download/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "application/pdf")
+        self.assertTrue(res.content.startswith(b"%PDF"))
+        self.assertGreater(len(res.content), 1000)
+

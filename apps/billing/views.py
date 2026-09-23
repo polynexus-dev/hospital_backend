@@ -17,6 +17,7 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "update": "billing.change_bill",
         "partial_update": "billing.change_bill",
         "add_item": "billing.change_bill",
+        "download": "billing.view_bill",
     }
     serializer_class = BillSerializer
     queryset = Bill.objects.all()
@@ -53,6 +54,19 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         bill.save(update_fields=["total_amount", "net_amount"])
 
         return Response(BillItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        bill = self.get_object()
+        from django.http import HttpResponse
+        from .bill_pdf import render_bill_pdf
+
+        pdf_bytes = render_bill_pdf(bill)
+        filename = f"Bill_{bill.id}_{getattr(bill.patient, 'uhid', 'patient')}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
 
 
 class PaymentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):

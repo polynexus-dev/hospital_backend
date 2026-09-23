@@ -17,12 +17,9 @@ appointment_no_show = django.dispatch.Signal()
 appointment_completed = django.dispatch.Signal()
 
 # Fired by apps.appointments.services.check_in — apps.opd listens on this
-# to create the clinical-content Encounter for the visit (see
-# docs/erp/05-integration-architecture.md). Deliberately fired at check-in,
-# not at completion like appointment_completed above: a doctor needs
-# somewhere to record vitals/notes/diagnosis *during* the consultation,
-# before it's marked complete.
+# to create the clinical-content Encounter for the visit.
 appointment_checked_in = django.dispatch.Signal()
+
 
 
 @receiver(post_save, sender=Appointment)

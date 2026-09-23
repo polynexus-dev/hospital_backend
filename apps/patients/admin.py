@@ -12,10 +12,19 @@ class DocumentInline(admin.TabularInline):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ["full_name", "mobile", "hospital", "city", "guardian", "next_recall_due_at", "preferred_language", "is_active"]
-    list_filter = ["hospital", "gender", "preferred_language", "is_active"]
-    search_fields = ["first_name", "last_name", "mobile", "alternate_mobile", "email"]
+    list_display = ["full_name", "mobile", "hospital", "city", "guardian", "next_recall_due_at", "preferred_language", "is_active", "is_deleted"]
+    list_filter = ["hospital", "gender", "preferred_language", "is_active", "is_deleted"]
+    # mobile/alternate_mobile are encrypted at rest (Part A #2) and excluded
+    # here — admin search does an icontains against the DB column, which
+    # matches nothing against ciphertext.
+    search_fields = ["first_name", "last_name", "email"]
     inlines = [DocumentInline]
+
+    def get_queryset(self, request):
+        # Soft-deleted patients (Part A #1) are invisible through the
+        # default manager — surface them here too, since this is the one
+        # place ops staff would go looking for a "deleted" record.
+        return Patient.objects.all_with_deleted()
 
 
 @admin.register(TimelineEvent)

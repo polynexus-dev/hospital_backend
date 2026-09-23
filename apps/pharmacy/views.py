@@ -33,14 +33,17 @@ class SupplierViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class MedicineViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = MedicineSerializer
-    queryset = Medicine.objects.all()
+    # prefetch_related: MedicineSerializer.get_total_available iterates
+    # obj.batches.all() per row.
+    queryset = Medicine.objects.prefetch_related("batches")
     filterset_fields = ["form", "is_active"]
     search_fields = ["name", "generic_name"]
 
 
 class MedicineBatchViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = MedicineBatchSerializer
-    queryset = MedicineBatch.objects.all()
+    # select_related: MedicineBatchSerializer.medicine_name (source="medicine.name")
+    queryset = MedicineBatch.objects.select_related("medicine")
     filterset_fields = ["medicine", "supplier"]
 
 
@@ -50,7 +53,8 @@ class DispenseRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = DispenseRecordSerializer
-    queryset = DispenseRecord.objects.all()
+    # select_related: DispenseRecordSerializer.medicine_name (source="batch.medicine.name")
+    queryset = DispenseRecord.objects.select_related("batch__medicine")
     filterset_fields = ["prescription", "batch"]
 
     def create(self, request, *args, **kwargs):

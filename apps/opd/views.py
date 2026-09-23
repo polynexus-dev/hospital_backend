@@ -33,7 +33,9 @@ class EncounterViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = EncounterSerializer
-    queryset = Encounter.objects.all()
+    # select_related: EncounterSerializer's patient_name/doctor_name
+    # (source="patient.full_name"/"doctor.name")
+    queryset = Encounter.objects.select_related("patient", "doctor")
     filterset_fields = ["patient", "doctor", "department", "appointment"]
     assignment_scope_field = "doctor__user"
 

@@ -40,7 +40,9 @@ class AdmissionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"discharge": "ipd.change_admission"}
     serializer_class = AdmissionSerializer
-    queryset = Admission.objects.all()
+    # select_related: AdmissionSerializer's patient_name/doctor_name/bed_label
+    # (source="patient.full_name"/"admitting_doctor.name"/"bed.__str__")
+    queryset = Admission.objects.select_related("patient", "admitting_doctor", "bed")
     filterset_fields = ["patient", "admitting_doctor", "department", "status"]
     assignment_scope_field = "admitting_doctor__user"
 

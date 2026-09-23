@@ -44,7 +44,8 @@ class WorkflowSerializer(serializers.ModelSerializer):
         steps_data = validated_data.pop("steps", [])
         workflow = Workflow.objects.create(**validated_data)
         for order, step_d in enumerate(steps_data, start=1):
-            WorkflowStep.objects.create(workflow=workflow, order=step_d.get("order", order), **step_d)
+            step_order = step_d.pop("order", order)
+            WorkflowStep.objects.create(workflow=workflow, order=step_order, **step_d)
         return workflow
 
     def update(self, instance, validated_data):
@@ -56,7 +57,8 @@ class WorkflowSerializer(serializers.ModelSerializer):
         if steps_data is not None:
             instance.steps.all().delete()
             for order, step_d in enumerate(steps_data, start=1):
-                WorkflowStep.objects.create(workflow=instance, order=step_d.get("order", order), **step_d)
+                step_order = step_d.pop("order", order)
+                WorkflowStep.objects.create(workflow=instance, order=step_order, **step_d)
         return instance
 
 

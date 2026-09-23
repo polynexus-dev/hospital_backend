@@ -1,9 +1,11 @@
+import pyotp
 from django.contrib.auth import update_session_auth_hash
+from django.core.signing import BadSignature
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.viewsets import TenantScopedViewSetMixin
@@ -14,6 +16,7 @@ from .serializers import (
     HospitalScopedTokenObtainPairSerializer,
     RoleSerializer,
     UserSerializer,
+    read_mfa_challenge_user_id,
 )
 
 
@@ -43,29 +46,25 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["email", "phone", "first_name", "last_name"]
 
     def get_queryset(self):
-        # Matches TenantScopedViewSetMixin's own rule (apps/core/viewsets.py):
-        # a staff user needs the X-Hospital-Id header to see another
-        # hospital's rows — without it, even staff only sees their own
-        # hospital. This viewset used to broaden to every hospital for any
-        # is_staff user with no header at all, inconsistent with every
-        # other staff-aware view in the codebase.
         user = self.request.user
-        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
-            return User.objects.filter(hospital_id=self.request.headers["X-Hospital-Id"])
-        return User.objects.filter(hospital_id=user.hospital_id)
+        # select_related: UserSerializer's role_name/hospital_name/
+        # hospital_address/hospital_city/hospital_state (source="role.name",
+        # "hospital.*") would otherwise re-query per row on every list page.
+        base = User.objects.select_related("role", "hospital")
+        if user.can_cross_tenant:
+            return base
+        return base.filter(hospital_id=user.hospital_id)
 
     def perform_create(self, serializer):
-        hospital = self.request.user.hospital
-        if hospital is None:
-            raise ValidationError("The requesting user is not attached to a hospital.")
-        subscription = getattr(hospital, "subscription", None)
-        if subscription is not None and subscription.max_staff_users:
-            active_staff = User.objects.filter(hospital=hospital, is_active=True).count()
-            if active_staff >= subscription.max_staff_users:
-                raise ValidationError(
-                    f"This hospital's {subscription.get_tier_display()} plan allows up to "
-                    f"{subscription.max_staff_users} staff users. Contact the platform admin to upgrade."
-                )
+        hospital = getattr(self.request.user, "hospital", None)
+        if hospital:
+            from apps.saas_admin.models import TenantSubscription
+            from rest_framework.exceptions import ValidationError
+            sub = TenantSubscription.objects.filter(hospital=hospital, status=TenantSubscription.Status.ACTIVE).first()
+            if sub and sub.max_staff_users > 0:
+                current_count = User.objects.filter(hospital=hospital, is_active=True).count()
+                if current_count >= sub.max_staff_users:
+                    raise ValidationError({"detail": f"Hospital has reached its subscription staff limit of {sub.max_staff_users} users."})
         serializer.save(hospital=hospital)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
@@ -74,18 +73,22 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="switch-hospital", permission_classes=[IsAuthenticated])
     def switch_hospital(self, request):
-        """Staff-only. This used to accept any authenticated user and
-        reassign their `hospital` FK to *any* active hospital's id with no
-        further check — since Hospital has no group/ownership concept in
-        the schema, that meant any front-desk user at any hospital could
-        call this with an arbitrary hospital_id and permanently switch
-        themselves into a completely unrelated hospital's tenant, gaining
-        full read/write access to its data through every other endpoint
-        (verified empirically, not theoretical). Restricting to is_staff
-        matches the only other cross-hospital mechanism already in this
-        codebase (the X-Hospital-Id header in TenantMiddleware)."""
-        if not request.user.is_staff:
-            return Response({"detail": "Only staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
+        """Platform-ops only (User.can_cross_tenant). This used to accept
+        any authenticated user and reassign their `hospital` FK to *any*
+        active hospital's id with no further check — since Hospital has no
+        group/ownership concept in the schema, that meant any front-desk
+        user at any hospital could call this with an arbitrary hospital_id
+        and permanently switch themselves into a completely unrelated
+        hospital's tenant, gaining full read/write access to its data
+        through every other endpoint (verified empirically, not
+        theoretical). That was then "fixed" by restricting to is_staff to
+        match the X-Hospital-Id header in TenantMiddleware — except
+        is_staff is also granted to every hospital's own Owner account
+        (apps.saas_admin.tenant_service), so an ordinary hospital Owner
+        could still do exactly this. can_cross_tenant is the actual
+        platform-ops-only check; see its docstring."""
+        if not request.user.can_cross_tenant:
+            return Response({"detail": "Only platform staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
 
         hospital_id = request.data.get("hospital_id")
         if not hospital_id:
@@ -113,6 +116,83 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         update_session_auth_hash(request, user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["post"], url_path="2fa/setup", permission_classes=[IsAuthenticated])
+    def setup_2fa(self, request):
+        """Step 1 of enrollment (Part A #7): generates a new TOTP secret and
+        returns it plus a provisioning URI (for a QR code) — NOT yet
+        enabled. A generated-but-unconfirmed secret can't be used to log
+        in; is_2fa_enabled only flips on in enable_2fa below, once the user
+        proves they actually scanned it by supplying a valid code."""
+        user = request.user
+        secret = pyotp.random_base32()
+        user.totp_secret = secret
+        user.save(update_fields=["totp_secret"])
+        uri = pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Polynexus HMS")
+        return Response({"secret": secret, "provisioning_uri": uri})
+
+    @action(detail=False, methods=["post"], url_path="2fa/enable", permission_classes=[IsAuthenticated])
+    def enable_2fa(self, request):
+        user = request.user
+        if not user.totp_secret:
+            return Response({"detail": "Call 2fa/setup first."}, status=status.HTTP_400_BAD_REQUEST)
+        otp = str(request.data.get("otp", "")).strip()
+        if not pyotp.TOTP(user.totp_secret).verify(otp, valid_window=1):
+            return Response({"otp": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+        user.is_2fa_enabled = True
+        user.save(update_fields=["is_2fa_enabled"])
+        return Response({"is_2fa_enabled": True})
+
+    @action(detail=False, methods=["post"], url_path="2fa/disable", permission_classes=[IsAuthenticated])
+    def disable_2fa(self, request):
+        """Requires the current password, not just an authenticated
+        session — this turns off a security control, which is exactly the
+        situation a stolen/left-open session shouldn't be able to exploit
+        on its own (mirrors change_password's own-credential check above)."""
+        password = str(request.data.get("password", ""))
+        if not request.user.check_password(password):
+            return Response({"password": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        user.is_2fa_enabled = False
+        user.totp_secret = ""
+        user.save(update_fields=["is_2fa_enabled", "totp_secret"])
+        return Response({"is_2fa_enabled": False})
+
+
+class MFAVerifyView(APIView):
+    """Step 2 of login for any account with is_2fa_enabled=True (Part A
+    #7) — exchanges the mfa_token from HospitalScopedTokenObtainPairSerializer
+    plus a valid OTP for real access/refresh tokens. No session/auth of its
+    own yet (that's the whole point), so AllowAny + no authentication — the
+    mfa_token itself (short-lived, signed, single-purpose) is the only
+    credential this endpoint trusts."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "login"  # same brute-force concern as the login view itself
+
+    def post(self, request):
+        mfa_token = str(request.data.get("mfa_token", ""))
+        otp = str(request.data.get("otp", "")).strip()
+
+        try:
+            user_id = read_mfa_challenge_user_id(mfa_token)
+        except BadSignature:
+            return Response({"detail": "Invalid or expired MFA challenge."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(pk=user_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({"detail": "Invalid or expired MFA challenge."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.is_2fa_enabled or not user.totp_secret:
+            return Response({"detail": "MFA is not enabled for this account."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not pyotp.TOTP(user.totp_secret).verify(otp, valid_window=1):
+            return Response({"otp": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        refresh = HospitalScopedTokenObtainPairSerializer.get_token(user)
+        return Response({"refresh": str(refresh), "access": str(refresh.access_token)})
+
 
 class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = RoleSerializer
@@ -121,6 +201,6 @@ class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff and self.request.headers.get("X-Hospital-Id"):
-            return Role.objects.filter(hospital_id=self.request.headers["X-Hospital-Id"])
+        if user.can_cross_tenant:
+            return Role.objects.all()
         return Role.objects.filter(hospital_id=user.hospital_id)

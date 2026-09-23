@@ -1,11 +1,15 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import AuditLogViewSet, HospitalViewSet, session_key_view
+
+from .tenant_public_views import PublicTenantBrandingView
+from .views import AuditLogViewSet, EmergencyAccessLogViewSet, SessionKeyView
 
 router = DefaultRouter()
 router.register("audit-logs", AuditLogViewSet, basename="auditlog")
-router.register("hospitals", HospitalViewSet, basename="hospital")
+router.register("emergency-access-logs", EmergencyAccessLogViewSet, basename="emergencyaccesslog")
 
-urlpatterns = [
-    path("session-key/", session_key_view, name="session-key"),
-] + router.urls
+urlpatterns = router.urls + [
+    path("session-key/", SessionKeyView.as_view(), name="session-key"),
+    path("public/tenant-branding/", PublicTenantBrandingView.as_view(), name="tenant-branding"),
+]
+

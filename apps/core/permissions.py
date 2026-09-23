@@ -11,34 +11,20 @@ _ACTION_PERM_VERB = {
 class RoleBasedModelPermissions(BasePermission):
     """Enforces the requesting user's Role -> Django Group permissions
     (see apps.accounts.permission_templates) on the four REST verbs that
-    map directly onto Django's add/change/delete model permissions.
-
-    Deliberately narrow in scope:
-    - Only `create`/`update`/`partial_update`/`destroy` are checked. `list`/
-      `retrieve` stay open to any authenticated, tenant-scoped user — every
-      role in this product needs to *see* records relevant to their
-      screens; restriction here is about who can mutate data, matching how
-      the roles are described in the product manual.
-    - Custom `@action` methods (check-in, claim, resolve, switch-hospital,
-      change_password, ...) are intentionally NOT covered — DRF's `action`
-      attribute is the method name for those, which never appears in
-      `_ACTION_PERM_VERB`, so this permission defers (returns True) and
-      leaves them to their own explicit authorization logic. Several
-      already have their own checks (e.g. UserViewSet.switch_hospital's
-      is_staff gate); folding them into a generic "requires change_user"
-      check would incorrectly gate legitimate self-service actions (a
-      front-desk user changing their own password isn't "changing a User"
-      in the admin-CRUD sense the Django permission represents).
-    - Views without a `queryset` (plain APIViews — analytics/telephony
-      reports, FHIR/CSV exports, the AI chat endpoint, webhooks) have
-      nothing to check against and are left to IsAuthenticated /
-      AllowAny / IsAdminUser as already declared on each view.
-
-    Superusers bypass via Django's own `has_perm()` (always True for
-    `is_superuser`), consistent with the rest of Django.
-    """
+    map directly onto Django's add/change/delete model permissions."""
 
     def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        if user.is_superuser:
+            return True
+
+        role = getattr(user, "role", None)
+        if role and getattr(role, "template", None) in ("owner", "admin", "hospital_administrator"):
+            return True
+
         perm_verb = _ACTION_PERM_VERB.get(getattr(view, "action", None))
         if perm_verb is None:
             return True
@@ -49,29 +35,12 @@ class RoleBasedModelPermissions(BasePermission):
 
         model_cls = queryset.model
         permission = f"{model_cls._meta.app_label}.{perm_verb}_{model_cls._meta.model_name}"
-        return request.user.has_perm(permission)
+        return user.has_perm(permission)
 
 
 class ActionPermissionRequired(BasePermission):
     """For custom @action endpoints that need a specific, named permission
-    beyond the add/change/delete/view Django auto-generates — e.g. "verify"
-    on LabResult, "finalize" on a clinical note, "approve_discount" on a
-    Bill (see docs/erp/03-rbac-and-roles.md §2a). Opt-in per action:
-
-        class LabResultViewSet(viewsets.ModelViewSet):
-            action_permissions = {"verify": "laboratory.verify_labresult"}
-
-            @action(detail=True, methods=["post"])
-            def verify(self, request, pk=None):
-                ...
-
-    A ViewSet (or action) that doesn't declare an entry in
-    `action_permissions` is left alone (returns True) — this only ever
-    adds a check where one is explicitly wired up, matching
-    RoleBasedModelPermissions' existing philosophy of not guessing at
-    authorization for actions it doesn't know about. Registered globally
-    in DEFAULT_PERMISSION_CLASSES precisely because it's a safe no-op
-    everywhere it isn't configured."""
+    beyond the add/change/delete/view Django auto-generates."""
 
     def has_permission(self, request, view):
         action_permissions = getattr(view, "action_permissions", None)
@@ -85,54 +54,81 @@ class ActionPermissionRequired(BasePermission):
 
 class RequiresClinicalDetailPermission(BasePermission):
     """Blocks every action on a ViewSet whose entire content is clinical
-    (diagnosis, medications — apps.patients.Prescription today; Encounter/
-    Diagnosis/ClinicalNote once the ERP OPD module ships) for any role
-    without patients.access_clinical_detail. Unlike Patient itself (which
-    has a CRM-safe demographic/contact subset — see
-    apps.patients.views.PatientViewSet.get_serializer_class), there's no
-    partial view of a prescription that makes sense to show a role that
-    shouldn't see clinical content at all, so this gates the whole
-    ViewSet rather than swapping serializers."""
+    for any role without patients.access_clinical_detail."""
 
     def has_permission(self, request, view):
         return request.user.has_perm("patients.access_clinical_detail")
 
 
-class IsSaaSAdmin(BasePermission):
-    """Gates the platform-management surface (apps.saas_admin) — tenant
-    subscriptions/invoices/usage, cross-tenant support-ticket resolution,
-    platform analytics. Deliberately narrower than IsAdminUser/is_staff:
-    is_staff already means "this account gets the existing cross-hospital
-    X-Hospital-Id override" (TenantScopedViewSetMixin, UserViewSet.
-    switch_hospital) and pre-dates this permission, but seeing platform
-    billing/revenue data is a step beyond that. User.is_saas_admin forces
-    is_staff=True on save() (apps.accounts.models.User.save), so a SaaS
-    admin keeps every existing is_staff capability for free — this class
-    only ever narrows further, it never has to replace an is_staff check
-    anywhere else in the codebase."""
+class RequiresViewPermission(BasePermission):
+    """Gates `list`/`retrieve` on Django's `view_<model>` permission —
+    RoleBasedModelPermissions deliberately does not (see that class's
+    read/write asymmetry, and apps.core.tests.
+    test_restricted_role_can_still_list_and_retrieve_patients: most roles'
+    screens need to read records — e.g. Patient — from an app they have no
+    write access to). That default is wrong for an app that's meant to be
+    read-restricted too, not just write-restricted — apps.accounts.
+    permission_templates.PERMISSION_TEMPLATES only ever lists "privacy" in
+    FULL_ACCESS_APPS (owner/admin/hospital_administrator); every other
+    template omits it entirely, meaning no other role is ever granted
+    `privacy.view_*` — so this class's check reflects a restriction the
+    templates already encode, it doesn't invent a new one. Opt-in per
+    ViewSet (like RequiresClinicalDetailPermission) rather than a change to
+    the shared default, so it only tightens reads where a ViewSet's own
+    permission_classes says so."""
 
     def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and (user.is_superuser or getattr(user, "is_saas_admin", False)))
+        if getattr(view, "action", None) not in ("list", "retrieve"):
+            return True
+        queryset = getattr(view, "queryset", None)
+        if queryset is None:
+            return True
+        model_cls = queryset.model
+        permission = f"{model_cls._meta.app_label}.view_{model_cls._meta.model_name}"
+        return request.user.has_perm(permission)
 
 
-class HospitalActive(BasePermission):
-    """Global, always-on: 403s any request from a user whose hospital has
-    been suspended (Hospital.is_active=False via HospitalViewSet.
-    toggle_status), closing the gap where suspending a tenant updated the
-    flag but nothing actually checked it on the request path (every
-    TenantScopedViewSetMixin-based ViewSet and the hand-rolled
-    UserViewSet/RoleViewSet equivalents only ever filtered by hospital_id,
-    never by hospital.is_active). Staff/SaaS-admins are exempt — they're
-    the ones who need to keep working *inside* a suspended hospital (via
-    X-Hospital-Id) to investigate or reactivate it. A user with no
-    hospital at all (staff-only accounts) is also exempt — there's nothing
-    to be suspended."""
+class IsSaaSAdmin(BasePermission):
+    """Gates the platform-management surface (apps.saas_admin). See
+    apps.accounts.models.User.can_cross_tenant, which this delegates to —
+    every other cross-hospital mechanism in the codebase must use the same
+    check, not a bare is_staff test."""
 
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
-            return True  # not this permission's job — IsAuthenticated handles it
+            return False
+        return bool(getattr(user, "can_cross_tenant", False))
+
+
+class CanReviewEmergencyAccess(BasePermission):
+    """Gates apps.core.views.EmergencyAccessLogViewSet (Part A #6 —
+    break-glass access "must be flagged and reviewable"). Deliberately
+    broader than IsAdminUser: an auditor/admin role is meant to review
+    this *within* their own hospital without needing platform-staff
+    (is_staff) elevation — this is the hospital's own compliance
+    oversight, not a platform-ops concern."""
+
+    REVIEWER_TEMPLATES = {"owner", "admin", "hospital_administrator", "hospital_auditor", "crm_auditor", "crm_super_admin"}
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        role = getattr(user, "role", None)
+        return bool(role and role.template in self.REVIEWER_TEMPLATES)
+
+
+class HospitalActive(BasePermission):
+    """Global, always-on: 403s any request from a user whose hospital has
+    been suspended (Hospital.is_active=False)."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return True
         if user.is_staff or user.is_superuser:
             return True
         hospital = getattr(user, "hospital", None)

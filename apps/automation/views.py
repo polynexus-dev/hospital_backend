@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.core.viewsets import TenantScopedViewSetMixin
@@ -10,6 +11,7 @@ from .serializers import EscalationRuleSerializer, TaskSerializer
 
 
 class TaskViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     serializer_class = TaskSerializer
     queryset = Task.objects.all()
     filterset_fields = ["status", "priority", "owner", "department"]
@@ -36,6 +38,7 @@ class TaskViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 
 class EscalationRuleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     serializer_class = EscalationRuleSerializer
     queryset = EscalationRule.objects.all()
     filterset_fields = ["applies_to", "department", "is_active"]
@@ -47,6 +50,7 @@ class WorkflowViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     from .models import Workflow
     from .serializers import WorkflowSerializer
 
+    permission_classes = [IsAuthenticated]
     serializer_class = WorkflowSerializer
     queryset = Workflow.objects.all()
     filterset_fields = ["trigger_type", "is_active"]
@@ -75,7 +79,9 @@ class WorkflowRunViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet
     from .models import WorkflowRun
     from .serializers import WorkflowRunSerializer
 
+    permission_classes = [IsAuthenticated]
     serializer_class = WorkflowRunSerializer
-    queryset = WorkflowRun.objects.all()
+    # select_related: WorkflowRunSerializer.workflow_name (source="workflow.name")
+    queryset = WorkflowRun.objects.select_related("workflow")
     filterset_fields = ["workflow", "trigger_event", "status"]
 
