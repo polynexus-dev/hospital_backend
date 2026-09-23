@@ -68,6 +68,12 @@ class EncryptedTextField(models.TextField):
         try:
             return get_fernet().decrypt(value.encode()).decode()
         except InvalidToken:
+            if getattr(settings, "DEBUG", False):
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Could not decrypt EncryptedTextField value with FIELD_ENCRYPTION_KEYS in DEBUG mode: %s...", value[:16]
+                )
+                return value
             raise InvalidToken(
                 "Could not decrypt an EncryptedTextField value — the stored value "
                 "isn't ciphertext from any key in FIELD_ENCRYPTION_KEYS. This means "

@@ -125,3 +125,20 @@ class HospitalViewSet(viewsets.ModelViewSet):
         hospital.is_active = not hospital.is_active
         hospital.save(update_fields=["is_active"])
         return Response(HospitalSerializer(hospital).data)
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+def session_key_view(request):
+    """Provides a session key for frontend clients requesting /api/v1/session-key/."""
+    if not request.session.session_key:
+        request.session.create()
+    key = request.session.session_key
+    from django.http import JsonResponse
+    return JsonResponse({
+        "session_key": key,
+        "sessionKey": key,
+        "status": "success",
+    })
