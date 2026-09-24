@@ -277,6 +277,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_saas_owner(self) -> bool:
         return self.is_superuser or self.saas_role == self.SaaSRole.OWNER
 
+    def can_manage_saas_role(self, role: str) -> bool:
+        """Delegated platform-account administration. A caller can only
+        create or change identities below their own tier; nobody delegates
+        billing, security, DevOps, manager, or owner power accidentally."""
+        if self.is_saas_owner:
+            return role in self.SaaSRole.values
+        if self.saas_role == self.SaaSRole.PLATFORM_ADMIN:
+            return role in {self.SaaSRole.SUPPORT_LEAD, self.SaaSRole.SUPPORT_L1, self.SaaSRole.SUPPORT_L2}
+        if self.saas_role == self.SaaSRole.SUPPORT_LEAD:
+            return role in {self.SaaSRole.SUPPORT_L1, self.SaaSRole.SUPPORT_L2}
+        return False
+
     def is_login_ip_allowed(self, ip_address: str) -> bool:
         if not self.allowed_ip_ranges or not ip_address:
             return True

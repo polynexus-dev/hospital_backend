@@ -80,13 +80,22 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return base.filter(hospital_id=user.hospital_id)
 
     def _require_saas_owner_for_platform_identity(self, request, target=None):
-        """Platform accounts and their permissions are never editable by
-        hospital administrators or by another SaaS employee."""
+        """Owner → Manager → Support Lead delegated account management.
+        The target role, rather than the caller's `is_staff` bit, defines
+        the boundary so no one can grant lateral or upward privilege."""
         requested_role = str(request.data.get("saas_role", ""))
-        is_platform_target = bool(requested_role or getattr(target, "saas_role", ""))
-        if is_platform_target and not request.user.is_saas_owner:
-            return Response({"detail": "Only the SaaS Owner may manage SaaS users or roles."}, status=status.HTTP_403_FORBIDDEN)
+        target_role = requested_role or str(getattr(target, "saas_role", ""))
+        if target_role and not request.user.can_manage_saas_role(target_role):
+            return Response({"detail": "You may only manage SaaS roles below your delegated access level."}, status=status.HTTP_403_FORBIDDEN)
         return None
+
+    def _log_saas_access_change(self, request, target, action):
+        gov.log_security_event(
+            SecurityEvent.EventType.SAAS_ACCESS_CHANGED,
+            request=request,
+            user=request.user,
+            details={"action": action, "target_user_id": target.pk, "target_email": target.email, "saas_role": target.saas_role},
+        )
 
     def perform_create(self, serializer):
         denied = self._require_saas_owner_for_platform_identity(self.request)
@@ -103,9 +112,11 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 if current_count >= sub.max_staff_users:
                     raise ValidationError({"detail": f"Hospital has reached its subscription staff limit of {sub.max_staff_users} users."})
         if str(self.request.data.get("saas_role", "")):
-            serializer.save(hospital=None, is_saas_admin=True)
+            created_user = serializer.save(hospital=None, is_saas_admin=True)
         else:
-            serializer.save(hospital=hospital)
+            created_user = serializer.save(hospital=hospital)
+        if created_user.saas_role:
+            self._log_saas_access_change(self.request, created_user, "created")
 
     def perform_update(self, serializer):
         denied = self._require_saas_owner_for_platform_identity(self.request, serializer.instance)
@@ -113,15 +124,19 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied(denied.data["detail"])
         if str(self.request.data.get("saas_role", "")):
-            serializer.save(hospital=None, is_saas_admin=True)
+            updated_user = serializer.save(hospital=None, is_saas_admin=True)
         else:
-            serializer.save()
+            updated_user = serializer.save()
+        if updated_user.saas_role:
+            self._log_saas_access_change(self.request, updated_user, "updated")
 
     def perform_destroy(self, instance):
         denied = self._require_saas_owner_for_platform_identity(self.request, instance)
         if denied:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied(denied.data["detail"])
+        if instance.saas_role:
+            self._log_saas_access_change(self.request, instance, "deleted")
         instance.delete()
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
