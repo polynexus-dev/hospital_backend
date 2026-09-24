@@ -166,3 +166,5 @@ class RadiologyImage(TenantScopedModel):
     sop_instance_uid = models.CharField(max_length=128, blank=True)
     modality = models.CharField(max_length=16, blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    # Viewer attributes (rows, frames, window, spacing, series, instance no.) read once at upload.
+    meta = models.JSONField(default=dict, blank=True)

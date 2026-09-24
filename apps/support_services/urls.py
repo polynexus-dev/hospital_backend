@@ -13,6 +13,12 @@ router.register("housekeeping-tasks", views.HousekeepingTaskViewSet, basename="h
 router.register("equipment", views.EquipmentAssetViewSet, basename="equipmentasset")
 router.register("maintenance", views.MaintenanceRecordViewSet, basename="maintenancerecord")
 
+from . import laundry_views  # noqa: E402
+
+router.register("linen-types", laundry_views.LinenTypeViewSet, basename="linentype")
+router.register("linen-stock", laundry_views.LinenStockViewSet, basename="linenstock")
+router.register("laundry-batches", laundry_views.LaundryBatchViewSet, basename="laundrybatch")
+
 urlpatterns = router.urls + [
     path("ambulance-device/feed/", views.AmbulanceDeviceFeedView.as_view(), name="ambulance-device-feed"),
 ]

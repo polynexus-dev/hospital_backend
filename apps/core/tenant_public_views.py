@@ -61,6 +61,7 @@ class PublicTenantBrandingView(APIView):
             "is_active": hospital.is_active,
             "enabled_modules": hospital.enabled_modules or ALL_MODULES,
             "google_review_url": hospital.google_review_url,
+            "helpline_phone": hospital.helpline_phone,
             "theme": {
                 "primary_color": "#0f766e",
                 "accent_color": "#1e3a8a",

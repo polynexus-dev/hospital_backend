@@ -258,3 +258,6 @@ def assign_role(user: User, role: Role | None) -> None:
         user.groups.add(role.group)
     user.role = role
     user.save(update_fields=["role"])
+
+
+from .models_sso import SSOIdentity, SSOLoginAttempt, SSOProvider  # noqa: E402,F401

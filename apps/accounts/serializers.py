@@ -27,6 +27,21 @@ def read_mfa_challenge_user_id(token: str) -> int:
     return data["user_id"]
 
 
+BREAK_GLASS_TEMPLATES = ("owner", "admin", "hospital_administrator")
+
+
+def _sso_required_for(user) -> bool:
+    """Password sign-in is refused when the hospital requires SSO — except
+    for owner/admin roles, the break-glass route if the provider is down."""
+    if user.is_superuser or not user.hospital_id:
+        return False
+    if getattr(getattr(user, "role", None), "template", None) in BREAK_GLASS_TEMPLATES:
+        return False
+    from .sso_views import password_login_allowed
+
+    return not password_login_allowed(user.hospital)
+
+
 class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -49,6 +64,9 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
         if candidate is not None and candidate.is_blocked:
             gov.log_security_event(SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT, request=request, user=candidate, details={"reason": "blocked"})
             raise AuthenticationFailed({"detail": "This account has been blocked by an administrator.", "code": "account_blocked"})
+        if candidate is not None and _sso_required_for(candidate):
+            gov.log_security_event(SecurityEvent.EventType.LOGIN_FAILED, request=request, user=candidate, details={"reason": "sso_required"})
+            raise AuthenticationFailed({"detail": "Your hospital signs in through single sign-on — use the sign-in button for your work account.", "code": "sso_required"})
         if candidate is not None and candidate.is_locked_out:
             gov.log_security_event(SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT, request=request, user=candidate)
             raise AuthenticationFailed({

@@ -126,6 +126,8 @@ LOCAL_APPS = [
     "apps.mrd",
     "apps.dietary",
     "apps.oncology",
+    "apps.schemes",
+    "apps.cathlab",
 ]
 
 
@@ -358,7 +360,6 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:[0-9]+)?$",
 ]
 
-
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
 # Self-hosted Ollama server — see apps.communications.llm_router. Used
@@ -473,6 +474,11 @@ CELERY_BEAT_SCHEDULE = {
     "recompute-enquiry-scores": {
         "task": "apps.enquiries.tasks.recompute_enquiry_scores",
         "schedule": crontab(hour=2, minute=30),
+    },
+    # SSO sign-in round-trip state (state / nonce / PKCE) — kept one day.
+    "purge-sso-attempts": {
+        "task": "apps.accounts.tasks.purge_sso_attempts",
+        "schedule": crontab(hour=3, minute=15),
     },
     # Inpatient bed / room-rent charges posted to running bills.
     "post-bed-charges-nightly": {

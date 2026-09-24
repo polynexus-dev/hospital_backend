@@ -313,3 +313,6 @@ class MaintenanceRecord(TenantScopedModel):
 
     class Meta:
         ordering = ["-reported_at"]
+
+
+from .models_laundry import LaundryBatch, LaundryBatchLine, LinenStock, LinenType  # noqa: E402,F401

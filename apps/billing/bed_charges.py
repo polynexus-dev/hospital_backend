@@ -139,6 +139,12 @@ def post_bed_charges(admission, *, until=None):
             service_date=line["first_date"],
         )
     recalculate_bill(bill)
+    # A scheme (e.g. PM-JAY package) adjustment depends on the itemised
+    # total, so it's rebuilt whenever the bed lines change.
+    from apps.schemes.services import reapply_for_admission
+
+    reapply_for_admission(admission)
+    bill.refresh_from_db()
     return bill, result
 
 

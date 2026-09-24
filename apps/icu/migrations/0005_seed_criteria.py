@@ -9,5 +9,5 @@ def seed(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("icu", "0004_icuadmission_admission_criteria_met_and_more"), ("core", "__latest__")]
+    dependencies = [("icu", "0004_icuadmission_admission_criteria_met_and_more"), ("core", "0009_alter_auditlog_action")]
     operations = [migrations.RunPython(seed, migrations.RunPython.noop)]

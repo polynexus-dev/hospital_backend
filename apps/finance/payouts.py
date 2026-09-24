@@ -11,7 +11,7 @@ from .models_payout import DoctorPayout, DoctorPayoutLine, DoctorPayoutRule
 
 CENT = Decimal("0.01")
 # System lines that are never a doctor's professional service.
-EXCLUDED_SOURCES = ("bed_charge", "interim")
+EXCLUDED_SOURCES = ("bed_charge", "interim", "scheme_package", "scheme_adjustment")
 
 
 def _q(x):
@@ -43,12 +43,16 @@ def matching_rule(item, rules, on_date):
 
 
 def net_base(item):
-    """The line's share of the bill after discount, before GST."""
+    """The line's share of the bill after discount — and after any scheme
+    package adjustment, which is a reduction just like a discount — before GST."""
     bill = item.bill
     base = Decimal(item.total_price)
-    discount = Decimal(bill.discount_amount or 0)
-    if discount and bill.total_amount:
-        base -= discount * base / Decimal(bill.total_amount)
+    lines = list(bill.items.all())
+    gross = sum((Decimal(i.total_price) for i in lines if i.total_price > 0 and i.source != "scheme_package"), Decimal("0"))
+    reduction = Decimal(bill.discount_amount or 0) - sum((Decimal(i.total_price) for i in lines if i.source == "scheme_adjustment"), Decimal("0"))
+    reduction -= sum((Decimal(i.total_price) for i in lines if i.source == "scheme_package"), Decimal("0"))  # package revenue offsets it
+    if reduction > 0 and gross:
+        base -= reduction * base / gross
     return _q(max(base, Decimal("0")))
 
 

@@ -33,6 +33,9 @@ class SecurityPolicy(TimeStampedModel):
     idle_lock_minutes = models.PositiveSmallIntegerField(default=10)
 
     enforce_mfa_for_all = models.BooleanField(default=False, help_text="Require MFA for every user, not only owner/admin roles.")
+    # DAC.1.e — with a sign-in provider enabled, staff must use it; owner/admin
+    # roles keep password sign-in as the break-glass route if the provider is down.
+    sso_required = models.BooleanField(default=False, help_text="Staff must sign in through the hospital's SSO provider.")
 
     def __str__(self):
         return f"Security policy — {self.hospital.name}"

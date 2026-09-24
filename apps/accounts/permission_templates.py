@@ -20,7 +20,7 @@ FULL_ACCESS_APPS = [
     "facilities", "feedback", "finance", "hr", "icu", "integrations",
     "inventory", "ipd", "laboratory", "nursing", "opd", "ot",
     "packages", "patients", "pharmacy", "privacy", "radiology", "referrals",
-    "saas_admin", "telephony", "tpa", "governance", "clinical", "infection_control", "quality", "support_services", "queue_mgmt", "telemedicine", "portal", "mrd", "dietary", "oncology",
+    "saas_admin", "telephony", "tpa", "governance", "clinical", "infection_control", "quality", "support_services", "queue_mgmt", "telemedicine", "portal", "mrd", "dietary", "oncology", "schemes", "cathlab",
 ]
 
 # app_label -> permission verbs (subset of add/change/delete/view) granted
@@ -41,6 +41,7 @@ PERMISSION_TEMPLATES = {
         "pharmacy": ["view", "add", "change"],
         "emergency": ["view", "add", "change"],
         "ot": ["view", "add", "change"],
+        "cathlab": ["view", "add", "change"],
         "icu": ["view", "add", "change"],
         "bloodbank": ["view", "add", "change"],
         "communications": ["view", "add"],
@@ -48,6 +49,7 @@ PERMISSION_TEMPLATES = {
         "referrals": ["view"],
         "packages": ["view"],
         "tpa": ["view"],
+        "schemes": ["view"],
     },
     "front_desk": {
         "patients": ["view", "add", "change"],
@@ -56,6 +58,7 @@ PERMISSION_TEMPLATES = {
         "appointments": ["view", "add", "change"],
         "packages": ["view", "add", "change"],
         "tpa": ["view", "add", "change"],
+        "schemes": ["view", "add", "change"],
         "communications": ["view", "add"],
         "referrals": ["view"],
         "feedback": ["view", "add"],
@@ -69,6 +72,7 @@ PERMISSION_TEMPLATES = {
         "appointments": ["view", "add", "change"],
         "packages": ["view", "add", "change"],
         "tpa": ["view", "add", "change"],
+        "schemes": ["view", "add", "change"],
         "communications": ["view", "add"],
         "referrals": ["view"],
         "feedback": ["view", "add"],
@@ -126,18 +130,21 @@ PERMISSION_TEMPLATES = {
     },
     "ot_manager": {
         "ot": ["view", "add", "change", "delete"],
+        "cathlab": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
     },
     "surgeon": {
         "ot": ["view", "add", "change", "delete"],
+        "cathlab": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
     },
     "anaesthetist": {
         "ot": ["view", "add", "change", "delete"],
+        "cathlab": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
@@ -158,6 +165,7 @@ PERMISSION_TEMPLATES = {
         "finance": ["view", "add", "change", "delete"],
         "billing": ["view", "add", "change", "delete"],
         "tpa": ["view", "add", "change"],
+        "schemes": ["view", "add", "change"],
         "patients": ["view"],
     },
     "hr_manager": {
@@ -167,6 +175,7 @@ PERMISSION_TEMPLATES = {
     "billing_executive": {
         "billing": ["view", "add", "change", "delete"],
         "tpa": ["view", "add", "change", "delete"],
+        "schemes": ["view", "add", "change", "delete"],
         "packages": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
         "finance": ["view", "add", "change"],
@@ -174,12 +183,14 @@ PERMISSION_TEMPLATES = {
     "billing_manager": {
         "billing": ["view", "add", "change", "delete"],
         "tpa": ["view", "add", "change", "delete"],
+        "schemes": ["view", "add", "change", "delete"],
         "packages": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
         "finance": ["view", "add", "change", "delete"],
     },
     "insurance_tpa_executive": {
         "tpa": ["view", "add", "change", "delete"],
+        "schemes": ["view", "add", "change", "delete"],
         "abdm": ["view", "add", "change"],
         "billing": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],

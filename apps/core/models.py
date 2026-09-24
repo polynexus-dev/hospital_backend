@@ -78,6 +78,7 @@ class Hospital(TimeStampedModel):
         help_text="Modules enabled for this hospital SaaS subscription.",
     )
     google_review_url = models.URLField(blank=True, help_text="Where NPS promoters get routed (§10).")
+    helpline_phone = models.CharField(max_length=30, blank=True, help_text="Shown on the login page and patient portal, e.g. 1800-123-4567")
     owner_mis_whatsapp_number = models.CharField(max_length=20, blank=True, help_text="Where the daily WhatsApp MIS is sent (§12).")
     lead_webhook_token = models.UUIDField(
         default=uuid.uuid4, unique=True, editable=False,
