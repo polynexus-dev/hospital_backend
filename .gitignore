@@ -1,17 +1,67 @@
+# Virtual Environments
 venv/
+.venv/
+env/
+ENV/
+
+# Python Bytecode & Cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database & Storage
 *.db
 *.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.dump
+*.sql
+
+# Environment Variables & Secrets
 .env
-.idea/
-.vscode/
-.antigravity/
+.env.*
+*.env
+!.env.example
+
+# Media & Uploads (keep directory structure, ignore user uploads)
+media/*
+!media/.gitkeep
+staticfiles/
+static_collected/
+
+# Logs & Schedules
 logs/
-media/patient_documents/
+*.log
+celerybeat-schedule*
+
+# Testing & Coverage
 .coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
 .pytest_cache/
 htmlcov/
+.tox/
+.nox/
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.antigravity/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini

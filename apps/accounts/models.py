@@ -98,8 +98,10 @@ class Role(TimeStampedModel):
     description = models.TextField(blank=True)
     template = models.CharField(
         max_length=32, choices=Template.choices, blank=True,
-        help_text="Applies a starter permission set on creation only.",
+        help_text="Permission set applied on creation; features added later are granted after each migrate (removals are kept).",
     )
+    # Which "app.model"s the template has been applied for — see role_sync.
+    template_synced_models = models.JSONField(default=list, blank=True, editable=False)
     data_scope = models.CharField(
         max_length=16, choices=DataScope.choices, default=DataScope.ALL,
         help_text="assigned_only narrows any ViewSet declaring assignment_scope_field to records assigned to the requesting user.",
@@ -124,8 +126,9 @@ class Role(TimeStampedModel):
             self.group = Group.objects.create(name=f"{self.hospital_id}:{self.name}")
         super().save(*args, **kwargs)
         if is_new and self.template:
-            from .permission_templates import apply_permission_template
-            apply_permission_template(self.group, self.template)
+            from .role_sync import sync_role
+
+            sync_role(self)  # applies the template and records which models it covered
 
     @property
     def permissions(self):

@@ -3,7 +3,7 @@ from urllib.parse import quote
 from django.http import HttpResponseRedirect
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -119,10 +119,26 @@ class SSOProviderSerializer(TenantModelSerializer):
         return attrs
 
 
-class SSOProviderViewSet(TenantCRUDViewSet):
-    """Hospital SSO configuration (administrators)."""
+class IsHospitalAdministrator(BasePermission):
+    """Sign-in configuration decides who can get into the whole system, so it's
+    limited to the owner / admin / hospital-administrator roles — not every role
+    that happens to hold user-management rights (e.g. HR manager)."""
 
-    permission_classes = TenantCRUDViewSet.permission_classes + [RequiresViewPermission]
+    message = "Only the hospital owner or an administrator can manage single sign-on."
+
+    def has_permission(self, request, view):
+        from .serializers import BREAK_GLASS_TEMPLATES
+
+        user = request.user
+        return bool(user and user.is_authenticated and (
+            user.is_superuser or getattr(getattr(user, "role", None), "template", None) in BREAK_GLASS_TEMPLATES
+        ))
+
+
+class SSOProviderViewSet(TenantCRUDViewSet):
+    """Hospital SSO configuration (owner / administrators only)."""
+
+    permission_classes = TenantCRUDViewSet.permission_classes + [RequiresViewPermission, IsHospitalAdministrator]
     serializer_class = SSOProviderSerializer
     queryset = SSOProvider.objects.all()
     audited_fields = ("kind", "client_id", "tenant_id", "allowed_domains", "is_enabled")

@@ -225,11 +225,18 @@ def apply_permission_template(group, template: str) -> None:
     implied by `template` to `group`, across every model in each listed
     app. No-ops for an unknown template name rather than raising, since a
     hospital naming their own custom role shouldn't crash Role creation."""
+    to_assign = template_permissions(template)
+    if to_assign:
+        group.permissions.add(*to_assign)
+
+
+def template_permissions(template: str) -> list:
+    """The Permission rows `template` grants (empty for an unknown template)."""
     from django.contrib.auth.models import Permission
 
     app_verbs = PERMISSION_TEMPLATES.get(template)
     if not app_verbs:
-        return
+        return []
 
     permissions = Permission.objects.filter(content_type__app_label__in=app_verbs.keys())
     to_assign = []
@@ -250,4 +257,4 @@ def apply_permission_template(group, template: str) -> None:
         if clinical_perm and clinical_perm not in to_assign:
             to_assign.append(clinical_perm)
 
-    group.permissions.add(*to_assign)
+    return to_assign

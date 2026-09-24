@@ -192,3 +192,13 @@ def test_admin_api_hides_secret_and_validates(auth_client):
 @pytest.mark.django_db
 def test_staff_without_admin_rights_cannot_see_sso_config(restricted_client):
     assert restricted_client.get("/api/v1/sso-providers/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_hr_manager_cannot_manage_sso_despite_user_management_rights(hospital, department):
+    hr = User.objects.create_user(email="hr@cityhospital.in", password="Str0ng-Pass-123!", hospital=hospital, department=department)
+    assign_role(hr, Role.objects.create(hospital=hospital, department=department, name="HR", template=Role.Template.HR_MANAGER))
+    client = APIClient()
+    client.force_authenticate(hr)
+    assert client.get("/api/v1/sso-providers/").status_code == 403
+    assert client.post("/api/v1/sso-providers/", {"kind": "google", "display_name": "G", "client_id": "c", "client_secret": "s"}, format="json").status_code == 403
