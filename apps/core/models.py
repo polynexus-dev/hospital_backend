@@ -25,16 +25,30 @@ def validate_hospital_slug(value: str) -> None:
         raise ValidationError(f"'{value}' is a reserved system slug and cannot be used for a hospital subdomain.")
 
 
-ALL_MODULES = [
+# Licensable HMS modules — what the SaaS console switches on/off per hospital
+# (Hospital.enabled_modules). Frontend/src/features/saas/TenantModulesModal.tsx
+# lists the same keys with names; apps.core.test_modules keeps them in step.
+CORE_HMS_MODULES = [
     "opd", "ipd", "nursing", "laboratory", "radiology", "pharmacy",
-    "emergency", "ot", "icu", "bloodbank", "finance", "hr", "billing", "inventory"
+    "emergency", "ot", "icu", "bloodbank", "finance", "hr", "billing", "inventory",
 ]
+# Added with the NABH HIS/EMR work. Clinical safety (alerts, CDSS, consent,
+# templates) is deliberately not here: every clinical module depends on it.
+EXTENDED_HMS_MODULES = [
+    "telemedicine", "queue", "portal", "infection_control", "quality", "mrd", "dietary",
+    "oncology", "cathlab", "schemes", "support_services", "predictive", "abdm",
+]
+# CRM suite. Patients, appointments and the dashboard are shared by both
+# suites and always on.
+CRM_MODULES = ["telephony", "enquiries", "inbox", "referrals", "packages", "tpa", "feedback", "workflows"]
+HMS_MODULES = CORE_HMS_MODULES + EXTENDED_HMS_MODULES
+ALL_MODULES = CRM_MODULES + HMS_MODULES
 ALL_MODULE_KEYS = ALL_MODULES
 
 
 
 def default_enabled_modules():
-    return ALL_MODULES
+    return list(ALL_MODULES)
 
 
 class TimeStampedModel(models.Model):
