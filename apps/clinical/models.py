@@ -110,6 +110,15 @@ class AssessmentTemplate(TenantScopedModel):
         PSYCHIATRY = "psychiatry", "Psychiatry"
         ORTHOPAEDICS = "orthopaedics", "Orthopaedics"
         CARDIOLOGY = "cardiology", "Cardiology"
+        GYNAECOLOGY = "gynaecology", "Gynaecology"
+        DERMATOLOGY = "dermatology", "Dermatology"
+        NEUROLOGY = "neurology", "Neurology"
+        GASTROENTEROLOGY = "gastroenterology", "Gastroenterology"
+        PULMONOLOGY = "pulmonology", "Pulmonology"
+        NEPHROLOGY = "nephrology", "Nephrology"
+        UROLOGY = "urology", "Urology"
+        ENDOCRINOLOGY = "endocrinology", "Endocrinology / Diabetes"
+        DENTAL = "dental", "Dental"
 
     class Setting(models.TextChoices):
         OPD = "opd", "OPD"

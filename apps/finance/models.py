@@ -79,3 +79,4 @@ from .models_fpm import (  # noqa: E402,F401
     VendorInvoice,
     VendorPayment,
 )
+from .models_payout import DoctorPayout, DoctorPayoutLine, DoctorPayoutRule  # noqa: E402,F401

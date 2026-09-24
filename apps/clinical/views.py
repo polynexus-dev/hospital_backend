@@ -97,6 +97,16 @@ class AssessmentTemplateViewSet(TenantCRUDViewSet):
     queryset = AssessmentTemplate.objects.all()
     filterset_fields = ["category", "setting", "is_active"]
     audited_fields = ("name", "category", "fields", "is_active")
+    action_permissions = {"install_library": "clinical.add_assessmenttemplate"}
+
+    @action(detail=False, methods=["post"], url_path="install-library")
+    def install_library(self, request):
+        """Adds any pre-built specialty consultation templates this hospital
+        doesn't have yet (by name). Never touches existing templates."""
+        from .specialty_templates import SPECIALTY_TEMPLATES, install_specialty_library
+
+        added = install_specialty_library(request.user.hospital)
+        return Response({"added": added, "library_size": len(SPECIALTY_TEMPLATES)})
 
 
 class ClinicalAssessmentViewSet(ClinicalCRUDViewSet):

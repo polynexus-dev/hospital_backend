@@ -175,6 +175,9 @@ def seed_hospital(hospital, get_model=None):
         AssessmentTemplate.objects.bulk_create([
             AssessmentTemplate(hospital=hospital, name=n, category=c, setting=s, fields=f) for n, c, s, f in TEMPLATES
         ])
+        from .specialty_templates import install_specialty_library
+
+        install_specialty_library(hospital, get_model)
     if not OrderSet.objects.filter(hospital=hospital).exists():
         OrderSet.objects.bulk_create([
             OrderSet(hospital=hospital, name=n, kind=k, diagnosis_codes=codes, diagnosis_keywords=kw, items=items) for n, k, codes, kw, items in ORDER_SETS

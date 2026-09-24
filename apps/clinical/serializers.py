@@ -65,7 +65,35 @@ class AssessmentTemplateSerializer(TenantModelSerializer):
         for f in value:
             if not isinstance(f, dict) or not f.get("key") or f.get("type") not in allowed:
                 raise serializers.ValidationError("Each field needs a key and a type in " + ", ".join(sorted(allowed)))
+            if f["type"] in ("select", "multiselect") and not f.get("options"):
+                raise serializers.ValidationError(f"Field '{f['key']}' is a {f['type']} and needs options.")
+        keys = [f["key"] for f in value]
+        if len(keys) != len(set(keys)):
+            raise serializers.ValidationError("Field keys must be unique.")
         return value
+
+
+def _answer_type_errors(fields, data):
+    """Answers must fit the template: numbers numeric, a select one of its
+    options, a multiselect a list of them, a boolean true/false."""
+    errors = []
+    for f in fields:
+        value = data.get(f["key"])
+        if value in (None, "", []):
+            continue
+        label, kind, options = f.get("label") or f["key"], f["type"], f.get("options") or []
+        if kind == "number":
+            try:
+                float(value)
+            except (TypeError, ValueError):
+                errors.append(f"{label} must be a number")
+        elif kind == "select" and value not in options:
+            errors.append(f"{label} must be one of: {', '.join(map(str, options))}")
+        elif kind == "multiselect" and (not isinstance(value, list) or any(v not in options for v in value)):
+            errors.append(f"{label} must be a list chosen from: {', '.join(map(str, options))}")
+        elif kind == "boolean" and not isinstance(value, bool):
+            errors.append(f"{label} must be true or false")
+    return errors
 
 
 class ClinicalAssessmentSerializer(PatientLabelMixin, TenantModelSerializer):
@@ -87,6 +115,9 @@ class ClinicalAssessmentSerializer(PatientLabelMixin, TenantModelSerializer):
             missing = [f.get("label") or f["key"] for f in template.fields if f.get("required") and data.get(f["key"]) in (None, "", [])]
             if missing:
                 raise serializers.ValidationError({"data": f"Required: {', '.join(missing)}"})
+            errors = _answer_type_errors(template.fields, data)
+            if errors:
+                raise serializers.ValidationError({"data": "; ".join(errors)})
             attrs.setdefault("category", template.category)
         return attrs
 

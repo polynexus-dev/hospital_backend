@@ -52,6 +52,13 @@ class BillItem(models.Model):
     hsn_sac = models.CharField(max_length=10, blank=True)
     gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Who rendered the service — drives doctor payouts (finance.DoctorPayoutRule).
+    doctor = models.ForeignKey("appointments.Doctor", on_delete=models.SET_NULL, null=True, blank=True, related_name="bill_items")
+    service_date = models.DateField(null=True, blank=True)
+    # System-generated lines (e.g. "bed_charge") are re-derived on every
+    # posting run and replaced wholesale; manual lines have source="".
+    source = models.CharField(max_length=20, blank=True, db_index=True)
+    source_ref = models.CharField(max_length=60, blank=True)
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
@@ -65,6 +72,46 @@ class BillItem(models.Model):
 
     def __str__(self):
         return f"{self.description} ({self.quantity} x {self.unit_price})"
+
+
+class BedChargeRule(TenantScopedModel):
+    """Which tariff(s) a bed-day attracts. The most specific level wins:
+    rules for the bed's ward, else rules for its bed type, else catch-all
+    rules (no ward, no bed type). Several rules at the winning level are
+    several daily components — e.g. room rent + nursing + RMO charges."""
+
+    name = models.CharField(max_length=120)
+    ward = models.ForeignKey("facilities.Ward", on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    bed_type = models.CharField(max_length=16, blank=True, help_text="facilities.Bed.BedType value; blank = any")
+    tariff = models.ForeignKey("finance.ServiceTariff", on_delete=models.PROTECT, related_name="+")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["ward__name", "bed_type", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class BedBillingPolicy(TenantScopedModel):
+    """How bed-days are counted. One per hospital; defaults apply until set."""
+
+    class Cycle(models.TextChoices):
+        TWENTY_FOUR_HOURS = "24h", "24-hour cycle from admission time"
+        CALENDAR_DAY = "calendar_day", "Calendar day (discharge day charged only after checkout hour)"
+
+    class TransferRule(models.TextChoices):
+        HIGHER = "higher", "Charge the higher-rate bed for the day"
+        LONGEST = "longest", "Charge the bed occupied longest that day"
+
+    cycle = models.CharField(max_length=16, choices=Cycle.choices, default=Cycle.TWENTY_FOUR_HOURS)
+    grace_hours = models.PositiveSmallIntegerField(default=2, help_text="24h cycle: hours into a new cycle before it is charged.")
+    checkout_hour = models.PositiveSmallIntegerField(default=12, help_text="Calendar day: discharge after this hour charges the discharge day too.")
+    transfer_day_rule = models.CharField(max_length=10, choices=TransferRule.choices, default=TransferRule.HIGHER)
+    auto_post = models.BooleanField(default=True, help_text="Post bed charges nightly and at discharge.")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["hospital"], name="one_bed_billing_policy_per_hospital")]
 
 
 class Payment(TenantScopedModel):

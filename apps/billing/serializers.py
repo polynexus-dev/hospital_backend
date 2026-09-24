@@ -7,8 +7,9 @@ class BillItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillItem
         fields = ["id", "description", "quantity", "unit_price", "total_price", "tariff", "hsn_sac", "gst_rate", "tax_amount",
+                  "doctor", "service_date", "source",
         ]
-        read_only_fields = ["id", "total_price", "tax_amount"]
+        read_only_fields = ["id", "total_price", "tax_amount", "source"]
 
 
 class PaymentSerializer(serializers.ModelSerializer):

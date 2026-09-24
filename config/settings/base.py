@@ -5,6 +5,7 @@ values here, read them from the environment instead.
 """
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import environ
 from celery.schedules import crontab
@@ -179,7 +180,7 @@ ASGI_APPLICATION = "config.asgi.application"
 PAYLOAD_ENCRYPTION_ENABLED = env.bool("PAYLOAD_ENCRYPTION_ENABLED", default=False)
 
 if env.bool("USE_SQLITE", default=False):
-    DATABASES = {
+    DATABASES: dict[str, dict[str, Any]] = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
@@ -472,6 +473,11 @@ CELERY_BEAT_SCHEDULE = {
     "recompute-enquiry-scores": {
         "task": "apps.enquiries.tasks.recompute_enquiry_scores",
         "schedule": crontab(hour=2, minute=30),
+    },
+    # Inpatient bed / room-rent charges posted to running bills.
+    "post-bed-charges-nightly": {
+        "task": "apps.billing.tasks.post_bed_charges_nightly",
+        "schedule": crontab(hour=0, minute=30),
     },
     # NABH DOM.1.e — per-hospital scheduled backups + retention purge.
     "run-scheduled-backups": {

@@ -32,6 +32,7 @@ DEFAULT_ACCOUNTS = [
     ("4100", "Pharmacy sales", "income", "Sales Accounts"),
     ("4900", "Discount allowed", "expense", "Indirect Expenses"),
     ("5000", "Purchases", "expense", "Purchase Accounts"),
+    ("5100", "Doctor professional fees", "expense", "Indirect Expenses"),
     ("5900", "Claim disallowances written off", "expense", "Indirect Expenses"),
 ]
 

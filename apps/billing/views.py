@@ -1,6 +1,7 @@
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.core.permissions import ActionPermissionRequired
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
@@ -19,6 +20,8 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "add_item": "billing.change_bill",
         "download": "billing.view_bill",
         "interim": "billing.add_bill",
+        "bed_charges": "billing.view_bill",
+        "post_bed_charges": "billing.change_bill",
     }
     serializer_class = BillSerializer
     queryset = Bill.objects.all()
@@ -51,6 +54,16 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
 
         if not desc or not price:
             return Response({"error": "description and unit_price are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if request.data.get("doctor"):
+            # The rendering doctor — what doctor payouts are computed from.
+            from apps.appointments.models import Doctor
+
+            doctor = Doctor.objects.filter(pk=request.data["doctor"], hospital_id=bill.hospital_id).first()
+            if doctor is None:
+                return Response({"doctor": "Not found."}, status=status.HTTP_400_BAD_REQUEST)
+            extra["doctor"] = doctor
+        if request.data.get("service_date"):
+            extra["service_date"] = request.data["service_date"]
 
         item = BillItem.objects.create(
             bill=bill,
@@ -60,17 +73,9 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
             total_price=0,
             **extra,
         )
+        from .services import recalculate_bill
 
-        # Recalculate bill total (GST shown separately and added to net)
-        from decimal import Decimal
-
-        items = list(bill.items.all())
-        total = sum((i.total_price for i in items), Decimal("0"))
-        tax = sum((i.tax_amount for i in items), Decimal("0"))
-        bill.total_amount = total
-        bill.tax_amount = tax
-        bill.net_amount = total + tax - Decimal(bill.discount_amount or 0)
-        bill.save(update_fields=["total_amount", "tax_amount", "net_amount"])
+        recalculate_bill(bill)
 
         return Response(BillItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
@@ -147,11 +152,18 @@ def interim(self, request):
     adm = Admission.objects.filter(pk=request.data.get("admission"), hospital_id=request.user.hospital_id).first()
     if adm is None:
         return Response({"admission": "Not found."}, status=status.HTTP_400_BAD_REQUEST)
+    from .bed_charges import policy_for, post_bed_charges
+
+    if policy_for(adm.hospital_id).auto_post:
+        post_bed_charges(adm)  # the snapshot includes bed-days up to now
     running = Bill.objects.filter(admission=adm, is_interim=False).exclude(status="cancelled")
     interim = Bill.objects.create(hospital_id=adm.hospital_id, patient=adm.patient, admission=adm, is_interim=True, status="draft")
     for item in BillItem.objects.filter(bill__in=running):
+        # Interim lines are a snapshot for the patient, never payout-eligible
+        # (the running bill's own line is what gets paid out).
         BillItem.objects.create(bill=interim, description=item.description, quantity=item.quantity, unit_price=item.unit_price, total_price=0,
-                                hsn_sac=item.hsn_sac, gst_rate=item.gst_rate, tariff=item.tariff)
+                                hsn_sac=item.hsn_sac, gst_rate=item.gst_rate, tariff=item.tariff,
+                                service_date=item.service_date, source="interim")
     items = list(interim.items.all())
     interim.total_amount = sum((i.total_price for i in items), Decimal("0"))
     interim.tax_amount = sum((i.tax_amount for i in items), Decimal("0"))
@@ -165,3 +177,104 @@ def interim(self, request):
 
 
 BillViewSet.interim = action(detail=False, methods=["post"])(interim)
+
+
+def _admission_for(request, admission_id):
+    from apps.ipd.models import Admission
+
+    return Admission.objects.filter(pk=admission_id, hospital_id=request.user.hospital_id).select_related("bed__room__ward").first()
+
+
+def _bed_charge_payload(result, bill=None):
+    p = result["policy"]
+    return {
+        "bill": bill.pk if bill else None,
+        "bill_number": bill.bill_number if bill else None,
+        "policy": {"cycle": p.cycle, "grace_hours": p.grace_hours, "checkout_hour": p.checkout_hour, "transfer_day_rule": p.transfer_day_rule},
+        "bed_days": len(result["days"]),
+        "days": result["days"],
+        "lines": [{"description": ln["description"], "tariff": ln["tariff"].pk, "days": ln["days"], "unit_price": float(ln["unit_price"]),
+                   "amount": float(ln["unit_price"] * ln["days"])} for ln in result["lines"]],
+        "total": float(sum(ln["unit_price"] * ln["days"] for ln in result["lines"])),
+        "unpriced_beds": result["unpriced_beds"],
+    }
+
+
+def bed_charges(self, request, admission_id=None):
+    """GET preview of an admission's bed / room-rent charges (nothing is saved)."""
+    from .bed_charges import compute_bed_charges
+
+    adm = _admission_for(request, admission_id)
+    if adm is None:
+        return Response({"admission": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+    bill = Bill.objects.filter(admission=adm, is_interim=False).exclude(status=Bill.Status.CANCELLED).order_by("created_at").first()
+    return Response(_bed_charge_payload(compute_bed_charges(adm, category=bill.patient_category if bill else "general"), bill))
+
+
+def post_bed_charges(self, request, admission_id=None):
+    """POST (re-)posts bed charges to the admission's running bill — idempotent."""
+    from .bed_charges import post_bed_charges as post
+
+    adm = _admission_for(request, admission_id)
+    if adm is None:
+        return Response({"admission": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+    bill, result = post(adm)
+    return Response(_bed_charge_payload(result, bill))
+
+
+BillViewSet.bed_charges = action(detail=False, methods=["get"], url_path=r"bed-charges/(?P<admission_id>\d+)")(bed_charges)
+BillViewSet.post_bed_charges = action(detail=False, methods=["post"], url_path=r"bed-charges/(?P<admission_id>\d+)/post")(post_bed_charges)
+
+
+from apps.core.crud import TenantCRUDViewSet, model_serializer  # noqa: E402
+
+from .models import BedBillingPolicy, BedChargeRule  # noqa: E402
+
+
+class BedChargeRuleViewSet(TenantCRUDViewSet):
+    """Which tariff(s) each bed-day attracts — by ward, bed type or catch-all."""
+
+    serializer_class = model_serializer(BedChargeRule, extra={
+        "tariff_name": serializers.CharField(source="tariff.name", read_only=True),
+        "ward_name": serializers.CharField(source="ward.name", read_only=True, default=""),
+    })
+    queryset = BedChargeRule.objects.select_related("tariff", "ward")
+    filterset_fields = ["ward", "bed_type", "is_active"]
+    audited_fields = ("tariff", "ward", "bed_type", "is_active")
+
+
+class BedBillingPolicyView(APIView):
+    """GET / PUT the hospital's bed-day counting policy (defaults until saved)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    fields = ("cycle", "grace_hours", "checkout_hour", "transfer_day_rule", "auto_post")
+
+    def get(self, request):
+        from .bed_charges import policy_for
+
+        p = policy_for(request.user.hospital_id)
+        return Response({f: getattr(p, f) for f in self.fields})
+
+    def put(self, request):
+        if not request.user.has_perm("billing.change_bill"):
+            return Response({"detail": "You do not have permission to change the bed billing policy."}, status=status.HTTP_403_FORBIDDEN)
+        policy, _ = BedBillingPolicy.objects.get_or_create(hospital_id=request.user.hospital_id)
+        errors = {}
+        for f in self.fields:
+            if f not in request.data:
+                continue
+            value = request.data[f]
+            if f == "cycle" and value not in BedBillingPolicy.Cycle.values:
+                errors[f] = f"One of {BedBillingPolicy.Cycle.values}"
+            elif f == "transfer_day_rule" and value not in BedBillingPolicy.TransferRule.values:
+                errors[f] = f"One of {BedBillingPolicy.TransferRule.values}"
+            elif f in ("grace_hours", "checkout_hour") and not (str(value).isdigit() and int(value) <= 23):
+                errors[f] = "A whole number of hours, 0–23."
+            elif f == "auto_post":
+                policy.auto_post = value in (True, "true", "True", 1, "1")
+            else:
+                setattr(policy, f, int(value) if f in ("grace_hours", "checkout_hour") else value)
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        policy.save()
+        return self.get(request)

@@ -19,6 +19,11 @@ router.register(r"tariff", fpm_views.ServiceTariffViewSet, basename="servicetari
 router.register(r"insurance-policies", fpm_views.InsurancePolicyViewSet, basename="insurancepolicy")
 router.register(r"claim-settlements", fpm_views.ClaimSettlementViewSet, basename="claimsettlement")
 
+from . import payout_views  # noqa: E402
+
+router.register(r"doctor-payout-rules", payout_views.DoctorPayoutRuleViewSet, basename="doctorpayoutrule")
+router.register(r"doctor-payouts", payout_views.DoctorPayoutViewSet, basename="doctorpayout")
+
 urlpatterns = router.urls + [
     path("trial-balance/", fpm_views.TrialBalanceView.as_view(), name="trial-balance"),
     path("tally-export/", fpm_views.TallyExportView.as_view(), name="tally-export"),
