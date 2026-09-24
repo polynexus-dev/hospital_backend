@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import ALL_MODULES, Hospital
-from apps.core.permissions import IsSaaSAdmin
+from apps.core.permissions import CanManageSaaSBilling, CanManageSaaSSupport, CanManageSaaSTenants, CanViewSaaSAnalytics, CanViewSaaSTenants, IsSaaSAdmin
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from . import services
@@ -34,7 +34,7 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
     subscription, that's the entire point of this surface."""
 
     serializer_class = TenantSubscriptionSerializer
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanManageSaaSBilling]
     # select_related: TenantSubscriptionSerializer.hospital_name (source="hospital.name")
     queryset = TenantSubscription.objects.select_related("hospital")
     filterset_fields = ["hospital", "tier", "status"]
@@ -43,7 +43,7 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
 
 class TenantInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = TenantInvoiceSerializer
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanManageSaaSBilling]
     # select_related: TenantInvoiceSerializer.hospital_name (source="hospital.name")
     queryset = TenantInvoice.objects.select_related("hospital")
     filterset_fields = ["hospital", "status"]
@@ -74,7 +74,7 @@ class TenantUsageSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
     apps.saas_admin.tasks.compute_monthly_tenant_usage."""
 
     serializer_class = TenantUsageSnapshotSerializer
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanViewSaaSAnalytics]
     # select_related: TenantUsageSnapshotSerializer.hospital_name (source="hospital.name")
     queryset = TenantUsageSnapshot.objects.select_related("hospital")
     filterset_fields = ["hospital", "period_start"]
@@ -87,7 +87,7 @@ class SaaSSupportTicketViewSet(viewsets.ModelViewSet):
     create/view only)."""
 
     serializer_class = SaaSSupportTicketSerializer
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanManageSaaSSupport]
     # select_related: SaaSSupportTicketSerializer's hospital_name/raised_by_email/
     # assigned_to_email (source="hospital.name"/"raised_by.email"/"assigned_to.email")
     queryset = SupportTicket.objects.select_related("hospital", "raised_by", "assigned_to")
@@ -157,7 +157,7 @@ class SupportTicketViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 
 class PlatformAnalyticsView(APIView):
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanViewSaaSAnalytics]
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
@@ -174,18 +174,27 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = SaaSHospitalSerializer
-    permission_classes = [IsAuthenticated, IsSaaSAdmin]
+    permission_classes = [IsAuthenticated, CanViewSaaSTenants]
     queryset = Hospital.objects.all().select_related("subscription").prefetch_related("users").order_by("-created_at")
     filterset_fields = ["is_active", "city", "state"]
     search_fields = ["name", "slug", "city", "state"]
 
+    def get_permissions(self):
+        if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status"}:
+            return [IsAuthenticated(), CanManageSaaSTenants()]
+        return [IsAuthenticated(), CanViewSaaSTenants()]
+
     def create(self, request, *args, **kwargs):
+        if not request.user.has_saas_capability("tenant_manage"):
+            return Response({"detail": "You do not have permission to onboard hospitals."}, status=status.HTTP_403_FORBIDDEN)
         result = onboard_hospital_tenant(request.data)
         hospital = result["hospital"]
         return Response(SaaSHospitalSerializer(hospital).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch", "post"], url_path="modules")
     def update_modules(self, request, pk=None):
+        if not request.user.has_saas_capability("tenant_manage"):
+            return Response({"detail": "You do not have permission to change hospital modules."}, status=status.HTTP_403_FORBIDDEN)
         hospital = self.get_object()
         raw_modules = request.data.get("enabled_modules")
         if not isinstance(raw_modules, list):
@@ -198,8 +207,9 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="toggle-status")
     def toggle_status(self, request, pk=None):
+        if not request.user.has_saas_capability("tenant_manage"):
+            return Response({"detail": "You do not have permission to change hospital status."}, status=status.HTTP_403_FORBIDDEN)
         hospital = self.get_object()
         hospital.is_active = not hospital.is_active
         hospital.save(update_fields=["is_active"])
         return Response(SaaSHospitalSerializer(hospital).data)
-

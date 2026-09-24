@@ -79,7 +79,20 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             return base
         return base.filter(hospital_id=user.hospital_id)
 
+    def _require_saas_owner_for_platform_identity(self, request, target=None):
+        """Platform accounts and their permissions are never editable by
+        hospital administrators or by another SaaS employee."""
+        requested_role = str(request.data.get("saas_role", ""))
+        is_platform_target = bool(requested_role or getattr(target, "saas_role", ""))
+        if is_platform_target and not request.user.is_saas_owner:
+            return Response({"detail": "Only the SaaS Owner may manage SaaS users or roles."}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
     def perform_create(self, serializer):
+        denied = self._require_saas_owner_for_platform_identity(self.request)
+        if denied:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(denied.data["detail"])
         hospital = getattr(self.request.user, "hospital", None)
         if hospital:
             from apps.saas_admin.models import TenantSubscription
@@ -89,7 +102,27 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 current_count = User.objects.filter(hospital=hospital, is_active=True).count()
                 if current_count >= sub.max_staff_users:
                     raise ValidationError({"detail": f"Hospital has reached its subscription staff limit of {sub.max_staff_users} users."})
-        serializer.save(hospital=hospital)
+        if str(self.request.data.get("saas_role", "")):
+            serializer.save(hospital=None, is_saas_admin=True)
+        else:
+            serializer.save(hospital=hospital)
+
+    def perform_update(self, serializer):
+        denied = self._require_saas_owner_for_platform_identity(self.request, serializer.instance)
+        if denied:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(denied.data["detail"])
+        if str(self.request.data.get("saas_role", "")):
+            serializer.save(hospital=None, is_saas_admin=True)
+        else:
+            serializer.save()
+
+    def perform_destroy(self, instance):
+        denied = self._require_saas_owner_for_platform_identity(self.request, instance)
+        if denied:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(denied.data["detail"])
+        instance.delete()
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
@@ -111,7 +144,7 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         (apps.saas_admin.tenant_service), so an ordinary hospital Owner
         could still do exactly this. can_cross_tenant is the actual
         platform-ops-only check; see its docstring."""
-        if not request.user.can_cross_tenant:
+        if not request.user.has_saas_capability("hospital_access"):
             return Response({"detail": "Only platform staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
 
         reason = str(request.data.get("reason", "")).strip()

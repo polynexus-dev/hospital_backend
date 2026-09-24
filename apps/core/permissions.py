@@ -98,7 +98,37 @@ class IsSaaSAdmin(BasePermission):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        return bool(getattr(user, "can_cross_tenant", False))
+        return bool(getattr(user, "has_saas_capability", lambda _c: False)("platform"))
+
+
+class SaaSCapabilityRequired(BasePermission):
+    """View-level SaaS-company least-privilege gate."""
+
+    capability = "platform"
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.has_saas_capability(self.capability))
+
+
+class CanManageSaaSTenants(SaaSCapabilityRequired):
+    capability = "tenant_manage"
+
+
+class CanManageSaaSBilling(SaaSCapabilityRequired):
+    capability = "billing_manage"
+
+
+class CanManageSaaSSupport(SaaSCapabilityRequired):
+    capability = "support_manage"
+
+
+class CanViewSaaSTenants(SaaSCapabilityRequired):
+    capability = "tenant_view"
+
+
+class CanViewSaaSAnalytics(SaaSCapabilityRequired):
+    capability = "analytics_view"
 
 
 class CanReviewEmergencyAccess(BasePermission):

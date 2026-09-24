@@ -136,6 +136,28 @@ class Role(TimeStampedModel):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class SaaSRole(models.TextChoices):
+        OWNER = "saas_owner", "SaaS Owner"
+        PLATFORM_ADMIN = "platform_admin", "Platform Admin"
+        SUPPORT_L1 = "support_l1", "Support L1"
+        SUPPORT_L2 = "support_l2", "Support L2"
+        SUPPORT_LEAD = "support_lead", "Support Lead"
+        BILLING = "billing", "Billing / Finance"
+        CUSTOMER_SUCCESS = "customer_success", "Customer Success"
+        SECURITY_AUDITOR = "security_auditor", "Security / Compliance Auditor"
+        DEVOPS = "devops", "DevOps / Engineering"
+
+    SAAS_ROLE_CAPABILITIES = {
+        SaaSRole.OWNER: {"platform", "tenant_manage", "billing_manage", "support_manage", "hospital_access", "security_review", "saas_user_manage"},
+        SaaSRole.PLATFORM_ADMIN: {"platform", "tenant_manage", "support_manage", "hospital_access"},
+        SaaSRole.SUPPORT_L1: {"platform", "support_manage"},
+        SaaSRole.SUPPORT_L2: {"platform", "support_manage", "hospital_access"},
+        SaaSRole.SUPPORT_LEAD: {"platform", "support_manage", "hospital_access"},
+        SaaSRole.BILLING: {"platform", "billing_manage"},
+        SaaSRole.CUSTOMER_SUCCESS: {"platform", "tenant_view", "support_manage"},
+        SaaSRole.SECURITY_AUDITOR: {"platform", "security_review"},
+        SaaSRole.DEVOPS: {"platform"},
+    }
     class PreferredLanguage(models.TextChoices):
         MARATHI = "mr", "Marathi"
         HINDI = "hi", "Hindi"
@@ -157,6 +179,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_saas_admin = models.BooleanField(
         default=False,
         help_text="Master SaaS Admin / platform owner — manages tenants, subscriptions, billing, and support tickets across every hospital.",
+    )
+    saas_role = models.CharField(
+        max_length=32, choices=SaaSRole.choices, blank=True,
+        help_text="Platform-company role. Assigned and changed only by the SaaS Owner.",
     )
     is_2fa_enabled = models.BooleanField(default=False)
     totp_secret = EncryptedCharField(max_length=64, blank=True, editable=False)
@@ -234,8 +260,22 @@ class User(AbstractBaseUser, PermissionsMixin):
         by sending an X-Hospital-Id header — verified empirically, not
         theoretical."""
         if self.is_saas_admin:
-            return True
+            return self.has_saas_capability("hospital_access")
         return bool(self.is_superuser and not self.hospital_id)
+
+    def has_saas_capability(self, capability: str) -> bool:
+        if self.is_superuser and not self.hospital_id:
+            return True
+        capabilities = self.SAAS_ROLE_CAPABILITIES.get(self.saas_role, set())
+        if capability == "tenant_view":
+            return "tenant_view" in capabilities or "tenant_manage" in capabilities
+        if capability == "analytics_view":
+            return bool({"tenant_manage", "tenant_view", "billing_manage"} & capabilities)
+        return capability in capabilities
+
+    @property
+    def is_saas_owner(self) -> bool:
+        return self.is_superuser or self.saas_role == self.SaaSRole.OWNER
 
     def is_login_ip_allowed(self, ip_address: str) -> bool:
         if not self.allowed_ip_ranges or not ip_address:

@@ -146,6 +146,7 @@ class UserSerializer(serializers.ModelSerializer):
             "hospital_enabled_modules",
             "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
+            "saas_role",
             "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
             "password", "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts",
             "password_changed_at", "password_expires_in_days", "signature_image", "registration_number",

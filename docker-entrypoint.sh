@@ -13,6 +13,9 @@ python manage.py migrate --noinput
 echo "Seeding demo data & accounts (idempotent)..."
 python manage.py seed_demo_data --admin-password changeme123 || true
 
+echo "Ensuring SaaS-company roles and accounts exist (idempotent)..."
+python manage.py seed_saas_company --password "${SAAS_SEED_PASSWORD:-changeme123}" || true
+
 echo "Ensuring required portal login accounts exist..."
 python -c "
 import django, os
