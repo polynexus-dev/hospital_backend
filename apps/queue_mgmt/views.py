@@ -35,6 +35,7 @@ def estimated_wait(point, token=None):
 
 def _consultation_board(point):
     """Doctor queues come from appointments (already tokenised at check-in)."""
+    from apps.appointments.consult_metrics import estimated_wait_minutes
     from apps.appointments.services import doctor_queue
 
     if point.doctor_id is None:
@@ -45,7 +46,8 @@ def _consultation_board(point):
         "now_serving": {"label": f"{point.token_prefix}{now.queue_token:03d}", "counter": point.counter_label} if now else None,
         "waiting": [f"{point.token_prefix}{a.queue_token:03d}" for a in q["waiting"][:8]],
         "waiting_count": len(q["waiting"]),
-        "estimated_minutes": len(q["waiting"]) * (point.doctor.default_consultation_minutes or point.default_service_minutes),
+        # Doctor's real recent median consult time (falls back to their configured minutes).
+        "estimated_minutes": estimated_wait_minutes(point.doctor, len(q["waiting"]), now),
     }
 
 

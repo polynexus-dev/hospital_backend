@@ -23,6 +23,9 @@ urlpatterns = router.urls + [
 
 from django.urls import path as _path  # noqa: E402
 
-from .views import DoctorScheduleView  # noqa: E402
+from .views import ConsultationTimeView, DoctorScheduleView  # noqa: E402
 
-urlpatterns = [_path("doctors/<int:pk>/schedule/", DoctorScheduleView.as_view(), name="doctor-schedule")] + list(urlpatterns)
+urlpatterns = [
+    _path("doctors/<int:pk>/schedule/", DoctorScheduleView.as_view(), name="doctor-schedule"),
+    _path("consultation-time/", ConsultationTimeView.as_view(), name="consultation-time"),
+] + list(urlpatterns)

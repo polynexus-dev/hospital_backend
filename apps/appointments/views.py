@@ -242,3 +242,54 @@ class DoctorScheduleView(APIView):
         data = [["Time", "Token", "Patient", "UHID", "Status"]] + [[f"{r['start']}–{r['end']}", r["token"] or "", r["patient"] or "", r["uhid"] or "", r["status"]] for r in rows]
         SimpleDocTemplate(buf, pagesize=A4).build([Paragraph(f"{doctor.name} — schedule for {day:%d %b %Y}", styles["Title"]), Table(data, repeatRows=1)])
         return HttpResponse(buf.getvalue(), content_type="application/pdf")
+
+
+class ConsultationTimeView(APIView):
+    """GET /consultation-time/?start=&end=&department=&doctor=&short_under=3[&output=xlsx]
+
+    Per-doctor OPD consultation time. Managers (analytics access) see every
+    doctor; a doctor without it sees only their own figures."""
+
+    def get(self, request):
+        from datetime import date as date_cls, timedelta
+
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        from .consult_metrics import DEFAULT_SHORT_UNDER_MINUTES, consultation_report
+
+        qp = request.query_params
+        today = timezone.localdate()
+        try:
+            start = date_cls.fromisoformat(qp["start"]) if qp.get("start") else today - timedelta(days=30)
+            end = date_cls.fromisoformat(qp["end"]) if qp.get("end") else today
+            short_under = float(qp.get("short_under") or DEFAULT_SHORT_UNDER_MINUTES)
+            department = int(qp["department"]) if qp.get("department") else None
+            doctor = int(qp["doctor"]) if qp.get("doctor") else None
+        except ValueError:
+            return Response({"detail": "start/end must be YYYY-MM-DD; department, doctor and short_under must be numbers."}, status=400)
+        if start > end:
+            return Response({"detail": "start is after end."}, status=400)
+
+        if not request.user.has_perm("analytics.view_dailymislog"):
+            own = getattr(request.user, "doctor_profile", None)
+            if own is None or own.hospital_id != request.user.hospital_id:
+                return Response({"detail": "You do not have permission to view consultation-time reports."}, status=403)
+            doctor, department = own.pk, None
+
+        report = consultation_report(request.user.hospital_id, start, end, department=department, doctor=doctor, short_under=short_under)
+        if qp.get("output") != "xlsx":
+            return Response(report)
+
+        from apps.core.xlsx import build_xlsx
+
+        cols = [
+            ("doctor", "Doctor"), ("department", "Department"), ("consultations", "Consultations"), ("average_minutes", "Average (min)"),
+            ("median_minutes", "Median (min)"), ("shortest_minutes", "Shortest (min)"), ("longest_minutes", "Longest (min)"),
+            ("patients_per_hour", "Patients / hour"), ("average_wait_minutes", "Average wait (min)"),
+            ("short_consultations", f"Under {short_under:g} min"), ("short_percent", "Short %"), ("excluded", "Excluded (implausible)"),
+        ]
+        rows = [[label for _, label in cols]] + [[r.get(k) for k, _ in cols] for r in report["doctors"]]
+        resp = HttpResponse(build_xlsx(rows, "Consultation time"), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = f'attachment; filename="consultation-time-{start}-to-{end}.xlsx"'
+        return resp
