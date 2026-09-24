@@ -50,12 +50,37 @@ class EncryptedJSONField(models.JSONField):
     def db_type(self, connection):
         return "text"
 
-    def get_prep_value(self, value):
-        value = super().get_prep_value(value)  # JSON-serializes to a str, or None
-        return encrypt_value(value)
+    def get_db_prep_value(self, value, connection, prepared=False):
+        # Encrypt the JSON text and store the ciphertext as-is. The previous
+        # get_prep_value override ran *before* JSONField's own adaptation,
+        # so it encrypted Python's str() repr of the value and Django then
+        # JSON-quoted the ciphertext — which from_db_value could no longer
+        # recognise, so reads silently returned the raw ciphertext string.
+        # Stored as a JSON *string* holding the ciphertext, so the column
+        # still satisfies JSONField's JSON_VALID check constraint.
+        if value is None:
+            return None
+        return json.dumps(encrypt_value(json.dumps(value, cls=self.encoder)))
 
     def from_db_value(self, value, expression, connection):
+        if value in (None, ""):
+            return value
+        if value.startswith('"'):
+            # JSON string wrapping the ciphertext (current and legacy rows).
+            try:
+                value = json.loads(value)
+            except ValueError:
+                pass
         value = decrypt_value(value)
         if value in (None, ""):
             return value
-        return json.loads(value, cls=self.decoder) if self.decoder else json.loads(value)
+        try:
+            return json.loads(value, cls=self.decoder) if self.decoder else json.loads(value)
+        except ValueError:
+            # Legacy plaintext was Python's repr (single quotes), not JSON.
+            import ast
+
+            try:
+                return ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                return value

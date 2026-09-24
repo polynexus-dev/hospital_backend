@@ -7,12 +7,13 @@ from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDeta
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 
 from .models import ICUAdmission, ICUDailyProgressNote, VentilatorLog
+from .workflow import ICUAdmissionWorkflowMixin
 from .serializers import ICUAdmissionSerializer, ICUDailyProgressNoteSerializer, VentilatorLogSerializer
 
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class ICUAdmissionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class ICUAdmissionViewSet(ICUAdmissionWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = ICUAdmissionSerializer
     queryset = ICUAdmission.objects.all()

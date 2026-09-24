@@ -25,7 +25,7 @@ class PreOpChecklistSerializer(serializers.ModelSerializer):
             "completed_by",
             "completed_at",
             "created_at",
-            "updated_at",
+            "updated_at", "asa_grade", "airway_assessment", "comorbidities", "investigations_reviewed", "blood_arranged", "npo_since", "premedication", "fit_for_surgery", "assessment_notes",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
@@ -40,7 +40,8 @@ class ConsumableUsageSerializer(serializers.ModelSerializer):
 class ImplantUsageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImplantUsage
-        fields = ["id", "ot_schedule", "implant_name", "serial_number", "quantity", "created_at"]
+        fields = ["id", "ot_schedule", "implant_name", "serial_number", "quantity", "created_at", "manufacturer", "batch_number", "expiry_date", "implanted_site", "sticker_image",
+        ]
         read_only_fields = ["id", "created_at"]
 
 
@@ -75,7 +76,7 @@ class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
             "finalized_at",
             "finalized_by",
             "created_at",
-            "updated_at",
+            "updated_at", "asa_grade", "airway_device", "induction_at", "reversal_at", "drugs", "vitals", "fluids", "estimated_blood_loss_ml", "urine_output_ml", "complications", "recovery_aldrete_score", "shifted_to",
         ]
         read_only_fields = ["id", "finalized_at", "finalized_by", "created_at", "updated_at"]
 
@@ -103,9 +104,9 @@ class OTScheduleSerializer(serializers.ModelSerializer):
             "consumable_usages",
             "implant_usages",
             "created_at",
-            "updated_at",
+            "updated_at", "status", "last_reschedule_reason", "cancellation_reason", "actual_start", "actual_end", "wheeled_in_at", "wheeled_out_at", "reschedule_count", "cancelled_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "reschedule_count", "cancelled_at"]
 
 
 class SurgeryRequestSerializer(serializers.ModelSerializer):
@@ -126,6 +127,6 @@ class SurgeryRequestSerializer(serializers.ModelSerializer):
             "schedule",
             "preop_checklist",
             "created_at",
-            "updated_at",
+            "updated_at", "is_unplanned_return", "previous_surgery", "priority", "procedure_type",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]

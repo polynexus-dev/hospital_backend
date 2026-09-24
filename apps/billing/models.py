@@ -21,6 +21,18 @@ class Bill(TenantScopedModel):
     net_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(default=timezone.now)
+    # NABH AAC.6.e interim bills; FPM.3 GST invoice numbering.
+    is_interim = models.BooleanField(default=False)
+    bill_number = models.CharField(max_length=30, blank=True, editable=False)
+    patient_category = models.CharField(max_length=12, default="general", help_text="general | private | insurance | corporate")
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    def save(self, *args, **kwargs):
+        if not self.bill_number and self.hospital_id:
+            prefix = "INT" if self.is_interim else "INV"
+            n = Bill.objects.filter(hospital_id=self.hospital_id, bill_number__startswith=f"{prefix}{timezone.localdate():%y}").count() + 1
+            self.bill_number = f"{prefix}{timezone.localdate():%y}{n:06d}"
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["-created_at"]
@@ -36,9 +48,19 @@ class BillItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    tariff = models.ForeignKey("finance.ServiceTariff", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    hsn_sac = models.CharField(max_length=10, blank=True)
+    gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
-        self.total_price = self.quantity * self.unit_price
+        from decimal import Decimal
+
+        # unit_price can arrive as a request string — int * str would
+        # repeat the string ("500" * 2 == "500500"), not multiply.
+        self.unit_price = Decimal(str(self.unit_price))
+        self.total_price = Decimal(self.quantity) * self.unit_price
+        self.tax_amount = (Decimal(self.total_price) * Decimal(str(self.gst_rate or 0)) / Decimal("100")).quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -51,6 +73,10 @@ class Payment(TenantScopedModel):
         CARD = "card", "Card"
         UPI = "upi", "UPI"
         BANK_TRANSFER = "bank_transfer", "Bank Transfer"
+        CHEQUE = "cheque", "Cheque"
+        WALLET = "wallet", "Wallet"
+        INSURANCE = "insurance", "Insurance / TPA settlement"
+        ADVANCE = "advance", "Adjusted from deposit"
 
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="payments")
     amount = models.DecimalField(max_digits=12, decimal_places=2)

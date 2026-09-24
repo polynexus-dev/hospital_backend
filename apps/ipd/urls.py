@@ -16,3 +16,11 @@ router.register("progress-notes", DoctorProgressNoteViewSet, basename="doctorpro
 router.register("discharge-summaries", DischargeSummaryViewSet, basename="dischargesummary")
 
 urlpatterns = router.urls
+
+from django.urls import path  # noqa: E402
+
+from .workflow import AdmissionRuleViewSet, BedBoardView, DischargeClearanceViewSet  # noqa: E402
+
+router.register("admission-rules", AdmissionRuleViewSet, basename="admissionrule")
+router.register("discharge-clearances", DischargeClearanceViewSet, basename="dischargeclearance")
+urlpatterns = router.urls + [path("bed-board/", BedBoardView.as_view(), name="bed-board")]

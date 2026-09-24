@@ -35,6 +35,6 @@ class EDVisitSerializer(serializers.ModelSerializer):
             "arrived_at",
             "triage",
             "created_at",
-            "updated_at",
+            "updated_at", "mode_of_arrival", "brought_by", "is_unidentified", "ambulance_trip", "disposition_at", "police_station", "police_intimated_at", "police_officer_name", "injuries_description", "is_mlc", "mlc_number", "mlc_type", "mlc_checklist", "mlc_marked_by", "mlc_marked_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "is_mlc", "mlc_number", "mlc_type", "mlc_checklist", "mlc_marked_by", "mlc_marked_at"]

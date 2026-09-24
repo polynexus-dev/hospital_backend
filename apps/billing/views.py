@@ -18,6 +18,7 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "partial_update": "billing.change_bill",
         "add_item": "billing.change_bill",
         "download": "billing.view_bill",
+        "interim": "billing.add_bill",
     }
     serializer_class = BillSerializer
     queryset = Bill.objects.all()
@@ -35,6 +36,18 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         desc = request.data.get("description")
         qty = request.data.get("quantity", 1)
         price = request.data.get("unit_price")
+        extra = {}
+        if request.data.get("tariff"):
+            # NABH FPM.3.a — rate, SAC/HSN and GST come from the tariff master,
+            # priced for the bill's patient category.
+            from apps.finance.models import ServiceTariff
+
+            tariff = ServiceTariff.objects.filter(pk=request.data["tariff"], hospital_id=bill.hospital_id, is_active=True).first()
+            if tariff is None:
+                return Response({"tariff": "Not found."}, status=status.HTTP_400_BAD_REQUEST)
+            desc = desc or tariff.name
+            price = price or tariff.rate_for(bill.patient_category)
+            extra = {"tariff": tariff, "hsn_sac": tariff.hsn_sac, "gst_rate": tariff.gst_rate}
 
         if not desc or not price:
             return Response({"error": "description and unit_price are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -44,14 +57,20 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
             description=desc,
             quantity=int(qty),
             unit_price=price,
-            total_price=int(qty) * float(price),
+            total_price=0,
+            **extra,
         )
 
-        # Recalculate bill total
-        total = sum(i.total_price for i in bill.items.all())
+        # Recalculate bill total (GST shown separately and added to net)
+        from decimal import Decimal
+
+        items = list(bill.items.all())
+        total = sum((i.total_price for i in items), Decimal("0"))
+        tax = sum((i.tax_amount for i in items), Decimal("0"))
         bill.total_amount = total
-        bill.net_amount = float(total) - float(bill.discount_amount)
-        bill.save(update_fields=["total_amount", "net_amount"])
+        bill.tax_amount = tax
+        bill.net_amount = total + tax - Decimal(bill.discount_amount or 0)
+        bill.save(update_fields=["total_amount", "tax_amount", "net_amount"])
 
         return Response(BillItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
@@ -114,3 +133,35 @@ class InsuranceClaimViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, 
         hospital = getattr(self.request.user, "hospital", None)
         serializer.save(hospital=hospital)
         self._log("create", serializer.instance)
+
+
+
+def interim(self, request):
+    """NABH AAC.6.e — interim bill for an admission on request: a snapshot
+    of every charge raised so far and payments received, without closing
+    the running bill."""
+    from decimal import Decimal
+
+    from apps.ipd.models import Admission
+
+    adm = Admission.objects.filter(pk=request.data.get("admission"), hospital_id=request.user.hospital_id).first()
+    if adm is None:
+        return Response({"admission": "Not found."}, status=status.HTTP_400_BAD_REQUEST)
+    running = Bill.objects.filter(admission=adm, is_interim=False).exclude(status="cancelled")
+    interim = Bill.objects.create(hospital_id=adm.hospital_id, patient=adm.patient, admission=adm, is_interim=True, status="draft")
+    for item in BillItem.objects.filter(bill__in=running):
+        BillItem.objects.create(bill=interim, description=item.description, quantity=item.quantity, unit_price=item.unit_price, total_price=0,
+                                hsn_sac=item.hsn_sac, gst_rate=item.gst_rate, tariff=item.tariff)
+    items = list(interim.items.all())
+    interim.total_amount = sum((i.total_price for i in items), Decimal("0"))
+    interim.tax_amount = sum((i.tax_amount for i in items), Decimal("0"))
+    interim.net_amount = interim.total_amount + interim.tax_amount
+    interim.save()
+    paid = sum((p.amount for p in Payment.objects.filter(bill__in=running)), Decimal("0"))
+    data = BillSerializer(interim).data
+    data["payments_received"] = float(paid)
+    data["balance_due"] = float(interim.net_amount - paid)
+    return Response(data, status=status.HTTP_201_CREATED)
+
+
+BillViewSet.interim = action(detail=False, methods=["post"])(interim)

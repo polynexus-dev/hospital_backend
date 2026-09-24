@@ -28,3 +28,21 @@ urlpatterns = router.urls + [
     path("reports/reminder-delivery/", ReminderDeliverySummaryView.as_view(), name="report-reminder-delivery"),
     path("reports/mis-export/", MISExportView.as_view(), name="report-mis-export"),
 ]
+
+from .predictive import (  # noqa: E402
+    AdmissionsForecastView,
+    BedForecastView,
+    NoShowRiskView,
+    OPDFootfallForecastView,
+    StaffingForecastView,
+    StockoutForecastView,
+)
+
+urlpatterns += [
+    path("predict/opd-footfall/", OPDFootfallForecastView.as_view(), name="predict-opd"),
+    path("predict/admissions/", AdmissionsForecastView.as_view(), name="predict-admissions"),
+    path("predict/beds/", BedForecastView.as_view(), name="predict-beds"),
+    path("predict/staffing/", StaffingForecastView.as_view(), name="predict-staffing"),
+    path("predict/stockouts/", StockoutForecastView.as_view(), name="predict-stockouts"),
+    path("predict/no-show/", NoShowRiskView.as_view(), name="predict-no-show"),
+]

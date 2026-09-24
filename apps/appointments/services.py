@@ -160,7 +160,8 @@ def unblock_doctor_slots(doctor: Doctor, *, start_date, end_date) -> int:
 
 def start_consult(appointment: Appointment) -> Appointment:
     appointment.status = Appointment.Status.IN_CONSULT
-    appointment.save(update_fields=["status"])
+    appointment.consult_started_at = appointment.consult_started_at or timezone.now()
+    appointment.save(update_fields=["status", "consult_started_at"])
     return appointment
 
 

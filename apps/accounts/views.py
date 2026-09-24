@@ -1,6 +1,8 @@
 import pyotp
 from django.contrib.auth import update_session_auth_hash
 from django.core.signing import BadSignature
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -11,8 +13,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from .models import Role, User
+from apps.governance import services as gov
+from apps.governance.models import SecurityEvent
+
 from .serializers import (
+    AdminSetPasswordSerializer,
     ChangePasswordSerializer,
+    ExpiredPasswordChangeSerializer,
     HospitalScopedTokenObtainPairSerializer,
     RoleSerializer,
     UserSerializer,
@@ -37,6 +44,23 @@ class HospitalTokenObtainPairView(TokenObtainPairView):
 
     serializer_class = HospitalScopedTokenObtainPairSerializer
     throttle_scope = "login"
+
+    def post(self, request, *args, **kwargs):
+        """Failed-login counters/lockouts and security events are written
+        while the request is *failing*. Raising AuthenticationFailed out of
+        the view would make DRF's exception handler mark the request's
+        transaction (ATOMIC_REQUESTS) for rollback and discard exactly those
+        writes — so the lockout would never trigger. Returning the 401
+        instead keeps them committed."""
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
+            return Response(detail, status=exc.status_code)
+        except TokenError as exc:
+            raise InvalidToken(exc.args[0])
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -106,15 +130,86 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def change_password(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(data=request.data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
         user = request.user
         if not user.check_password(serializer.validated_data["old_password"]):
             return Response({"old_password": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(serializer.validated_data["new_password"])
         user.save(update_fields=["password"])
+        gov.record_password_change(user, request=request)
         update_session_auth_hash(request, user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _require_user_admin(self, request):
+        if not (request.user.is_superuser or request.user.has_perm("accounts.change_user")):
+            return Response({"detail": "You do not have permission to manage users."}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    @action(detail=True, methods=["post"], url_path="set-password")
+    def set_password(self, request, pk=None):
+        """Administrator reset (DOM.4.d centralized user management)."""
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+        target = self.get_object()
+        serializer = AdminSetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password(serializer.validated_data["new_password"], user=target)
+        target.set_password(serializer.validated_data["new_password"])
+        target.save(update_fields=["password"])
+        gov.record_password_change(target, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def block(self, request, pk=None):
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+        target = self.get_object()
+        if target.pk == request.user.pk:
+            return Response({"detail": "You cannot block your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        target.is_blocked = True
+        target.blocked_reason = str(request.data.get("reason", ""))[:255]
+        target.save(update_fields=["is_blocked", "blocked_reason"])
+        gov.log_security_event(SecurityEvent.EventType.USER_BLOCKED, request=request, user=target, details={"by": request.user.email, "reason": target.blocked_reason})
+        return Response(UserSerializer(target).data)
+
+    @action(detail=True, methods=["post"])
+    def unblock(self, request, pk=None):
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+        target = self.get_object()
+        target.is_blocked = False
+        target.blocked_reason = ""
+        target.save(update_fields=["is_blocked", "blocked_reason"])
+        gov.log_security_event(SecurityEvent.EventType.USER_UNBLOCKED, request=request, user=target, details={"by": request.user.email})
+        return Response(UserSerializer(target).data)
+
+    @action(detail=True, methods=["post"])
+    def unlock(self, request, pk=None):
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+        target = self.get_object()
+        gov.reset_failed_logins(target)
+        gov.log_security_event(SecurityEvent.EventType.ACCOUNT_UNLOCKED, request=request, user=target, details={"by": request.user.email})
+        target.refresh_from_db()
+        return Response(UserSerializer(target).data)
+
+    @action(detail=False, methods=["post"], url_path="verify-password", permission_classes=[IsAuthenticated])
+    def verify_password(self, request):
+        """Unlocks the auto-locked screen (DOM.4.b) — re-authenticates the
+        already signed-in user without issuing new tokens. The failure
+        event is written even though the request is atomic: a 400 Response
+        (not a raised exception) doesn't mark the transaction for rollback."""
+        if request.user.check_password(str(request.data.get("password", ""))):
+            return Response({"ok": True})
+        gov.log_security_event(SecurityEvent.EventType.SCREEN_UNLOCK_FAILED, request=request, user=request.user)
+        return Response({"password": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"], url_path="2fa/setup", permission_classes=[IsAuthenticated])
     def setup_2fa(self, request):
@@ -188,8 +283,10 @@ class MFAVerifyView(APIView):
             return Response({"detail": "MFA is not enabled for this account."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not pyotp.TOTP(user.totp_secret).verify(otp, valid_window=1):
+            gov.log_security_event(SecurityEvent.EventType.MFA_FAILED, request=request, user=user)
             return Response({"otp": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
 
+        gov.log_security_event(SecurityEvent.EventType.LOGIN_SUCCESS, request=request, user=user, details={"mfa": True})
         refresh = HospitalScopedTokenObtainPairSerializer.get_token(user)
         return Response({"refresh": str(refresh), "access": str(refresh.access_token)})
 
@@ -204,3 +301,37 @@ class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if user.can_cross_tenant:
             return Role.objects.all()
         return Role.objects.filter(hospital_id=user.hospital_id)
+
+
+class ExpiredPasswordChangeView(APIView):
+    """DOM.4.a — the only way past a `password_expired` login response.
+    Takes the old credentials (there's no session yet), enforces the full
+    policy on the new password, then the user signs in normally."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "login"
+
+    def post(self, request):
+        serializer = ExpiredPasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = User.objects.filter(email__iexact=data["email"], is_active=True).first()
+        if user is None or user.is_blocked or user.is_locked_out or not user.check_password(data["old_password"]):
+            if user is not None and not user.is_blocked and not user.is_locked_out:
+                gov.register_failed_login(user, request=request)
+            return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+        if data["old_password"] == data["new_password"]:
+            return Response({"new_password": ["New password must differ from the old one."]}, status=status.HTTP_400_BAD_REQUEST)
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            validate_password(data["new_password"], user=user)
+        except DjangoValidationError as exc:
+            return Response({"new_password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(data["new_password"])
+        user.save(update_fields=["password"])
+        gov.record_password_change(user, request=request)
+        gov.reset_failed_logins(user)
+        return Response({"detail": "Password changed. Please sign in with your new password."})

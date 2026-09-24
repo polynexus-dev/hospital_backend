@@ -253,10 +253,10 @@ def test_change_password_rejects_wrong_old_password(auth_client, user):
 
 @pytest.mark.django_db
 def test_change_password_succeeds_and_new_password_logs_in(auth_client, api_client, user):
-    response = auth_client.post("/api/v1/users/change_password/", {"old_password": "testpass123", "new_password": "brand-new-pass-1"}, format="json")
+    response = auth_client.post("/api/v1/users/change_password/", {"old_password": "testpass123", "new_password": "Brand-New-Pass-1"}, format="json")
     assert response.status_code == 204
 
-    login = api_client.post("/api/v1/auth/login/", {"email": user.email, "password": "brand-new-pass-1"}, format="json")
+    login = api_client.post("/api/v1/auth/login/", {"email": user.email, "password": "Brand-New-Pass-1"}, format="json")
     assert login.status_code == 200
 
 

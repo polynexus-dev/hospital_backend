@@ -114,9 +114,14 @@ class AuditMiddleware:
 
         if is_mutation or is_patient_record_read:
             user = getattr(request, "user", None)
+            from django.contrib.auth.base_user import AbstractBaseUser
+
+            is_staff_user = isinstance(user, AbstractBaseUser) and user.is_authenticated
             AuditLog.objects.create(
                 hospital_id=getattr(user, "hospital_id", None) if user else None,
-                actor=user if user and getattr(user, "is_authenticated", False) else None,
+                # Patient-portal requests authenticate as a PortalPrincipal,
+                # not a User row — hospital is still recorded, actor isn't.
+                actor=user if is_staff_user else None,
                 action=AuditLog.Action.REQUEST if is_mutation else AuditLog.Action.READ,
                 method=request.method,
                 path=request.path,

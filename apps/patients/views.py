@@ -12,6 +12,7 @@ from apps.core.permissions import (
 from apps.core.viewsets import SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
 from .models import Document, Patient
+from .registration import PatientRegistrationMixin
 from .serializers import (
     DocumentSerializer,
     PatientLookupSerializer,
@@ -20,7 +21,7 @@ from .serializers import (
 )
 
 
-class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PatientViewSet(PatientRegistrationMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
     # list/retrieve stay open to every role whose template grants
@@ -38,7 +39,11 @@ class PatientViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
     # search that would otherwise let those same excluded roles reach any
     # patient one at a time instead of via `list`.
     permission_classes = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission, ActionPermissionRequired]
-    action_permissions = {"lookup": "patients.view_patient", "timeline": "patients.view_patient", "recalls": "patients.view_patient"}
+    action_permissions = {
+        "lookup": "patients.view_patient", "timeline": "patients.view_patient", "recalls": "patients.view_patient",
+        "check_duplicates": "patients.view_patient", "merge": "patients.change_patient", "verify_mobile": "patients.change_patient",
+        "offline_sync": "patients.add_patient",
+    }
     filterset_fields = ["is_active", "gender", "preferred_language"]
     # mobile/alternate_mobile are encrypted at rest (Part A #2) and
     # deliberately excluded here — SearchFilter's icontains lookup against

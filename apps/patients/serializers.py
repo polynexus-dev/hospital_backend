@@ -17,8 +17,9 @@ class PatientSerializer(serializers.ModelSerializer):
             "guardian", "relationship_to_guardian",
             "next_recall_due_at", "recall_reason",
             "preferred_language", "is_active", "created_at", "updated_at",
+            "uhid", "mrn", "registration_type", "blood_group", "registration_channel", "payment_preference", "mobile_verified_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "uhid", "mobile_verified_at"]
 
     def validate_guardian(self, guardian):
         if guardian is not None and self.instance is not None and guardian.pk == self.instance.pk:

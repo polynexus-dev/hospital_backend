@@ -8,4 +8,19 @@ router.register(r"stock-levels", StockLevelViewSet, basename="stocklevel")
 router.register(r"purchase-orders", PurchaseOrderViewSet, basename="purchaseorder")
 router.register(r"stock-transactions", StockTransactionViewSet, basename="stocktransaction")
 
+from .procurement import (  # noqa: E402
+    GoodsReceiptNoteViewSet,
+    PurchaseApprovalRuleViewSet,
+    StockTransferViewSet,
+    StoreIndentViewSet,
+    StoreViewSet,
+    SupplierRatingViewSet,
+)
+
+router.register(r"stores", StoreViewSet, basename="store")
+router.register(r"approval-rules", PurchaseApprovalRuleViewSet, basename="purchaseapprovalrule")
+router.register(r"indents", StoreIndentViewSet, basename="storeindent")
+router.register(r"grns", GoodsReceiptNoteViewSet, basename="goodsreceiptnote")
+router.register(r"transfers", StockTransferViewSet, basename="stocktransfer")
+router.register(r"supplier-ratings", SupplierRatingViewSet, basename="supplierrating")
 urlpatterns = router.urls

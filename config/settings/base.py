@@ -114,6 +114,17 @@ LOCAL_APPS = [
     "apps.saas_admin",
     "apps.privacy",
     "apps.abdm",
+    "apps.governance",
+    "apps.clinical",
+    "apps.infection_control",
+    "apps.quality",
+    "apps.support_services",
+    "apps.queue_mgmt",
+    "apps.telemedicine",
+    "apps.portal",
+    "apps.mrd",
+    "apps.dietary",
+    "apps.oncology",
 ]
 
 
@@ -136,6 +147,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.TenantMiddleware",
     "apps.core.middleware.AuditMiddleware",
+    "apps.governance.middleware.AccessDeniedLoggingMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -195,13 +207,20 @@ else:
     # handshake every time (default is 0 = no reuse).
     DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
+# NABH DOM.3.b — every API request is one transaction: an error part-way
+# through a multi-row write rolls the whole thing back automatically
+# instead of leaving half a bill or half an admission behind.
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
+
 
 
 AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    # NABH DOM.4.a — length/complexity/history come from the hospital's
+    # own apps.governance.SecurityPolicy, not a hardcoded minimum.
+    {"NAME": "apps.governance.services.HospitalPasswordPolicyValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -351,6 +370,14 @@ GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 # (shows the main menu) if the server is unreachable, so a wrong/missing
 # address here fails safe, it just won't route free text yet.
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://localhost:11434")
+
+# NABH IMS.1.g — link to the hospital's PACS / zero-footprint DICOM viewer
+# (e.g. OHIF on Orthanc: "https://pacs.example.in/viewer?StudyInstanceUIDs={study_uid}").
+PACS_VIEWER_URL = env("PACS_VIEWER_URL", default="")
+
+# NABH COP.10.a — video consultations. Public meet.jit.si works out of the
+# box; point this at the hospital's own Jitsi deployment for production.
+TELEMEDICINE_JITSI_BASE_URL = env("TELEMEDICINE_JITSI_BASE_URL", default="https://meet.jit.si")
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
 OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=6)
 
@@ -445,6 +472,24 @@ CELERY_BEAT_SCHEDULE = {
     "recompute-enquiry-scores": {
         "task": "apps.enquiries.tasks.recompute_enquiry_scores",
         "schedule": crontab(hour=2, minute=30),
+    },
+    # NABH DOM.1.e — per-hospital scheduled backups + retention purge.
+    "run-scheduled-backups": {
+        "task": "apps.governance.tasks.run_scheduled_backups",
+        "schedule": 3600.0,
+    },
+    # NABH DHS uptime KPI + IMS.2.c quarterly KPI publishing.
+    "record-system-heartbeat": {
+        "task": "apps.quality.tasks.record_heartbeat",
+        "schedule": 300.0,
+    },
+    "publish-previous-quarter-kpis": {
+        "task": "apps.quality.tasks.publish_previous_quarter_kpis",
+        "schedule": crontab(hour=5, minute=0),
+    },
+    "enforce-backup-and-audit-retention": {
+        "task": "apps.governance.tasks.enforce_retention",
+        "schedule": crontab(hour=4, minute=0),
     },
 }
 

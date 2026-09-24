@@ -37,12 +37,55 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)  # raises AuthenticationFailed on bad credentials; self.user is now set
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
 
         request = self.context.get("request")
+        username = str(attrs.get(self.username_field, "")).strip()
+        candidate = User.objects.filter(**{f"{self.username_field}__iexact": username}).first() if username else None
+
+        # NABH DOM.4.c — refuse *before* checking the password, so a locked
+        # or blocked account can't be used as a password oracle.
+        if candidate is not None and candidate.is_blocked:
+            gov.log_security_event(SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT, request=request, user=candidate, details={"reason": "blocked"})
+            raise AuthenticationFailed({"detail": "This account has been blocked by an administrator.", "code": "account_blocked"})
+        if candidate is not None and candidate.is_locked_out:
+            gov.log_security_event(SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT, request=request, user=candidate)
+            raise AuthenticationFailed({
+                "detail": "Account locked after repeated failed sign-in attempts.",
+                "code": "account_locked",
+                "locked_until": candidate.locked_until.isoformat(),
+            })
+
+        try:
+            data = super().validate(attrs)  # raises AuthenticationFailed on bad credentials; self.user is now set
+        except AuthenticationFailed:
+            if candidate is not None:
+                if gov.register_failed_login(candidate, request=request):
+                    candidate.refresh_from_db(fields=["locked_until"])
+                    raise AuthenticationFailed({
+                        "detail": "Too many failed attempts — account locked.",
+                        "code": "account_locked",
+                        "locked_until": candidate.locked_until.isoformat(),
+                    })
+            else:
+                gov.log_security_event(SecurityEvent.EventType.LOGIN_FAILED, request=request, username=username, details={"reason": "unknown_user"})
+            raise
+
         client_ip = get_client_ip(request) if request else None
         if not self.user.is_login_ip_allowed(client_ip):
+            gov.log_security_event(SecurityEvent.EventType.IP_BLOCKED, request=request, user=self.user)
             raise AuthenticationFailed("Login is not permitted from this network for this account.")
+
+        gov.reset_failed_logins(self.user)
+
+        # DOM.4.a — an expired password can't be used to start a session;
+        # the client must go through /auth/password/expired-change/.
+        if gov.password_is_expired(self.user):
+            gov.log_security_event(SecurityEvent.EventType.PASSWORD_EXPIRED, request=request, user=self.user)
+            return {"password_expired": True, "detail": "Your password has expired and must be changed before you can sign in."}
+
+        gov.log_security_event(SecurityEvent.EventType.LOGIN_SUCCESS, request=request, user=self.user)
 
         if self.user.is_2fa_enabled:
             # Real access/refresh tokens were already built by
@@ -74,6 +117,8 @@ class UserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     role_domain = serializers.SerializerMethodField()
     hospital_enabled_modules = serializers.SerializerMethodField()
+    password = serializers.CharField(write_only=True, required=False, allow_blank=False)
+    password_expires_in_days = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -84,6 +129,8 @@ class UserSerializer(serializers.ModelSerializer):
             "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
             "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
+            "password", "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts",
+            "password_changed_at", "password_expires_in_days", "signature_image", "registration_number",
         ]
         # `hospital` used to be writable here — perform_create already
         # silently overrides it on create regardless of what's posted, but
@@ -109,7 +156,39 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "date_joined", "is_staff", "is_superuser", "is_saas_admin",
             "hospital", "is_2fa_enabled", "requires_mfa",
+            # Blocking/unblocking and lockout only change through
+            # UserViewSet's block/unblock/unlock actions, which log a
+            # SecurityEvent — never a bare PATCH.
+            "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts", "password_changed_at",
         ]
+
+    def create(self, validated_data):
+        from django.contrib.auth.password_validation import validate_password
+
+        password = validated_data.pop("password", None)
+        user = User(**validated_data)
+        if password:
+            validate_password(password, user=user)
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+        if password:
+            from apps.governance.services import record_password_change
+
+            record_password_change(user, request=self.context.get("request"))
+        return user
+
+    def update(self, instance, validated_data):
+        # Password changes go through change_password / set_password
+        # (history + audit), never a profile PATCH.
+        validated_data.pop("password", None)
+        return super().update(instance, validated_data)
+
+    def get_password_expires_in_days(self, obj):
+        from apps.governance.services import password_expires_in_days
+
+        return password_expires_in_days(obj) if obj.pk else None
 
     def get_permissions(self, obj):
         """Flat `app_label.codename` strings — PermissionsMixin already
@@ -157,4 +236,20 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password(value, user=self.context.get("user"))
+        return value
+
+
+class ExpiredPasswordChangeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+
+class AdminSetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True)

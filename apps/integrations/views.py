@@ -235,3 +235,49 @@ class HISBillingRecordViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
             return HISBillingRecord.objects.none()
         return HISBillingRecord.objects.filter(hospital_id=self.request.user.hospital_id)
+
+
+class ABDMHealthRecordView(APIView):
+    """GET /abdm-fhir/<hi_type>/<id>/ — the NRCeS FHIR document bundle for
+    one record (what ABDM HIE-CM receives when the patient consents to
+    share it). hi_type: prescription | lab | imaging | discharge | opd."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, hi_type, pk):
+        from apps.core.permissions import RequiresClinicalDetailPermission
+
+        if not RequiresClinicalDetailPermission().has_permission(request, self):
+            return Response({"detail": "Clinical access required."}, status=403)
+        from . import abdm_fhir as f
+
+        h = request.user.hospital_id
+        if hi_type == "prescription":
+            from apps.patients.models import Prescription
+
+            obj, build = Prescription.objects.filter(pk=pk, hospital_id=h).first(), f.prescription_bundle
+        elif hi_type == "lab":
+            from apps.laboratory.models import LabOrder
+
+            obj, build = LabOrder.objects.filter(pk=pk, hospital_id=h).first(), f.lab_report_bundle
+        elif hi_type == "imaging":
+            from apps.radiology.models import RadiologyReport
+
+            obj, build = RadiologyReport.objects.filter(pk=pk, hospital_id=h).first(), f.imaging_report_bundle
+        elif hi_type == "discharge":
+            from apps.ipd.models import DischargeSummary
+
+            obj, build = DischargeSummary.objects.filter(pk=pk, hospital_id=h).first(), f.discharge_summary_bundle
+        elif hi_type == "opd":
+            from apps.opd.models import Encounter
+
+            obj, build = Encounter.objects.filter(pk=pk, hospital_id=h).first(), f.op_consultation_bundle
+        else:
+            return Response({"detail": "hi_type must be prescription | lab | imaging | discharge | opd"}, status=400)
+        if obj is None:
+            return Response({"detail": "Not found."}, status=404)
+        bundle = build(obj)
+        problems = f.validate_document_bundle(bundle)
+        if problems:
+            return Response({"detail": "Bundle failed validation.", "problems": problems}, status=500)
+        return Response(bundle)

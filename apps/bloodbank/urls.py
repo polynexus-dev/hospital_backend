@@ -9,3 +9,11 @@ router.register(r"cross-matches", CrossMatchRequestViewSet, basename="crossmatch
 router.register(r"transfusions", TransfusionViewSet, basename="transfusion")
 
 urlpatterns = router.urls
+
+from django.urls import path  # noqa: E402
+
+from .views import BloodStockSummaryViewSet  # noqa: E402
+from .workflow import PublicBloodStockView  # noqa: E402
+
+router.register("stock-summary", BloodStockSummaryViewSet, basename="bloodstocksummary")
+urlpatterns = router.urls + [path("public/stock/", PublicBloodStockView.as_view(), name="public-blood-stock")]

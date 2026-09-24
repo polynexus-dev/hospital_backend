@@ -31,6 +31,7 @@ class Admission(TenantScopedModel):
     # signal off, and forcing one in just for this would be the wrong fix.
     source_encounter = models.ForeignKey(Encounter, on_delete=models.SET_NULL, null=True, blank=True, related_name="resulting_admissions")
     source_ed_visit = models.ForeignKey("emergency.EDVisit", on_delete=models.SET_NULL, null=True, blank=True, related_name="resulting_admissions")
+    episode = models.ForeignKey("clinical.EpisodeOfCare", on_delete=models.SET_NULL, null=True, blank=True, related_name="admissions")
 
     admission_type = models.CharField(max_length=16, choices=AdmissionType.choices, default=AdmissionType.PLANNED)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ADMITTED)
@@ -38,6 +39,15 @@ class Admission(TenantScopedModel):
 
     admitted_at = models.DateTimeField(auto_now_add=True)
     discharged_at = models.DateTimeField(null=True, blank=True)
+
+    # NABH AAC.5.e treating practitioners (in addition to admitting doctor).
+    care_team = models.ManyToManyField(Doctor, blank=True, related_name="care_team_admissions")
+    # AAC.5.a admission rules/checklist, AAC.5.d packages.
+    admission_checklist = models.JSONField(default=dict, blank=True)
+    package = models.ForeignKey("packages.HealthPackage", on_delete=models.SET_NULL, null=True, blank=True, related_name="admissions")
+    # AAC.6.b/c discharge planning & the NABH "time taken for discharge" KPI.
+    expected_discharge_date = models.DateField(null=True, blank=True)
+    discharge_initiated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-admitted_at"]
@@ -127,3 +137,44 @@ class DischargeSummary(TenantScopedModel, FinalizableModel):
 
     def __str__(self):
         return f"Discharge summary for {self.admission}"
+
+
+class AdmissionRule(TenantScopedModel):
+    """AAC.5.a — per admission type: what must be done before/at admission."""
+
+    admission_type = models.CharField(max_length=16, choices=Admission.AdmissionType.choices)
+    checklist_items = models.JSONField(default=list, help_text='["Consent signed", "Deposit collected", "ID proof verified", ...]')
+    minimum_deposit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    requires_consent = models.BooleanField(default=True)
+    notify_departments = models.JSONField(default=list, help_text='["nursing", "dietary", "billing", "pharmacy"] alerted on admission/transfer.')
+    is_active = models.BooleanField(default=True)
+
+
+class DischargeClearance(TenantScopedModel):
+    """AAC.6.c — every department signs off before the patient leaves."""
+
+    class Department(models.TextChoices):
+        NURSING = "nursing", "Nursing"
+        PHARMACY = "pharmacy", "Pharmacy (returns)"
+        LABORATORY = "laboratory", "Laboratory"
+        RADIOLOGY = "radiology", "Radiology"
+        DIETARY = "dietary", "Dietary"
+        BILLING = "billing", "Billing / accounts"
+        TPA = "tpa", "TPA / insurance"
+        MEDICAL_RECORDS = "medical_records", "Medical records"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        CLEARED = "cleared", "Cleared"
+        NOT_APPLICABLE = "na", "Not applicable"
+
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="clearances")
+    department = models.CharField(max_length=16, choices=Department.choices)
+    status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
+    cleared_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    cleared_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["department"]
+        constraints = [models.UniqueConstraint(fields=["admission", "department"], name="unique_clearance_per_department")]

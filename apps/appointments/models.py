@@ -93,6 +93,10 @@ class Appointment(TenantScopedModel):
         CRM = "crm", "CRM / front desk"
         WHATSAPP = "whatsapp", "WhatsApp"
         WEBSITE = "website", "Website"
+        PATIENT_PORTAL = "portal", "Patient portal / app"
+        EXTERNAL = "external", "External system / aggregator"
+        TELEPHONE = "telephone", "Telephone / IVR"
+        WALK_IN = "walk_in", "Walk-in"
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="appointments")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="appointments")
@@ -117,7 +121,9 @@ class Appointment(TenantScopedModel):
     reminder_2h_sent_at = models.DateTimeField(null=True, blank=True)
 
     checked_in_at = models.DateTimeField(null=True, blank=True)
+    consult_started_at = models.DateTimeField(null=True, blank=True)  # NABH OPD waiting-time KPI (AAC.2.c)
     completed_at = models.DateTimeField(null=True, blank=True)
+    external_reference = models.CharField(max_length=100, blank=True, help_text="Booking id in the external system (AAC.2.d: aggregator app, ABDM, partner portal).")
     cancelled_at = models.DateTimeField(null=True, blank=True)
     no_show_at = models.DateTimeField(null=True, blank=True)
 

@@ -7,6 +7,7 @@ from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDeta
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 
 from .models import RadiologyOrder, RadiologyProcedure, RadiologyReport
+from .workflow import RadiologyOrderWorkflowMixin, RadiologyReportWorkflowMixin, notify_radiology_new_order, notify_radiology_report_ready
 from .serializers import RadiologyOrderSerializer, RadiologyProcedureSerializer, RadiologyReportSerializer
 
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
@@ -22,7 +23,7 @@ class RadiologyProcedureViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet)
     search_fields = ["name"]
 
 
-class RadiologyOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class RadiologyOrderViewSet(RadiologyOrderWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = RadiologyOrderSerializer
     # select_related: RadiologyOrderSerializer's patient_name/procedure_name
@@ -32,10 +33,11 @@ class RadiologyOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)
-        serializer.save(hospital=hospital, ordered_by=self.request.user)
+        order = serializer.save(hospital=hospital, ordered_by=self.request.user)
+        notify_radiology_new_order(order)
 
 
-class RadiologyReportViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class RadiologyReportViewSet(RadiologyReportWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"verify": "radiology.verify_radiologyreport"}
     audited_fields = ("findings", "impression")
@@ -57,4 +59,5 @@ class RadiologyReportViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin,
     def verify(self, request, pk=None):
         report = self.get_object()
         report.finalize(request.user)
+        notify_radiology_report_ready(report)
         return Response(RadiologyReportSerializer(report).data)

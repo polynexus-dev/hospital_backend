@@ -85,6 +85,13 @@ def discharge_patient(admission: Admission, *, status: str = Admission.Status.DI
 
     if not DischargeSummary.objects.filter(admission=admission).exists():
         raise DischargeSummaryRequired("A discharge summary must be created before discharging this admission.")
+    # NABH AAC.6.c — once discharge has been initiated (clearances raised),
+    # every department must have cleared before the patient leaves.
+    from .models import DischargeClearance
+
+    pending = DischargeClearance.objects.filter(admission=admission, status=DischargeClearance.Status.PENDING)
+    if pending.exists() and status == Admission.Status.DISCHARGED:
+        raise DischargeSummaryRequired("Pending discharge clearances: " + ", ".join(pending.values_list("department", flat=True)))
 
     admission.status = status
     admission.discharged_at = timezone.now()

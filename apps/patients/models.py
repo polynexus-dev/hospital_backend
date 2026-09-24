@@ -117,6 +117,12 @@ class Patient(TenantScopedModel, SoftDeleteModel):
     registration_type = models.CharField(max_length=16, choices=RegistrationType.choices, blank=True)
     blood_group = models.CharField(max_length=16, choices=BloodGroup.choices, blank=True)
 
+    # NABH AAC.1.a/b/g
+    mobile_verified_at = models.DateTimeField(null=True, blank=True, editable=False)
+    registration_channel = models.CharField(max_length=16, default="front_desk", help_text="front_desk | kiosk | website | app | qr | abdm_scan_share | offline")
+    payment_preference = models.CharField(max_length=20, blank=True, help_text="cash | card | upi | insurance | corporate")
+    offline_client_id = models.CharField(max_length=64, blank=True, db_index=True, help_text="Client-generated id for idempotent offline sync.")
+
     objects = PatientManager()
 
     class Meta:
@@ -144,6 +150,9 @@ class Patient(TenantScopedModel, SoftDeleteModel):
             sequence = hospital.next_uhid_sequence
             hospital.next_uhid_sequence = sequence + 1
             hospital.save(update_fields=["next_uhid_sequence"])
+        config = UHIDConfig.objects.filter(hospital_id=self.hospital_id).first()
+        if config is not None:
+            return config.format(sequence)
         return f"{hospital.slug.upper()}-{sequence:06d}"
 
     def __str__(self):
@@ -245,3 +254,47 @@ class Prescription(TenantScopedModel, SoftDeleteModel):
 
     def __str__(self):
         return f"e-Rx for {self.patient.full_name} - {self.diagnosis}"
+
+
+
+class UHIDConfig(models.Model):
+    """NABH AAC.1.d — hospital-defined UHID format. Tokens in `pattern`:
+    {PREFIX} {BRANCH} {YYYY} {YY} {MM} {SEQ} {SUFFIX}. The sequence itself
+    stays the hospital-wide counter (Hospital.next_uhid_sequence), so a
+    format change never creates collisions with numbers already issued."""
+
+    hospital = models.OneToOneField("core.Hospital", on_delete=models.CASCADE, related_name="uhid_config")
+    prefix = models.CharField(max_length=10, blank=True)
+    branch_code = models.CharField(max_length=10, blank=True)
+    suffix = models.CharField(max_length=10, blank=True)
+    pattern = models.CharField(max_length=80, default="{PREFIX}{BRANCH}{YY}{SEQ}")
+    sequence_digits = models.PositiveSmallIntegerField(default=6)
+
+    def format(self, sequence, when=None):
+        from django.utils import timezone
+
+        when = when or timezone.localdate()
+        out = self.pattern
+        for token, value in {
+            "{PREFIX}": self.prefix, "{BRANCH}": self.branch_code, "{SUFFIX}": self.suffix,
+            "{YYYY}": f"{when:%Y}", "{YY}": f"{when:%y}", "{MM}": f"{when:%m}", "{SEQ}": str(sequence).zfill(self.sequence_digits),
+        }.items():
+            out = out.replace(token, value)
+        return out.upper()[:32]
+
+
+class MobileOTP(models.Model):
+    """AAC.1.b — mobile verification (also reused by the patient portal).
+    Only a hash of the code is stored."""
+
+    hospital = models.ForeignKey("core.Hospital", on_delete=models.CASCADE, related_name="+")
+    mobile_hash = models.CharField(max_length=64, db_index=True)
+    purpose = models.CharField(max_length=20, default="registration")
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

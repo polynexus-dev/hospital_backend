@@ -7,6 +7,14 @@ from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDeta
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 
 from .models import LabOrder, LabResult, LabTest, LabTestPackage, SampleCollection
+from .workflow import (
+    LabOrderWorkflowMixin,
+    LabResultWorkflowMixin,
+    SampleWorkflowMixin,
+    after_order_verified,
+    after_result_saved,
+    next_specimen_number,
+)
 from .serializers import (
     LabOrderSerializer,
     LabResultSerializer,
@@ -39,7 +47,7 @@ class LabTestPackageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["name"]
 
 
-class LabOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class LabOrderViewSet(LabOrderWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = LabOrderSerializer
     # select_related: LabOrderSerializer.patient_name (source="patient.full_name")
@@ -51,7 +59,7 @@ class LabOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.save(hospital=hospital, ordered_by=self.request.user)
 
 
-class SampleCollectionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class SampleCollectionViewSet(SampleWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = SampleCollectionSerializer
     queryset = SampleCollection.objects.all()
@@ -59,14 +67,17 @@ class SampleCollectionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)
-        collection = serializer.save(hospital=hospital, collected_by=self.request.user)
+        extra = {}
+        if not serializer.validated_data.get("barcode"):
+            extra["barcode"] = next_specimen_number(hospital.pk)
+        collection = serializer.save(hospital=hospital, collected_by=self.request.user, **extra)
         lab_order = collection.lab_order
         if lab_order.status == LabOrder.Status.ORDERED:
             lab_order.status = LabOrder.Status.SAMPLE_COLLECTED
             lab_order.save(update_fields=["status"])
 
 
-class LabResultViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class LabResultViewSet(LabResultWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"verify": "laboratory.verify_labresult"}
     audited_fields = ("value", "flag")
@@ -80,10 +91,12 @@ class LabResultViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
         serializer.save(hospital=hospital, entered_by=self.request.user)
         self._log("create", serializer.instance)
         self._sync_order_status_to_resulted(serializer.instance.lab_order)
+        after_result_saved(serializer.instance)
         self._maybe_alert_critical(serializer.instance)
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
+        after_result_saved(serializer.instance)
         self._maybe_alert_critical(serializer.instance)
 
     @staticmethod
@@ -107,5 +120,6 @@ class LabResultViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
         if not lab_order.results.exclude(finalized_at__isnull=False).exists():
             lab_order.status = LabOrder.Status.VERIFIED
             lab_order.save(update_fields=["status"])
+            after_order_verified(lab_order)
 
         return Response(LabResultSerializer(result).data)

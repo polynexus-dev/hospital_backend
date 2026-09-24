@@ -162,6 +162,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
 
+    # NABH DOM.4.a/c — see apps.governance.services for the policy logic.
+    password_changed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    failed_login_attempts = models.PositiveSmallIntegerField(default=0, editable=False)
+    locked_until = models.DateTimeField(null=True, blank=True, editable=False)
+    is_blocked = models.BooleanField(default=False, help_text="Administratively blocked — cannot sign in until unblocked.")
+    blocked_reason = models.CharField(max_length=255, blank=True)
+    signature_image = models.ImageField(upload_to="signatures/", blank=True, help_text="Digital signature stamped on signed clinical documents (COP.1.e).")
+    registration_number = models.CharField(max_length=64, blank=True, help_text="Medical/nursing council registration number, printed with the signature.")
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"
@@ -191,7 +200,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     def requires_mfa(self) -> bool:
         if self.is_staff:
             return True
+        if self.hospital_id:
+            from apps.governance.models import SecurityPolicy
+
+            if SecurityPolicy.for_hospital(self.hospital_id).enforce_mfa_for_all:
+                return True
         return bool(self.role_id) and self.role.template in (Role.Template.OWNER, Role.Template.ADMIN)
+
+    @property
+    def is_locked_out(self) -> bool:
+        from django.utils import timezone
+
+        return bool(self.locked_until and self.locked_until > timezone.now())
 
     @property
     def can_cross_tenant(self) -> bool:

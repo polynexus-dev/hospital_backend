@@ -16,3 +16,20 @@ router.register("dispense-records", DispenseRecordViewSet, basename="dispenserec
 router.register("stock-adjustments", StockAdjustmentViewSet, basename="stockadjustment")
 
 urlpatterns = router.urls
+
+from .workflow import (  # noqa: E402
+    EmergencyMedicationStockViewSet,
+    MedicationReconciliationViewSet,
+    MedicineRecallViewSet,
+    MedicineReturnViewSet,
+    PharmacyIndentViewSet,
+    StockOutEventViewSet,
+)
+
+router.register("returns", MedicineReturnViewSet, basename="medicinereturn")
+router.register("recalls", MedicineRecallViewSet, basename="medicinerecall")
+router.register("reconciliations", MedicationReconciliationViewSet, basename="medicationreconciliation")
+router.register("indents", PharmacyIndentViewSet, basename="pharmacyindent")
+router.register("emergency-stock", EmergencyMedicationStockViewSet, basename="emergencymedicationstock")
+router.register("stock-outs", StockOutEventViewSet, basename="stockoutevent")
+urlpatterns = router.urls

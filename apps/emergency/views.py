@@ -10,12 +10,13 @@ from apps.ipd.serializers import AdmissionSerializer
 
 from .models import EDVisit, Triage
 from .serializers import EDVisitSerializer, TriageSerializer
+from .workflow import EDVisitWorkflowMixin
 from .signals import admission_required
 
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class EDVisitViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class EDVisitViewSet(EDVisitWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = EDVisitSerializer
     queryset = EDVisit.objects.all()

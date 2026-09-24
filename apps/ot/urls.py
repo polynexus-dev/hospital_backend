@@ -20,3 +20,9 @@ router.register(r"consumables", ConsumableUsageViewSet, basename="consumableusag
 router.register(r"implants", ImplantUsageViewSet, basename="implantusage")
 
 urlpatterns = router.urls
+
+from .workflow import ImplantRegisterViewSet, SurgicalSafetyChecklistViewSet  # noqa: E402
+
+router.register(r"safety-checklists", SurgicalSafetyChecklistViewSet, basename="surgicalsafetychecklist")
+router.register(r"implant-register", ImplantRegisterViewSet, basename="implantregister")
+urlpatterns = router.urls

@@ -13,6 +13,7 @@ from apps.opd.models import Encounter
 from apps.patients.models import Patient
 
 from .models import Admission, BedAllocation, DischargeSummary, DoctorProgressNote, WardTransfer
+from .workflow import AdmissionWorkflowMixin, admission_created, notify_departments
 from .serializers import (
     AdmissionSerializer,
     AdmitPatientSerializer,
@@ -36,7 +37,7 @@ from .services import (
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class AdmissionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class AdmissionViewSet(AdmissionWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"discharge": "ipd.change_admission"}
     serializer_class = AdmissionSerializer
@@ -66,6 +67,7 @@ class AdmissionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             )
         except BedUnavailable as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        admission_created(admission)
         return Response(AdmissionSerializer(admission).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
@@ -110,6 +112,7 @@ class WardTransferViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             approved = approve_ward_transfer(transfer, approved_by=request.user)
         except BedUnavailable as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        notify_departments(approved.admission, "Ward transfer")
         return Response(WardTransferSerializer(approved).data)
 
 

@@ -65,3 +65,17 @@ class Receivable(TenantScopedModel):
 
     def __str__(self):
         return f"Receivable ({self.source_type} #{self.source_id}): {self.amount} ({self.status})"
+
+
+from .models_fpm import (  # noqa: E402,F401
+    ClaimSettlement,
+    InsurancePolicy,
+    JournalEntry,
+    JournalLine,
+    LedgerAccount,
+    ServiceTariff,
+    SupplierNote,
+    Vendor,
+    VendorInvoice,
+    VendorPayment,
+)

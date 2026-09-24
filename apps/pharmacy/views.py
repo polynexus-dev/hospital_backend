@@ -8,6 +8,7 @@ from apps.core.viewsets import TenantScopedViewSetMixin
 from apps.patients.models import Prescription
 
 from .models import DispenseRecord, Medicine, MedicineBatch, StockAdjustment, Supplier
+from .workflow import BatchWorkflowMixin, MedicineWorkflowMixin, pre_dispense_checks
 from .serializers import (
     DispenseRecordSerializer,
     DispenseRequestSerializer,
@@ -31,7 +32,7 @@ class SupplierViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["name"]
 
 
-class MedicineViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class MedicineViewSet(MedicineWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = MedicineSerializer
     # prefetch_related: MedicineSerializer.get_total_available iterates
     # obj.batches.all() per row.
@@ -40,7 +41,7 @@ class MedicineViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["name", "generic_name"]
 
 
-class MedicineBatchViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class MedicineBatchViewSet(BatchWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = MedicineBatchSerializer
     # select_related: MedicineBatchSerializer.medicine_name (source="medicine.name")
     queryset = MedicineBatch.objects.select_related("medicine")
@@ -65,6 +66,12 @@ class DispenseRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         hospital = getattr(request.user, "hospital", None)
         batch = get_object_or_404(MedicineBatch, pk=data["batch"], hospital=hospital)
         prescription = get_object_or_404(Prescription, pk=data["prescription"], hospital=hospital) if data.get("prescription") else None
+        from apps.patients.models import Patient
+
+        patient = prescription.patient if prescription else (Patient.objects.filter(pk=data.get("patient"), hospital=hospital).first() if data.get("patient") else None)
+        extra, error = pre_dispense_checks(request, batch, patient)  # NABH MOM.2.c/f/g
+        if error is not None:
+            return error
 
         try:
             record = dispense_medicine(
@@ -72,6 +79,9 @@ class DispenseRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             )
         except InsufficientStock as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        for field, value in extra.items():
+            setattr(record, field, value)
+        record.save(update_fields=list(extra))
         return Response(DispenseRecordSerializer(record).data, status=status.HTTP_201_CREATED)
 
 

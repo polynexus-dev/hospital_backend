@@ -19,6 +19,8 @@ class Encounter(TenantScopedModel):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="encounter")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="encounters")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="encounters")
+    # NABH AAC.1.h — groups repeat visits for one condition.
+    episode = models.ForeignKey("clinical.EpisodeOfCare", on_delete=models.SET_NULL, null=True, blank=True, related_name="encounters")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="encounters")
 
     class Meta:

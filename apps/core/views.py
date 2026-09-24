@@ -3,13 +3,13 @@ import uuid
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import AuditLog, EmergencyAccessLog
+from .models import AuditLog, Department, EmergencyAccessLog
 from .payload_crypto import derive_shared_aes_key, get_server_public_key_b64
 from .permissions import CanReviewEmergencyAccess
 from .serializers import AuditLogSerializer, EmergencyAccessLogSerializer
@@ -148,3 +148,28 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 session_key_view = SessionKeyView.as_view()
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ["id", "name", "code", "description", "is_active"]
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    """Hospital departments — used by referral / roster / job-opening
+    pickers. Everyone signed in can read; writes are for administrators."""
+
+    serializer_class = DepartmentSerializer
+    search_fields = ["name", "code"]
+
+    def get_queryset(self):
+        return Department.objects.filter(hospital_id=self.request.user.hospital_id)
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), CanReviewEmergencyAccess()]
+
+    def perform_create(self, serializer):
+        serializer.save(hospital=self.request.user.hospital)

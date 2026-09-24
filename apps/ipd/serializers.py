@@ -13,9 +13,9 @@ class AdmissionSerializer(serializers.ModelSerializer):
         fields = [
             "id", "patient", "patient_name", "admitting_doctor", "doctor_name", "department",
             "bed", "bed_label", "source_encounter", "admission_type", "status", "admission_diagnosis",
-            "admitted_at", "discharged_at",
+            "admitted_at", "discharged_at", "care_team", "admission_checklist", "package", "expected_discharge_date", "discharge_initiated_at",
         ]
-        read_only_fields = ["id", "bed", "status", "admitted_at", "discharged_at"]
+        read_only_fields = ["id", "bed", "status", "admitted_at", "discharged_at", "discharge_initiated_at"]
 
 
 class AdmitPatientSerializer(serializers.Serializer):

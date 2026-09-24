@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from apps.core.permissions import ActionPermissionRequired
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 from .models import Item, ItemCategory, POItem, PurchaseOrder, StockLevel, StockTransaction
+from .procurement import PurchaseOrderApprovalMixin
 from .serializers import (
     ItemCategorySerializer,
     ItemSerializer,
@@ -76,7 +77,7 @@ class StockLevelViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, view
         self._log("create", serializer.instance)
 
 
-class PurchaseOrderViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PurchaseOrderViewSet(PurchaseOrderApprovalMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, ActionPermissionRequired]
     action_permissions = {
         "list": "inventory.view_purchaseorder",
@@ -85,6 +86,7 @@ class PurchaseOrderViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, v
         "update": "inventory.change_purchaseorder",
         "partial_update": "inventory.change_purchaseorder",
         "add_item": "inventory.change_purchaseorder",
+        "approve": "inventory.change_purchaseorder",
     }
     serializer_class = PurchaseOrderSerializer
     # prefetch_related: PurchaseOrderSerializer.po_items (reverse FK, many=True),

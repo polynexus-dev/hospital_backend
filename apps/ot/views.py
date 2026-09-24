@@ -15,6 +15,7 @@ from .models import (
     PreOpChecklist,
     SurgeryRequest,
 )
+from .workflow import OTScheduleWorkflowMixin
 from .serializers import (
     AnaesthesiaRecordSerializer,
     ConsumableUsageSerializer,
@@ -39,7 +40,7 @@ class SurgeryRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.save(hospital=hospital, requested_by=self.request.user)
 
 
-class OTScheduleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class OTScheduleViewSet(OTScheduleWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = OTScheduleSerializer
     queryset = OTSchedule.objects.all()

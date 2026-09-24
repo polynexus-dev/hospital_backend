@@ -98,3 +98,19 @@ class Shift(TenantScopedModel):
 
     def __str__(self):
         return f"Shift ({self.shift_type}) on {self.shift_date} for {self.employee}"
+
+
+from .models_hrm import (  # noqa: E402,F401
+    Appraisal,
+    Candidate,
+    DutyRule,
+    ExitRequest,
+    JobOpening,
+    PayrollRun,
+    Payslip,
+    RosterPublication,
+    SalaryStructure,
+    StaffProfile,
+    TrainingAttendance,
+    TrainingProgram,
+)

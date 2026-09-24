@@ -20,6 +20,30 @@ class EDVisit(TenantScopedModel):
     chief_complaint = models.TextField(blank=True)
     arrived_at = models.DateTimeField(default=timezone.now)
 
+    # COP.4.a — ED registration details (patients may arrive unidentified).
+    mode_of_arrival = models.CharField(max_length=20, blank=True, help_text="walk_in | ambulance | referred | police")
+    brought_by = models.CharField(max_length=150, blank=True)
+    is_unidentified = models.BooleanField(default=False)
+    ambulance_trip = models.ForeignKey("support_services.AmbulanceTrip", on_delete=models.SET_NULL, null=True, blank=True, related_name="ed_visits")
+    disposition_at = models.DateTimeField(null=True, blank=True)
+
+    # COP.4.b — medico-legal case.
+    is_mlc = models.BooleanField(default=False)
+    mlc_number = models.CharField(max_length=40, blank=True, editable=False)
+    mlc_type = models.CharField(max_length=40, blank=True, help_text="RTA | assault | burns | poisoning | fall | hanging | sexual_assault | other")
+    police_station = models.CharField(max_length=150, blank=True)
+    police_intimated_at = models.DateTimeField(null=True, blank=True)
+    police_officer_name = models.CharField(max_length=150, blank=True)
+    injuries_description = models.TextField(blank=True)
+    mlc_checklist = models.JSONField(default=dict, blank=True)
+    mlc_marked_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    mlc_marked_at = models.DateTimeField(null=True, blank=True)
+
+    MLC_CHECKLIST_ITEMS = [
+        "police_intimation_sent", "injury_certificate_prepared", "clothing_and_samples_preserved",
+        "identification_marks_recorded", "consent_for_examination", "photographs_taken_if_indicated", "dying_declaration_arranged_if_needed",
+    ]
+
     class Meta:
         ordering = ["-arrived_at"]
 

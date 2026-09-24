@@ -193,3 +193,52 @@ class PaperlessRegistrationView(APIView):
         appointment.consent_captured_at = timezone.now()
         appointment.save(update_fields=["consent_captured", "consent_captured_at"])
         return Response(AppointmentSerializer(appointment).data)
+
+
+
+def _doctor_schedule(doctor, day):
+    from .models import Slot
+
+    rows = []
+    for slot in Slot.objects.filter(doctor=doctor, date=day).order_by("start_time").select_related("appointment__patient"):
+        appt = getattr(slot, "appointment", None)
+        rows.append({
+            "start": slot.start_time.strftime("%H:%M"), "end": slot.end_time.strftime("%H:%M"), "blocked": slot.is_blocked,
+            "patient": appt.patient.full_name if appt else None, "uhid": appt.patient.uhid if appt else None,
+            "status": appt.status if appt else ("blocked" if slot.is_blocked else "free"), "token": appt.queue_token if appt else None,
+        })
+    return rows
+
+
+class DoctorScheduleView(APIView):
+    """GET /doctors/<id>/schedule/?date=YYYY-MM-DD[&output=pdf]"""
+
+    def get(self, request, pk):
+        from datetime import date as date_cls
+
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        from .models import Doctor
+
+        doctor = Doctor.objects.filter(pk=pk, hospital_id=request.user.hospital_id).first()
+        if doctor is None:
+            return Response({"detail": "Not found."}, status=404)
+        try:
+            day = date_cls.fromisoformat(request.query_params["date"]) if request.query_params.get("date") else timezone.localdate()
+        except ValueError:
+            return Response({"date": "YYYY-MM-DD"}, status=400)
+        rows = _doctor_schedule(doctor, day)
+        if request.query_params.get("output") != "pdf":
+            return Response({"doctor": doctor.name, "date": day, "slots": rows})
+        import io
+
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Table
+
+        buf = io.BytesIO()
+        styles = getSampleStyleSheet()
+        data = [["Time", "Token", "Patient", "UHID", "Status"]] + [[f"{r['start']}–{r['end']}", r["token"] or "", r["patient"] or "", r["uhid"] or "", r["status"]] for r in rows]
+        SimpleDocTemplate(buf, pagesize=A4).build([Paragraph(f"{doctor.name} — schedule for {day:%d %b %Y}", styles["Title"]), Table(data, repeatRows=1)])
+        return HttpResponse(buf.getvalue(), content_type="application/pdf")

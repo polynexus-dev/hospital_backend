@@ -73,6 +73,19 @@ def test_radiology_order_api_create_stamps_ordered_by(auth_client, user, patient
     assert order.status == RadiologyOrder.Status.ORDERED
 
 
+@pytest.mark.django_db
+def test_new_radiology_order_alerts_the_radiology_department(auth_client, patient, procedure):
+    """AAC.4.c"""
+    from apps.clinical.models import ClinicalAlert
+
+    response = auth_client.post("/api/v1/radiology/orders/", {"patient": patient.id, "procedure": procedure.id, "priority": "stat"}, format="json")
+    assert response.status_code == 201
+    alert = ClinicalAlert.objects.get(alert_type="new_order", object_id=str(response.data["id"]))
+    assert alert.target_department == "radiology"
+    assert alert.severity == "warning"
+    assert "Chest X-Ray" in alert.title
+
+
 # --- RadiologyReport: creation, order status sync, verify-locking, RBAC --
 
 @pytest.mark.django_db

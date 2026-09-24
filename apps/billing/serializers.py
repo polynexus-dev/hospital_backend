@@ -6,8 +6,9 @@ from .models import Bill, BillItem, InsuranceClaim, Payment
 class BillItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillItem
-        fields = ["id", "description", "quantity", "unit_price", "total_price"]
-        read_only_fields = ["id", "total_price"]
+        fields = ["id", "description", "quantity", "unit_price", "total_price", "tariff", "hsn_sac", "gst_rate", "tax_amount",
+        ]
+        read_only_fields = ["id", "total_price", "tax_amount"]
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -44,6 +45,6 @@ class BillSerializer(serializers.ModelSerializer):
             "created_at",
             "items",
             "payments",
-            "insurance_claim",
+            "insurance_claim", "patient_category", "is_interim", "bill_number", "tax_amount",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount"]

@@ -101,6 +101,21 @@ class AuditedModelViewSetMixin:
         super().perform_create(serializer)
         self._log("create", serializer.instance)
 
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        # READ capture is opt-in per model via an AuditRule (DAC.2.c) —
+        # log_action drops it unless a rule asks for it.
+        instance = getattr(self, "_retrieved_instance", None)
+        if instance is not None:
+            self._log("read", instance)
+        return response
+
+    def get_object(self):
+        obj = super().get_object()
+        if getattr(self, "action", None) == "retrieve":
+            self._retrieved_instance = obj
+        return obj
+
     def perform_update(self, serializer):
         old = type(serializer.instance).objects.get(pk=serializer.instance.pk)
         super().perform_update(serializer)

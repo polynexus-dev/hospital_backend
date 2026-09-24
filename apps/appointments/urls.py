@@ -20,3 +20,9 @@ router.register("waitlist", WaitlistViewSet, basename="waitlist")
 urlpatterns = router.urls + [
     path("registration/<str:token>/", PaperlessRegistrationView.as_view(), name="paperless-registration"),
 ]
+
+from django.urls import path as _path  # noqa: E402
+
+from .views import DoctorScheduleView  # noqa: E402
+
+urlpatterns = [_path("doctors/<int:pk>/schedule/", DoctorScheduleView.as_view(), name="doctor-schedule")] + list(urlpatterns)

@@ -49,6 +49,6 @@ class ICUAdmissionSerializer(serializers.ModelSerializer):
             "ventilator_logs",
             "progress_notes",
             "created_at",
-            "updated_at",
+            "updated_at", "admission_criteria_met", "decision_reason", "discharge_criteria_met", "severity_scale", "severity_inputs", "outcome", "is_eligible", "severity_score", "predicted_mortality", "is_readmission_48h",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "is_eligible", "severity_score", "predicted_mortality", "is_readmission_48h"]

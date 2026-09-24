@@ -20,7 +20,7 @@ FULL_ACCESS_APPS = [
     "facilities", "feedback", "finance", "hr", "icu", "integrations",
     "inventory", "ipd", "laboratory", "nursing", "opd", "ot",
     "packages", "patients", "pharmacy", "privacy", "radiology", "referrals",
-    "saas_admin", "telephony", "tpa",
+    "saas_admin", "telephony", "tpa", "governance", "clinical", "infection_control", "quality", "support_services", "queue_mgmt", "telemedicine", "portal", "mrd", "dietary", "oncology",
 ]
 
 # app_label -> permission verbs (subset of add/change/delete/view) granted
