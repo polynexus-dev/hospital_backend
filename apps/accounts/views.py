@@ -114,6 +114,10 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if not request.user.can_cross_tenant:
             return Response({"detail": "Only platform staff may switch hospitals."}, status=status.HTTP_403_FORBIDDEN)
 
+        reason = str(request.data.get("reason", "")).strip()
+        if len(reason) < 10:
+            return Response({"reason": "Provide a support-access reason of at least 10 characters."}, status=status.HTTP_400_BAD_REQUEST)
+
         hospital_id = request.data.get("hospital_id")
         if not hospital_id:
             return Response({"detail": "hospital_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -125,6 +129,13 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
         request.user.hospital = target_hospital
         request.user.save(update_fields=["hospital"])
+        gov.log_security_event(
+            SecurityEvent.EventType.SUPPORT_ACCESS,
+            request=request,
+            user=request.user,
+            hospital_id=target_hospital.pk,
+            details={"reason": reason, "access": "hospital_operations"},
+        )
         return Response(UserSerializer(request.user).data)
 
 

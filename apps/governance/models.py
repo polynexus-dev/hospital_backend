@@ -82,6 +82,7 @@ class SecurityEvent(models.Model):
         BACKUP = "backup", "Backup"
         ROLLBACK = "rollback", "Change rolled back"
         POLICY_CHANGED = "policy_changed", "Security policy changed"
+        SUPPORT_ACCESS = "support_access", "Platform support access"
 
     class Severity(models.TextChoices):
         INFO = "info", "Info"

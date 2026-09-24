@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 
 from apps.core.crud import ClinicalCRUDViewSet, TenantCRUDViewSet, model_serializer
 from apps.core.models import Amendment
+from apps.core.modules import require_module
 
 from .models import LabAnalyzer, LabOrder, LabReportAddendum, LabReportTemplate, LabResult, LabTest, OutsourcedLabTest, SampleCollection
 
@@ -318,6 +319,7 @@ class AnalyzerResultView(APIView):
         analyzer = LabAnalyzer.objects.filter(api_token=token, is_active=True).exclude(api_token="").first() if token else None
         if analyzer is None:
             return Response({"detail": "Invalid analyser token."}, status=401)
+        require_module(analyzer.hospital, "laboratory")
         raw = request.data.get("message") if isinstance(request.data, dict) else None
         raw = raw or request.body.decode("utf-8", errors="ignore")
         specimen, results = parse_hl7_oru(raw)

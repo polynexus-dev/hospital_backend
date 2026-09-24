@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.crud import ClinicalCRUDViewSet, model_serializer
+from apps.core.modules import require_module
 
 from .models import TeleConsultation
 
@@ -117,6 +118,7 @@ class PatientJoinView(APIView):
         c = self._consult(token)
         if c is None:
             return Response({"detail": "This link is invalid or has expired."}, status=404)
+        require_module(c.hospital, "telemedicine")
         return Response({
             "hospital": c.hospital.name, "doctor": c.doctor.name, "patient_first_name": c.patient.first_name,
             "scheduled_at": c.scheduled_at, "status": c.status, "consent_given": c.consent_given, "mode": c.mode,
@@ -126,6 +128,7 @@ class PatientJoinView(APIView):
         c = self._consult(token)
         if c is None:
             return Response({"detail": "This link is invalid or has expired."}, status=404)
+        require_module(c.hospital, "telemedicine")
         if c.status in (TeleConsultation.Status.COMPLETED, TeleConsultation.Status.CANCELLED):
             return Response({"detail": f"This consultation is {c.get_status_display().lower()}."}, status=400)
         if not request.data.get("consent"):

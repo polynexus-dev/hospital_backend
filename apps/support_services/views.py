@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.crud import TenantCRUDViewSet, model_serializer
+from apps.core.modules import require_module
 
 from .models import (
     Ambulance,
@@ -122,6 +123,7 @@ class AmbulanceDeviceFeedView(APIView):
         amb = Ambulance.objects.filter(device_token=token).exclude(device_token="").first() if token else None
         if amb is None:
             return Response({"detail": "Invalid device token."}, status=401)
+        require_module(amb.hospital, "support_services")
         trip = AmbulanceTrip.objects.filter(ambulance=amb, status__in=["dispatched", "at_scene", "en_route"]).order_by("-requested_at").first()
         if trip is None:
             return Response({"detail": "No active trip."}, status=409)

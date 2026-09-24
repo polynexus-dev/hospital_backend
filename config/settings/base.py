@@ -149,6 +149,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.TenantMiddleware",
+    # Refuse API calls to modules the hospital hasn't licensed (after tenant resolution).
+    "apps.core.modules.ModuleAccessMiddleware",
     "apps.core.middleware.AuditMiddleware",
     "apps.governance.middleware.AccessDeniedLoggingMiddleware",
 ]

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.crud import TenantCRUDViewSet, model_serializer
+from apps.core.modules import require_module
 
 from .models import QueueDisplay, QueueToken, ServicePoint
 
@@ -180,6 +181,7 @@ class PublicQueueBoardView(APIView):
         display = QueueDisplay.objects.filter(key=key).first()
         if display is None:
             return Response({"detail": "Unknown display."}, status=404)
+        require_module(display.hospital, "queue")
         return Response({
             "display": display.name, "hospital": display.hospital.name, "announcement": display.announcement, "as_of": timezone.now(),
             "boards": [board_for(p) for p in display.service_points.filter(is_active=True)],

@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from apps.core.encryption import blind_index, normalize_phone
 from apps.core.models import Hospital
+from apps.core.modules import require_module
 from apps.patients.models import Patient
 
 from .models import PROM_PREM_INSTRUMENTS, CareInformation, PatientReportedMeasure
@@ -86,6 +87,7 @@ class RequestOTPView(APIView):
         mobile = str(request.data.get("mobile", "")).strip()
         if hospital is None or not mobile:
             return Response({"detail": "hospital and mobile are required."}, status=400)
+        require_module(hospital, "portal")
         # Same response whether or not the number is registered — the
         # portal must not become a lookup oracle for who's a patient.
         if Patient.objects.filter(hospital=hospital).by_mobile(mobile).exists():
@@ -105,6 +107,7 @@ class VerifyOTPView(APIView):
         mobile = str(request.data.get("mobile", "")).strip()
         if hospital is None:
             return Response({"detail": "Unknown hospital."}, status=400)
+        require_module(hospital, "portal")
         ok, err = verify_otp(hospital, mobile, request.data.get("otp", ""), purpose="portal")
         if not ok:
             return Response({"otp": err}, status=400)
