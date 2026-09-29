@@ -15,6 +15,10 @@ from apps.integrations.models import HISBillingRecord
 from apps.patients.models import Patient
 from apps.telephony.models import Call
 from django.contrib.contenttypes.models import ContentType
+from apps.facilities.models import Bed, Room, Ward
+from apps.ipd.models import Admission
+from apps.icu.models import ICUAdmission
+from apps.ot.models import OTSchedule, SurgeryRequest
 
 
 def _teardown(instance):

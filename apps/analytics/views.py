@@ -73,6 +73,16 @@ class ReminderDeliverySummaryView(BaseReportView):
         return {"rows": services.reminder_delivery_summary(hospital, start, end)}
 
 
+class ICUOccupancyView(BaseReportView):
+    def build_report(self, hospital, start, end):
+        return services.icu_occupancy(hospital, start, end)
+
+
+class OTUtilisationView(BaseReportView):
+    def build_report(self, hospital, start, end):
+        return services.ot_utilisation(hospital, start, end)
+
+
 class DailyMISPreviewView(APIView):
     """Lets the front desk / owner preview MIS for today or any requested window."""
 
