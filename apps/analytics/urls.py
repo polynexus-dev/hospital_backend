@@ -10,6 +10,8 @@ from .views import (
     EnquiryFunnelView,
     NoShowEffectivenessView,
     ReminderDeliverySummaryView,
+    ICUOccupancyView,
+    OTUtilisationView,
     RevenueBySourceView,
     MISExportView,
 )
@@ -26,6 +28,8 @@ urlpatterns = router.urls + [
     path("reports/revenue-by-source/", RevenueBySourceView.as_view(), name="report-revenue-by-source"),
     path("reports/doctor-revenue/", DoctorRevenueView.as_view(), name="report-doctor-revenue"),
     path("reports/reminder-delivery/", ReminderDeliverySummaryView.as_view(), name="report-reminder-delivery"),
+    path("reports/icu-occupancy/", ICUOccupancyView.as_view(), name="report-icu-occupancy"),
+    path("reports/ot-utilisation/", OTUtilisationView.as_view(), name="report-ot-utilisation"),
     path("reports/mis-export/", MISExportView.as_view(), name="report-mis-export"),
 ]
 

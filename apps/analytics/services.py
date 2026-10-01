@@ -23,6 +23,79 @@ def _today_range():
     return start, start + timedelta(days=1)
 
 
+def icu_occupancy(hospital, start=None, end=None):
+    """Current ICU capacity, scoped to a hospital.
+
+    ``start`` and ``end`` are accepted for the shared report interface, but
+    occupancy is intentionally a point-in-time operational metric.
+    """
+    from apps.facilities.models import Bed
+    from apps.icu.models import ICUAdmission
+
+    icu_beds = Bed.objects.filter(
+        hospital=hospital,
+        bed_type__in=[Bed.BedType.ICU, Bed.BedType.VENTILATOR],
+        room__is_active=True,
+        room__ward__is_active=True,
+    )
+    total_beds = icu_beds.count()
+    occupied_beds = ICUAdmission.objects.filter(hospital=hospital, discharged_at__isnull=True).count()
+    ventilated_patients = ICUAdmission.objects.filter(
+        hospital=hospital, discharged_at__isnull=True, ventilator_required=True,
+    ).count()
+    return {
+        "total_beds": total_beds,
+        "occupied_beds": occupied_beds,
+        "available_beds": max(total_beds - occupied_beds, 0),
+        "occupancy_percent": round((occupied_beds / total_beds * 100) if total_beds else 0, 1),
+        "ventilated_patients": ventilated_patients,
+    }
+
+
+def ot_utilisation(hospital, start, end):
+    """OT-room utilisation for the requested window.
+
+    A hospital has no separate OT-room master yet, so capacity is calculated
+    from the distinct rooms that have schedules in the selected window. This
+    keeps the metric useful without inventing configuration data.
+    """
+    from apps.ot.models import OTSchedule
+
+    schedules = list(
+        OTSchedule.objects.filter(
+            hospital=hospital,
+            scheduled_start__lt=end,
+            scheduled_end__gt=start,
+        ).exclude(status=OTSchedule.Status.CANCELLED)
+    )
+    rooms = {schedule.operation_theatre_room for schedule in schedules}
+    window_minutes = max((end - start).total_seconds() / 60, 0)
+
+    def overlapping_minutes(interval_start, interval_end):
+        clipped_start = max(interval_start, start)
+        clipped_end = min(interval_end, end)
+        return max((clipped_end - clipped_start).total_seconds() / 60, 0)
+
+    scheduled_minutes = sum(
+        overlapping_minutes(schedule.scheduled_start, schedule.scheduled_end)
+        for schedule in schedules
+    )
+    actual_minutes = sum(
+        overlapping_minutes(schedule.actual_start, schedule.actual_end)
+        for schedule in schedules
+        if schedule.actual_start and schedule.actual_end
+    )
+    available_room_minutes = len(rooms) * window_minutes
+    return {
+        "scheduled_cases": len(schedules),
+        "completed_cases": sum(schedule.status == OTSchedule.Status.COMPLETED for schedule in schedules),
+        "scheduled_minutes": round(scheduled_minutes, 1),
+        "actual_minutes": round(actual_minutes, 1),
+        "available_room_minutes": round(available_room_minutes, 1),
+        "utilisation_percent": round((actual_minutes / available_room_minutes * 100) if available_room_minutes else 0, 1),
+    }
+
+
 def call_performance(hospital, start, end):
     """§1/§12 — received / answered / lost / average wait."""
     calls = Call.objects.filter(hospital=hospital, started_at__gte=start, started_at__lt=end)
