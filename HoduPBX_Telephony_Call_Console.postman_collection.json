@@ -1,0 +1,381 @@
+{
+  "info": {
+    "_postman_id": "b786f4a8-92e1-4c55-a6a9-8f0a4f5b2190",
+    "name": "HoduPBX & Hospital Call Console API",
+    "description": "Complete Postman collection for testing the HoduPBX Telephony integration, Call Console Screen-Pop, Inbound Webhooks, Outbound Click-to-Call, and direct HoduPBX server APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "hospital_id",
+      "value": "973bb98e-263c-4893-9337-d80e2f9b77db",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hodu_base_url",
+      "value": "https://ecallpbx.konnectcom.in/hodupbx_api/v1.4",
+      "type": "string"
+    },
+    {
+      "key": "hodu_token",
+      "value": "IPSj9rbBE3BxL1lL",
+      "type": "string"
+    },
+    {
+      "key": "did_number",
+      "value": "+917123101648",
+      "type": "string"
+    },
+    {
+      "key": "ext_number",
+      "value": "101",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login & Auto-Set JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access) {",
+                  "    pm.collectionVariables.set('jwt_token', jsonData.access);",
+                  "    console.log('JWT Token successfully set in collection variables.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@demo-hospital.example\",\n    \"password\": \"changeme123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login", ""]
+            },
+            "description": "Authenticates as the hospital administrator and automatically saves the JWT access token into the collection variable {{jwt_token}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Call Console (Hospital Backend)",
+      "item": [
+        {
+          "name": "Get Live Active Calls",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/calls/active-calls/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "calls", "active-calls", ""]
+            },
+            "description": "Queries live in-progress calls from HoduPBX for display on the agent's Call Console."
+          }
+        },
+        {
+          "name": "Screen-Pop Patient Lookup (by Phone)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/patients/lookup/?mobile=9820000001",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "patients", "lookup", ""],
+              "query": [
+                {
+                  "key": "mobile",
+                  "value": "9820000001",
+                  "description": "Incoming caller phone number"
+                }
+              ]
+            },
+            "description": "Instant phone number lookup used by the Call Console when an incoming call arrives to pop up the patient's record."
+          }
+        },
+        {
+          "name": "Initiate Outbound Click-to-Call",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"to_number\": \"9820000001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/calls/click-to-call/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "calls", "click-to-call", ""]
+            },
+            "description": "Triggers an outbound call from the receptionist's extension (101) to the patient's phone."
+          }
+        },
+        {
+          "name": "List All Call Records & Audio URLs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/calls/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "calls", ""]
+            },
+            "description": "Returns call history with timestamps, durations, caller numbers, and recording URLs."
+          }
+        },
+        {
+          "name": "List Callback Tasks (Missed Calls RNR Queue)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/callback-tasks/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "callback-tasks", ""]
+            },
+            "description": "Retrieves the queue of missed calls requiring agent callback within the 15-minute SLA."
+          }
+        },
+        {
+          "name": "Operator Productivity Snapshot",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/calls/operator-productivity/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "calls", "operator-productivity", ""]
+            },
+            "description": "Daily metrics on answered calls, missed calls, and average talk time per operator."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Telephony Webhook Ingress (Simulate HoduPBX)",
+      "item": [
+        {
+          "name": "Simulate Inbound Answered Call Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"caller\": \"9820000001\",\n    \"callee\": \"{{did_number}}\",\n    \"start_date\": \"2026-09-26 15:50:00\",\n    \"answer_date\": \"2026-09-26 15:50:05\",\n    \"end_date\": \"2026-09-26 15:52:30\",\n    \"duration\": \"145\",\n    \"status\": \"answered\",\n    \"callid\": \"hodu-sim-call-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhooks/telephony/{{hospital_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhooks", "telephony", "{{hospital_id}}", ""]
+            },
+            "description": "Simulates HoduPBX sending an answered incoming call event to your hospital's webhook."
+          }
+        },
+        {
+          "name": "Simulate Missed Call Webhook (RNR Trigger)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"caller\": \"9820000099\",\n    \"callee\": \"{{did_number}}\",\n    \"start_date\": \"2026-09-26 15:55:00\",\n    \"duration\": \"0\",\n    \"status\": \"no_answer\",\n    \"callid\": \"hodu-sim-missed-002\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhooks/telephony/{{hospital_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhooks", "telephony", "{{hospital_id}}", ""]
+            },
+            "description": "Simulates a missed call event from HoduPBX. Automatically creates a CallbackTask in the RNR queue."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Direct HoduPBX Server APIs",
+      "item": [
+        {
+          "name": "HoduPBX: Get Tenant Info",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token_id\": \"{{hodu_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{hodu_base_url}}/api/info/TENANT/getTenantInfo",
+              "host": ["{{hodu_base_url}}"],
+              "path": ["api", "info", "TENANT", "getTenantInfo"]
+            },
+            "description": "Queries live tenant balance, plan, and status directly from the HoduPBX server."
+          }
+        },
+        {
+          "name": "HoduPBX: Get Tenant DID Numbers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token_id\": \"{{hodu_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{hodu_base_url}}/api/info/TENANT/getTenantDid",
+              "host": ["{{hodu_base_url}}"],
+              "path": ["api", "info", "TENANT", "getTenantDid"]
+            },
+            "description": "Lists all assigned DIDs (+917123101648) on the HoduPBX tenant."
+          }
+        },
+        {
+          "name": "HoduPBX: Get Extensions List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token_id\": \"{{hodu_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{hodu_base_url}}/api/info/TENANT/getExtension",
+              "host": ["{{hodu_base_url}}"],
+              "path": ["api", "info", "TENANT", "getExtension"]
+            },
+            "description": "Lists all configured extensions (Extension 101) and their credentials."
+          }
+        },
+        {
+          "name": "HoduPBX: Live Active Calls",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token_id\": \"{{hodu_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{hodu_base_url}}/api/info/TENANT/activeCalls",
+              "host": ["{{hodu_base_url}}"],
+              "path": ["api", "info", "TENANT", "activeCalls"]
+            },
+            "description": "Queries live connected phone calls directly on the HoduPBX server."
+          }
+        },
+        {
+          "name": "HoduPBX: Get Call Recording URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token_id\": \"{{hodu_token}}\",\n    \"callid\": \"49634\"\n}"
+            },
+            "url": {
+              "raw": "{{hodu_base_url}}/api/info/TENANT/recordingPath",
+              "host": ["{{hodu_base_url}}"],
+              "path": ["api", "info", "TENANT", "recordingPath"]
+            },
+            "description": "Fetches the direct .wav audio recording link for a specific HoduPBX call ID."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -25,7 +25,28 @@ class RoomSerializer(serializers.ModelSerializer):
 
 
 class BedSerializer(serializers.ModelSerializer):
+    patient = serializers.SerializerMethodField()
+
     class Meta:
         model = Bed
-        fields = ["id", "room", "bed_number", "bed_type", "status", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        fields = ["id", "room", "bed_number", "bed_type", "status", "patient", "created_at"]
+        read_only_fields = ["id", "created_at", "patient"]
+
+    def get_patient(self, obj):
+        if obj.current_admission and getattr(obj.current_admission, "patient", None):
+            patient = obj.current_admission.patient
+            return {
+                "id": patient.id,
+                "name": patient.full_name,
+                "uhid": patient.uhid,
+                "admission_id": obj.current_admission.id
+            }
+        if getattr(obj, "reserved_for", None):
+            patient = obj.reserved_for
+            return {
+                "id": patient.id,
+                "name": patient.full_name,
+                "uhid": patient.uhid,
+                "admission_id": None
+            }
+        return None

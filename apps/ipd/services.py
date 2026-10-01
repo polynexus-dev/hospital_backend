@@ -21,8 +21,11 @@ def admit_patient(*, hospital, patient, admitting_doctor, bed, admission_type=Ad
     slot-locking — two simultaneous admission requests for the same bed
     can't both succeed."""
     locked_bed = Bed.objects.select_for_update().get(pk=bed.pk)
-    if locked_bed.status != Bed.Status.AVAILABLE:
+    if locked_bed.status not in (Bed.Status.AVAILABLE, Bed.Status.RESERVED):
         raise BedUnavailable(f"Bed {locked_bed} is not available (status: {locked_bed.get_status_display()}).")
+
+    if locked_bed.status == Bed.Status.RESERVED and getattr(locked_bed, "reserved_for_id", None) not in (None, patient.id):
+        raise BedUnavailable(f"Bed {locked_bed} is reserved for another patient.")
 
     admission = Admission.objects.create(
         hospital=hospital, patient=patient, admitting_doctor=admitting_doctor, department=department,

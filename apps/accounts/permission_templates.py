@@ -30,10 +30,16 @@ PERMISSION_TEMPLATES = {
     "admin": {app: ["add", "change", "delete", "view"] for app in FULL_ACCESS_APPS},
     "hospital_administrator": {app: ["add", "change", "delete", "view"] for app in FULL_ACCESS_APPS},
     "doctor": {
-        "patients": ["view", "add", "change"],
-        "abdm": ["view"],
-        "appointments": ["view", "add", "change"],
-        "opd": ["view", "add", "change"],
+        # Full CRUD on patients — covers PatientViewSet, DocumentViewSet,
+        # and PrescriptionViewSet (which also needs RequiresClinicalDetailPermission
+        # satisfied via the "patients.access_clinical_detail" perm added below by
+        # CLINICAL_ROLES).  delete is intentional: OPD doctors may need to
+        # remove a duplicate record or an incorrectly uploaded document.
+        "patients": ["view", "add", "change", "delete"],
+        "clinical": ["view", "add", "change", "delete"],
+        "abdm": ["view", "add", "change"],
+        "appointments": ["view", "add", "change", "delete"],
+        "opd": ["view", "add", "change", "delete"],
         "ipd": ["view", "add", "change"],
         "nursing": ["view", "add", "change"],
         "laboratory": ["view", "add", "change"],
@@ -46,7 +52,7 @@ PERMISSION_TEMPLATES = {
         "bloodbank": ["view", "add", "change"],
         "communications": ["view", "add"],
         "feedback": ["view"],
-        "referrals": ["view"],
+        "referrals": ["view", "add", "change"],
         "packages": ["view"],
         "tpa": ["view"],
         "schemes": ["view"],

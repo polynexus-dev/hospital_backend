@@ -303,3 +303,178 @@ def test_telephony_webhook_answered_call_does_not_trigger_missed_call_workflow(a
     api_client.post(f"/api/v1/webhooks/telephony/{hospital.id}/", payload, format="json")
 
     assert not WorkflowRun.objects.filter(hospital=hospital, workflow=workflow).exists()
+
+
+# --- HoduPBX Provider Adapter & Integration Tests ----------------------------
+
+from unittest.mock import patch, MagicMock
+from apps.telephony.adapters import HoduPBXProvider
+
+
+def test_hodupbx_adapter_normalize_webhook_payload():
+    provider = HoduPBXProvider()
+    hodu_payload = {
+        "tenant_id": "1000",
+        "caller": "9820000020",
+        "callee": "101",
+        "start_date": "2026-09-26 10:00:00",
+        "answer_date": "2026-09-26 10:00:05",
+        "end_date": "2026-09-26 10:02:15",
+        "duration": "130",
+        "status": "answered",
+        "callid": "hodu-call-999",
+    }
+    normalized = provider.normalize_webhook_payload(hodu_payload)
+
+    assert normalized["direction"] == "inbound"
+    assert normalized["status"] == "answered"
+    assert normalized["from_number"] == "9820000020"
+    assert normalized["to_number"] == "101"
+    assert normalized["duration_seconds"] == 130
+    assert normalized["provider_call_id"] == "hodu-call-999"
+    assert normalized["started_at"] is not None
+    assert normalized["answered_at"] is not None
+    assert normalized["ended_at"] is not None
+
+
+def test_hodupbx_adapter_normalize_missed_status():
+    provider = HoduPBXProvider()
+    hodu_payload = {
+        "caller": "9820000021",
+        "callee": "102",
+        "start_date": "2026-09-26 11:00:00",
+        "duration": "0",
+        "status": "no_answer",
+        "callid": "hodu-missed-101",
+    }
+    normalized = provider.normalize_webhook_payload(hodu_payload)
+
+    assert normalized["status"] == "missed"
+    assert normalized["from_number"] == "9820000021"
+    assert normalized["duration_seconds"] == 0
+    assert normalized["provider_call_id"] == "hodu-missed-101"
+
+
+@patch("requests.post")
+def test_hodupbx_adapter_initiate_call_success(mock_post, settings):
+    settings.HODUPBX_BASE_URL = "https://pbx.hospital.example/hodupbx_api/v1.4"
+    settings.HODUPBX_TOKEN_ID = "mock-token-123"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "status": "SUCCESS",
+        "message": "Extension Speeddial Updated Successfully.",
+        "data": {"ext_id": "722"},
+    }
+    mock_post.return_value = mock_resp
+
+    provider = HoduPBXProvider()
+    call_id = provider.initiate_call(from_number="101", to_number="9820000022")
+
+    assert call_id == "722"
+    mock_post.assert_called_once()
+    assert "/api/info/speeddial" in mock_post.call_args[0][0]
+
+
+@patch("requests.post")
+def test_hodupbx_adapter_get_recording_url(mock_post, settings):
+    settings.HODUPBX_BASE_URL = "https://pbx.hospital.example/hodupbx_api/v1.4"
+    settings.HODUPBX_TOKEN_ID = "mock-token-123"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "status": "SUCCESS",
+        "data": {
+            "recordingPath": "https://pbx.hospital.example/recordings/call-999.wav"
+        },
+    }
+    mock_post.return_value = mock_resp
+
+    provider = HoduPBXProvider()
+    rec_url = provider.get_recording_url("call-999")
+
+    assert rec_url == "https://pbx.hospital.example/recordings/call-999.wav"
+    mock_post.assert_called_once()
+    assert "/api/info/TENANT/recordingPath" in mock_post.call_args[0][0]
+
+
+@patch("requests.post")
+def test_hodupbx_adapter_get_active_calls(mock_post, settings):
+    settings.HODUPBX_BASE_URL = "https://pbx.hospital.example/hodupbx_api/v1.4"
+    settings.HODUPBX_TOKEN_ID = "mock-token-123"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "status": "SUCCESS",
+        "data": [
+            {"caller_number": "9820000023", "callee_number": "101", "start_time": "2026-09-26 10:03:59"}
+        ],
+    }
+    mock_post.return_value = mock_resp
+
+    provider = HoduPBXProvider()
+    active = provider.get_active_calls()
+
+    assert len(active) == 1
+    assert active[0]["caller_number"] == "9820000023"
+
+
+@patch("requests.post")
+def test_hodupbx_adapter_subscribe_extension(mock_post, settings):
+    settings.HODUPBX_BASE_URL = "https://pbx.hospital.example/hodupbx_api/v1.4"
+    settings.HODUPBX_TOKEN_ID = "mock-token-123"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"status": "SUCCESS", "message": "Extension Subscribed Successfully."}
+    mock_post.return_value = mock_resp
+
+    provider = HoduPBXProvider()
+    success = provider.subscribe_extension("101", "pass123")
+
+    assert success is True
+    mock_post.assert_called_once()
+    assert "/api/info/crmSubscribe" in mock_post.call_args[0][0]
+
+
+@pytest.mark.django_db
+def test_telephony_webhook_with_hodupbx_provider(api_client, hospital, settings):
+    settings.TELEPHONY_PROVIDER = "hodupbx"
+
+    hodu_webhook_body = {
+        "caller": "9820000099",
+        "callee": "105",
+        "start_date": "2026-09-26 12:00:00",
+        "answer_date": "2026-09-26 12:00:05",
+        "end_date": "2026-09-26 12:03:00",
+        "duration": "175",
+        "status": "answered",
+        "callid": "hodu-cdr-555",
+    }
+
+    response = api_client.post(
+        f"/api/v1/webhooks/telephony/{hospital.id}/",
+        hodu_webhook_body,
+        format="json",
+    )
+
+    assert response.status_code == 201
+    call_record = Call.objects.get(hospital=hospital, provider_call_id="hodu-cdr-555")
+    assert call_record.from_number == "9820000099"
+    assert call_record.to_number == "105"
+    assert call_record.duration_seconds == 175
+    assert call_record.status == Call.Status.ANSWERED
+
+
+@pytest.mark.django_db
+@patch("apps.telephony.adapters.HoduPBXProvider.get_active_calls")
+def test_call_viewset_active_calls_endpoint(mock_active, auth_client, settings):
+    settings.TELEPHONY_PROVIDER = "hodupbx"
+    mock_active.return_value = [
+        {"caller_number": "9820000088", "callee_number": "101", "start_time": "2026-09-26 12:30:00"}
+    ]
+
+    response = auth_client.get("/api/v1/calls/active-calls/")
+    assert response.status_code == 200
+    assert len(response.data) == 1
+    assert response.data[0]["caller_number"] == "9820000088"
+

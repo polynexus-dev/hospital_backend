@@ -393,20 +393,32 @@ OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=6)
 # `configured rate x worker count` — not the hard ceiling it's meant to be.
 # Same Redis instance Celery already requires, separate logical DB (1, not
 # Celery's 0) so cache keys and broker traffic don't collide.
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env("CACHE_URL", default="redis://localhost:6379/1"),
-        # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
-        # attempting a HELLO handshake (RESP3) on connect, which errors
-        # with "unknown command 'HELLO'" against any Redis server older
-        # than 6.0 (verified against this project's own local dev Redis,
-        # 3.0.504) — RESP2 is a strict subset every version understands,
-        # including whatever a given hospital's ops team ends up running,
-        # so there's no reason to require RESP3 here.
-        "OPTIONS": {"protocol": 2},
+#
+# Dev shortcut: set CACHE_URL=locmem:// in .env to skip Redis entirely.
+# LocMemCache is fine for a single-worker dev server; just note that throttle
+# counters won't be shared across workers if you spin up more than one.
+_CACHE_URL = env("CACHE_URL", default="redis://localhost:6379/1")
+if _CACHE_URL.startswith("locmem://"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _CACHE_URL,
+            # Forces the older RESP2 wire protocol. redis-py 5+ defaults to
+            # attempting a HELLO handshake (RESP3) on connect, which errors
+            # with "unknown command 'HELLO'" against any Redis server older
+            # than 6.0 (verified against this project's own local dev Redis,
+            # 3.0.504) — RESP2 is a strict subset every version understands,
+            # including whatever a given hospital's ops team ends up running,
+            # so there's no reason to require RESP3 here.
+            "OPTIONS": {"protocol": 2},
+        }
+    }
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -552,7 +564,15 @@ WHATSAPP_ORIGINATION_PHONE_NUMBER_ID = env("WHATSAPP_ORIGINATION_PHONE_NUMBER_ID
 WHATSAPP_META_API_VERSION = env("WHATSAPP_META_API_VERSION", default="v19.0")
 
 # Telephony provider selection — see apps.telephony.adapters.
-TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="stub")
+TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="hodupbx")
+HODUPBX_BASE_URL = env("HODUPBX_BASE_URL", default="https://ecallpbx.konnectcom.in/hodupbx_api/v1.4").rstrip("/")
+HODUPBX_TOKEN_ID = env("HODUPBX_TOKEN_ID", default="IPSj9rbBE3BxL1lL")
+HODUPBX_TENANT_ID = env("HODUPBX_TENANT_ID", default="1048")
+# Extension used for click-to-call (agent's extension number)
+HODUPBX_DEFAULT_EXTENSION = env("HODUPBX_DEFAULT_EXTENSION", default="101")
+# MD5 hash of the extension's web password — required by /api/info/click2call
+HODUPBX_EXTENSION_PASSWORD_MD5 = env("HODUPBX_EXTENSION_PASSWORD_MD5", default="")
+
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")

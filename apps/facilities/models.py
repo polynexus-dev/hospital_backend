@@ -75,6 +75,7 @@ class Bed(TenantScopedModel):
     # (admit_patient / transfer_ward / discharge_patient) — never edited
     # directly, same discipline as Bed.status.
     current_admission = models.ForeignKey("ipd.Admission", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    reserved_for = models.ForeignKey("patients.Patient", on_delete=models.SET_NULL, null=True, blank=True, related_name="reserved_beds")
 
     class Meta:
         ordering = ["room__ward__name", "room__room_number", "bed_number"]
