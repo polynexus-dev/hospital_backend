@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: hospital_crm
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-hospital_crm}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -39,7 +39,7 @@ services:
       ALLOWED_HOSTS: ".hms.polynexus.in,localhost,127.0.0.1"
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -58,7 +58,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -79,7 +79,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
-      DATABASE_URL: postgres://postgres:postgres@db:5432/hospital_crm
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
