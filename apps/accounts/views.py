@@ -259,6 +259,34 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         target.refresh_from_db()
         return Response(UserSerializer(target).data)
 
+    @action(detail=True, methods=["post"], url_path="assign-role")
+    def assign_role_api(self, request, pk=None):
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+            
+        target = self.get_object()
+        role_id = request.data.get("role_id")
+        
+        from .models import Role, assign_role
+        
+        role = None
+        if role_id:
+            try:
+                # Ensure the role belongs to the same hospital as the user
+                # (or the platform admin if they are cross-tenant)
+                if target.hospital_id:
+                    role = Role.objects.get(id=role_id, hospital_id=target.hospital_id)
+                else:
+                    role = Role.objects.get(id=role_id)
+            except (Role.DoesNotExist, ValueError):
+                return Response({"role_id": ["Invalid role ID or role does not belong to this hospital."]}, status=status.HTTP_400_BAD_REQUEST)
+                
+        assign_role(target, role)
+        
+        return Response(UserSerializer(target).data)
+
+
     @action(detail=False, methods=["post"], url_path="verify-password", permission_classes=[IsAuthenticated])
     def verify_password(self, request):
         """Unlocks the auto-locked screen (DOM.4.b) — re-authenticates the
