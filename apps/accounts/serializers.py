@@ -202,7 +202,13 @@ class UserSerializer(serializers.ModelSerializer):
         # Password changes go through change_password / set_password
         # (history + audit), never a profile PATCH.
         validated_data.pop("password", None)
-        return super().update(instance, validated_data)
+        new_role = validated_data.get("role", None)
+        has_new_role = "role" in validated_data and new_role != instance.role
+        user = super().update(instance, validated_data)
+        if has_new_role:
+            from .models import assign_role
+            assign_role(user, new_role)
+        return user
 
     def get_password_expires_in_days(self, obj):
         from apps.governance.services import password_expires_in_days
