@@ -119,10 +119,19 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
     class Meta:
         model = Role
-        fields = ["id", "hospital", "department", "name", "description", "created_at"]
+        fields = ["id", "hospital", "department", "name", "description", "created_at", "permissions"]
         read_only_fields = ["hospital"]
+
+    def get_permissions(self, obj):
+        if not obj.group_id:
+            return []
+        return sorted([
+            f"{p.content_type.app_label}.{p.codename}"
+            for p in obj.group.permissions.select_related("content_type")
+        ])
 
 
 class UserSerializer(serializers.ModelSerializer):
