@@ -169,11 +169,12 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         hospital_id = request.data.get("hospital_id")
         if not hospital_id:
             return Response({"detail": "hospital_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        from django.core.exceptions import ValidationError
         from apps.core.models import Hospital
         try:
             target_hospital = Hospital.objects.get(id=hospital_id, is_active=True)
-        except Hospital.DoesNotExist:
-            return Response({"detail": "Hospital branch not found."}, status=status.HTTP_404_NOT_FOUND)
+        except (Hospital.DoesNotExist, ValidationError, ValueError):
+            return Response({"detail": "Hospital branch not found or invalid ID."}, status=status.HTTP_404_NOT_FOUND)
 
         request.user.hospital = target_hospital
         request.user.save(update_fields=["hospital"])
