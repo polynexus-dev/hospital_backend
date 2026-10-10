@@ -3,7 +3,10 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.settings import api_settings
 from rest_framework.views import APIView
+
+from apps.licensing.permissions import HasFeature
 
 from apps.core.viewsets import TenantScopedViewSetMixin
 from apps.patients.models import Patient, record_timeline_event
@@ -131,6 +134,10 @@ class InboundWebhookView(APIView):
         )
 
         # Trigger AI Auto-Reply for inbound WhatsApp/SMS messages
+        from apps.licensing.service import feature_enabled
+
+        if not feature_enabled("ai_assist"):
+            return Response({"inbound": MessageSerializer(message).data, "ai_auto_reply": None}, status=status.HTTP_201_CREATED)
         from .ai_chatbot import generate_ai_chat_response
         ai_reply = generate_ai_chat_response(
             prompt=body,
@@ -158,11 +165,14 @@ class InboundWebhookView(APIView):
 
 
 class AIChatbotView(APIView):
-    """Direct 24x7 Interactive Hospital Assistant endpoint. Deliberately
-    inherits the project-wide IsAuthenticated default (no AllowAny override)
+    """Direct 24x7 Interactive Hospital Assistant endpoint. Requires
+    authentication (the project-wide IsAuthenticated default, kept below)
     so TenantMiddleware can resolve `request.user.hospital` — without that,
     a Doctor/Slot query here would run unscoped and leak data across
-    hospitals (see apps.core.tenancy)."""
+    hospitals (see apps.core.tenancy). On-premise, also the AI assist
+    licence feature."""
+
+    permission_classes = [*api_settings.DEFAULT_PERMISSION_CLASSES, HasFeature("ai_assist")]
 
     def post(self, request):
         from .ai_chatbot import process_free_text_message, process_interactive_chat_action

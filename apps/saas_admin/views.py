@@ -257,7 +257,8 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
         d = params.validated_data
         try:
             record = issue_license(
-                hospital, issued_by=request.user, duration_days=d["duration_days"], enabled_modules=d["modules"],
+                hospital, issued_by=request.user, duration_days=d["duration_days"], features=d["features"],
+                deployment_id=str(d["deployment_id"] or ""), hardware_binding=d["hardware_binding"],
                 machine_fingerprint=d["machine_fingerprint"], max_active_users=d["max_users"], max_beds=d["max_beds"],
                 grace_period_days=d["grace_period_days"], tier=d["tier"],
             )

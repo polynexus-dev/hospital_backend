@@ -298,6 +298,10 @@ def _iso_timestamp() -> str:
 def get_abdm_gateway() -> ABDMGateway:
     gateways = {"stub": StubABDMGateway, "real": RealABDMGateway}
     gateway_cls = gateways.get(settings.ABDM_GATEWAY, StubABDMGateway)
+    from apps.licensing.service import outbound_allowed
+
+    if not outbound_allowed("api_access"):
+        gateway_cls = StubABDMGateway  # on-premise without API access: no calls to the national gateway
     return gateway_cls()
 
 

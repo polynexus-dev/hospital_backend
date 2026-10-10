@@ -193,6 +193,8 @@ class OnPremiseLicense(TimeStampedModel):
     expires_at = models.DateTimeField()
     grace_period_days = models.PositiveSmallIntegerField(default=14)
     enabled_modules = models.JSONField(default=list, blank=True)
+    features = models.JSONField(default=list, blank=True, help_text="Licence feature keys (apps.licensing.features).")
+    deployment_id = models.CharField(max_length=64, blank=True, help_text="The installation this licence works on.")
     max_active_users = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
     max_beds = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
     machine_fingerprint = models.CharField(max_length=128, help_text='SHA-256 from get_machine_fingerprint, or "*" for any machine.')

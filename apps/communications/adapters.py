@@ -114,6 +114,10 @@ _EMAIL_PROVIDERS = {"stub": StubEmailProvider}
 
 
 def get_whatsapp_provider() -> MessageProvider:
+    from apps.licensing.service import outbound_allowed
+
+    if not outbound_allowed("whatsapp"):
+        return StubWhatsAppProvider()  # on-premise without the WhatsApp feature: never leaves the building
     return _WHATSAPP_PROVIDERS.get(settings.WHATSAPP_PROVIDER, StubWhatsAppProvider)()
 
 

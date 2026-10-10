@@ -120,7 +120,7 @@ class OnPremiseLicenseSerializer(serializers.ModelSerializer):
         model = OnPremiseLicense
         fields = [
             "id", "hospital", "hospital_name", "license_id", "tier", "issued_at", "expires_at", "grace_period_days",
-            "enabled_modules", "max_active_users", "max_beds", "machine_fingerprint", "issued_by_email",
+            "features", "deployment_id", "enabled_modules", "max_active_users", "max_beds", "machine_fingerprint", "issued_by_email",
             "revoked_at", "revoke_reason", "status",
         ]
         read_only_fields = fields
@@ -136,22 +136,25 @@ class OnPremiseLicenseSerializer(serializers.ModelSerializer):
 class GenerateLicenseSerializer(serializers.Serializer):
     duration_days = serializers.IntegerField(min_value=1, max_value=3650, default=365)
     grace_period_days = serializers.IntegerField(min_value=0, max_value=90, default=14)
-    modules = serializers.ListField(child=serializers.CharField(), allow_empty=False)
-    machine_fingerprint = serializers.CharField(max_length=128)
+    features = serializers.ListField(child=serializers.CharField(), allow_empty=False)
+    deployment_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    hardware_binding = serializers.BooleanField(default=True)
+    machine_fingerprint = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
     max_users = serializers.IntegerField(min_value=0, default=0)
     max_beds = serializers.IntegerField(min_value=0, default=0)
     tier = serializers.ChoiceField(choices=TenantSubscription.Tier.choices, required=False, allow_blank=True, default="")
 
-    def validate_modules(self, value):
-        from apps.core.models import ALL_MODULES
+    def validate_features(self, value):
+        from apps.licensing.features import FEATURE_KEYS
 
-        unknown = sorted(set(value) - set(ALL_MODULES))
+        unknown = sorted(set(value) - set(FEATURE_KEYS))
         if unknown:
-            raise serializers.ValidationError(f"Unknown modules: {', '.join(unknown)}")
-        return sorted(set(value))
+            raise serializers.ValidationError(f"Unknown features: {', '.join(unknown)}")
+        return [f for f in FEATURE_KEYS if f in value]
 
-    def validate_machine_fingerprint(self, value):
-        value = value.strip().lower()
-        if value != "*" and (len(value) != 64 or any(c not in "0123456789abcdef" for c in value)):
-            raise serializers.ValidationError('Paste the 64-character fingerprint from get_machine_fingerprint, or "*" for any machine.')
-        return value
+    def validate(self, attrs):
+        fingerprint = attrs.get("machine_fingerprint", "").strip().lower()
+        if attrs["hardware_binding"] and fingerprint != "*" and (len(fingerprint) != 64 or any(c not in "0123456789abcdef" for c in fingerprint)):
+            raise serializers.ValidationError({"machine_fingerprint": 'Paste the 64-character fingerprint from get_machine_fingerprint, or "*" for any machine.'})
+        attrs["machine_fingerprint"] = fingerprint
+        return attrs

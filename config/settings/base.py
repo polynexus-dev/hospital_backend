@@ -32,6 +32,9 @@ if DEPLOYMENT_MODE not in ("saas", "on_premise"):
 # and an optional mount of the host's /etc and /sys so the machine
 # fingerprint identifies the server rather than the container.
 LICENSE_FILE_PATH = env.str("LICENSE_FILE_PATH", default=str(BASE_DIR / "license" / "hospital.lic"))
+# On-premise: identifies this installation; a licence carrying a
+# deployment_id only works where it matches. Set by the installer.
+DEPLOYMENT_ID = env.str("DEPLOYMENT_ID", default="")
 LICENSE_HOST_ROOT = env.str("LICENSE_HOST_ROOT", default="")
 LICENSE_CACHE_SECONDS = env.int("LICENSE_CACHE_SECONDS", default=600)
 LICENSE_SUPPORT_EMAIL = env.str("LICENSE_SUPPORT_EMAIL", default="support@polynexus.in")
@@ -278,7 +281,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = env.str("MEDIA_ROOT", default=str(BASE_DIR / "media"))  # a volume in Docker
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -457,6 +460,11 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_BEAT_SCHEDULE = {
+    # On-premise: re-verify the installed licence (no-op in SaaS mode).
+    "check-license": {
+        "task": "apps.licensing.tasks.check_license",
+        "schedule": 3600.0,  # hourly
+    },
     # §1 — missed-call / RNR chase list escalation.
     "escalate-overdue-callbacks": {
         "task": "apps.telephony.tasks.escalate_overdue_callbacks",

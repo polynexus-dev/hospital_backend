@@ -262,5 +262,9 @@ def get_telephony_provider() -> TelephonyProvider:
         "hodupbx": HoduPBXProvider,
     }
     provider_cls = providers.get(settings.TELEPHONY_PROVIDER, StubTelephonyProvider)
+    from apps.licensing.service import outbound_allowed
+
+    if not outbound_allowed("ivr"):
+        provider_cls = StubTelephonyProvider  # on-premise without the IVR feature: no PBX connection
     return provider_cls()
 
