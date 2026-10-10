@@ -22,6 +22,27 @@ function Write-Utf8NoBom($path, $text) { [System.IO.File]::WriteAllText((Join-Pa
 function Random-Bytes($n) { $b = New-Object byte[] $n; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); return ,$b }
 function Hex($n) { -join ((Random-Bytes $n) | ForEach-Object { $_.ToString("x2") }) }
 function B64($n) { [Convert]::ToBase64String((Random-Bytes $n)) }
+function Test-PortFree($port) {
+    try { $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, [int]$port); $l.Start(); $l.Stop(); return $true } catch { return $false }
+}
+function Set-EnvValue($name, $value) {
+    $text = (Get-Content .env -Raw) -replace "(?m)^$name=.*$", "$name=$value"
+    Write-Utf8NoBom ".env" ($text -replace "`r`n", "`n")
+}
+# Use the configured port if it's free (or already ours), else the first free fallback.
+function Select-Port($name, $fallbacks) {
+    $current = $envVars[$name]
+    if ((docker compose -f docker-compose.yml ps -q nginx 2>$null) -or (Test-PortFree $current)) { return $current }
+    foreach ($p in $fallbacks) {
+        if (Test-PortFree $p) {
+            Write-Host "Port $current is in use on this PC; using $p instead." -ForegroundColor Yellow
+            Set-EnvValue $name $p
+            $envVars[$name] = "$p"
+            return "$p"
+        }
+    }
+    Die "Ports $current and $($fallbacks -join ', ') are all in use. Set $name in .env to a free port and run this again."
+}
 
 # --- 1. Prerequisites ---------------------------------------------------------
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { Die "Docker is not installed. Install Docker Desktop (Linux containers)." }
@@ -100,8 +121,11 @@ Say "Activating the licence (you'll be asked for the administrator password)"
 Compose run --rm -e RUN_MIGRATIONS=0 web python manage.py setup_onprem --license /app/config/license.lic --admin-email $adminEmail
 
 # --- 7. Start -----------------------------------------------------------------
+$httpPort = Select-Port "HTTP_PORT" @(8080, 8081, 8000, 8888)
+$httpsPort = Select-Port "HTTPS_PORT" @(8443, 9443)
 Say "Starting all services"
 Compose up -d
 $firstHost = ($envVars["ALLOWED_HOSTS"] -split ",")[0]
-Write-Host "`nDone. Open http://$firstHost/ and sign in as $adminEmail."
+$portSuffix = if ($httpPort -eq "80") { "" } else { ":$httpPort" }
+Write-Host "`nDone. Open http://localhost$portSuffix/ on this PC, or http://$firstHost$portSuffix/ from the network, and sign in as $adminEmail."
 Write-Host "Status: docker compose ps    Logs: docker compose logs -f web"

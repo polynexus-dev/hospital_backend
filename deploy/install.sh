@@ -80,9 +80,29 @@ say "Activating the licence (you'll be asked for the administrator password)"
 $COMPOSE run --rm -e RUN_MIGRATIONS=0 web python manage.py setup_onprem --license /app/config/license.lic --admin-email "$ADMIN_EMAIL"
 
 # --- 6. Start -----------------------------------------------------------------
+port_free() { ! (echo >"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+# Use the configured port if it's free (or already ours), else the first free fallback.
+select_port() {
+  local name=$1; shift
+  local current=${!name}
+  if [ -n "$($COMPOSE ps -q nginx 2>/dev/null)" ] || port_free "$current"; then return; fi
+  for p in "$@"; do
+    if port_free "$p"; then
+      echo "Port $current is in use on this server; using $p instead."
+      sed -i "s/^$name=.*/$name=$p/" .env
+      printf -v "$name" '%s' "$p"
+      return
+    fi
+  done
+  die "Ports $current and $* are all in use. Set $name in .env to a free port and run this again."
+}
+select_port HTTP_PORT 8080 8081 8000 8888
+select_port HTTPS_PORT 8443 9443
+
 say "Starting all services"
 $COMPOSE up -d
 HOST=$(echo "$ALLOWED_HOSTS" | cut -d, -f1)
+SUFFIX=$([ "$HTTP_PORT" = "80" ] || echo ":$HTTP_PORT")
 echo
-echo "Done. Open http://${HOST}/ and sign in as ${ADMIN_EMAIL}."
+echo "Done. Open http://${HOST}${SUFFIX}/ and sign in as ${ADMIN_EMAIL}."
 echo "Status: $COMPOSE ps    Logs: $COMPOSE logs -f web"
