@@ -41,10 +41,13 @@ internet (Linux or Windows), renew a licence, and fix licence problems.
 ## 1. One-time setup (Polynexus)
 
 1. **Key pair.** Already done (10 Oct 2026). The public key is committed in `apps/licensing/public_key.py`; the private key is `license_signing_key.pem`, stored outside the repo. **Never commit it, never send it to anyone. Never run `generate_license_keypair` again** — a new key pair invalidates every licence ever issued.
-2. **Where issuing runs.** Wherever you run the issuer (your laptop, the SaaS server), point it at the private key:
+2. **The private key lives only on the SaaS server.** Licences are signed there, in the SaaS console, and nowhere else. Set on the SaaS server only:
    ```
    LICENSE_SIGNING_KEY_PATH=/secure/path/license_signing_key.pem
    ```
+   Keep one offline backup (password manager vault or an encrypted USB drive in a safe), and delete every other copy — including any on a laptop or Desktop. The command-line tool can only **verify** licences; it can't issue them.
+3. **Licence team.** SaaS Owners sign licences. Other staff can only *request* them, and only after an Owner allows it (SaaS console → On-Premise Licences → **Licence team** → *Allow licences*). Every staff account has a permanent code (`PNX-0007`) that is signed into each licence they request or approve.
+4. **2FA for everyone on the licence team.** Requesting, approving, granting the right and blocking all ask for a fresh 6-digit authenticator code. Turn on 2FA in your profile first.
 
 ## 2. Build the bundle (Polynexus)
 
@@ -55,8 +58,11 @@ cd Frontend && git pull && git lfs pull && cd ..   # lfs pull fetches the 3D ana
 cd Backend && git pull
 git tag v1.0.0            # the bundle is named after the version
 make test                 # backend + frontend tests
+# SaaS console -> On-Premise Licences -> "Revocation list", saved as apps/licensing/revocations.lic
 make bundle               # builds both images, saves them, packs the bundle
 ```
+
+`make bundle` prints the date of the revocation list it's building in, or a warning if there is none. Revoked licences stop working on a server once it upgrades to that release.
 
 Result: `dist/bundle-1.0.0.tar.gz` containing `images.tar` (backend, frontend/nginx, PostgreSQL, Redis), `docker-compose.yml`, `install.sh`, `install.ps1`, `upgrade.sh`, `upgrade.ps1`, `env.template`, this runbook and `VERSION`. It is everything an offline server needs.
 
@@ -70,23 +76,33 @@ Images are `linux/amd64`. They run on Linux servers and on Windows servers throu
 
 You need, from the hospital: their **deployment ID** and, for a hardware-bound licence, their **machine fingerprint**. The installer prints both and saves them in `config/REQUEST-LICENCE.txt`.
 
-**Option A — command-line wizard** (any machine with the private key):
+Licences are issued only in the **SaaS console**, in two steps by two people:
+
+1. **Request** (a SaaS Owner, or staff an Owner allowed): Tenants & Subscriptions → the hospital → **📜 License**. Fill in the deployment ID, fingerprint, expiry, users, beds and features, enter your **2FA code**, and press *Request / Generate License*.
+   - A **SaaS Owner's** request is signed at once and the `.lic` file downloads.
+   - **Anyone else's** waits: SaaS Owners get an email, and it appears under On-Premise Licences → **Licence requests**.
+2. **Approve** (SaaS Owner): On-Premise Licences → Licence requests → **Approve** → 2FA code. The licence is signed and downloads. Check the hospital has paid first; the register flags licences with **No paid invoice**.
+
+Every licence carries, signed inside it, the staff code of who requested it and who approved it. The hospital sees them in Settings → License; you see them in the register (search or filter by staff code), and Owners get an email for every licence issued.
+
+Check any licence file (anyone, no key needed):
 ```
 cd Backend/tools
-python -m license_issuer new
-```
-It asks for: legal name, deployment ID (blank generates one — then the hospital must put it in `.env` as `DEPLOYMENT_ID`), start and expiry dates (YYYY-MM-DD), grace days (default 14), maximum active users, features (numbered checklist, all off by default), hardware binding (and the fingerprint), and the output file. It prints a summary to send with the licence.
-
-Check any licence file:
-```
 python -m license_issuer verify license.lic
 ```
-
-**Option B — SaaS console:** Tenants & Subscriptions → the hospital → **📜 License**. Same licence format; the issued history, re-download and revoke are there.
+It prints `Issued by : PNX-0007 (approved by PNX-0001)`. A licence without these codes, or with codes you don't recognise, did not come from the console.
 
 Send `license.lic` to the hospital. It's safe to email: it's signed (any edit breaks it) and only works on that deployment.
 
-> **Revoking** in the SaaS console stops re-downloads. An offline server can't be told, so a revoked licence keeps working there until it expires or a newer one replaces it.
+**Revoking** (SaaS Owners): On-Premise Licences → **Revoke**. Re-downloads stop at once. An offline server can't be told directly, so the revocation goes into the next release (section 2): when the server upgrades, the licence stops and the hospital sees *"This licence has been revoked by Polynexus"*.
+
+### When staff leave
+
+SaaS console → On-Premise Licences → Licence team → **Block** (with your 2FA code). At that moment their sessions end on every device, their licence right is removed, and their pending requests are cancelled. Licences they issued stay in the register under their code, so you can review them and revoke any that weren't paid for.
+
+### Licences you didn't issue
+
+Hospitals send a usage report at renewal (Settings → License → Download usage report), which you upload in On-Premise Licences. If a report names a licence the console never issued, the upload is refused, a **critical security alert** is logged, and every Owner is emailed — it means a licence was signed outside the console, so treat the signing key as exposed.
 
 ## 4. Install on a new server (Hospital IT)
 
@@ -117,7 +133,7 @@ No internet is needed. Copy `bundle-<version>.tar.gz` to the server and unpack i
 
 From 30 days before expiry, administrators see a yellow banner; after expiry a red one (grace period); after the grace period the system is read-only.
 
-1. **Polynexus:** `python -m license_issuer renew license.lic` → enter the new expiry date. The licence ID stays the same; the file is re-signed.
+1. **Polynexus:** issue a new licence for the same hospital with the new expiry (section 3 — request, then Owner approval). Use the same deployment ID and fingerprint as before; the register shows the current ones.
 2. **Hospital admin:** Settings → License → drop the new file on the upload box. It applies immediately, no restart. (Or replace `config/license.lic` — it is picked up immediately.)
 
 An older licence can't replace a newer one.
@@ -156,6 +172,7 @@ docker compose logs web | grep -i licen
 | *"The system clock has been set back"* | Server time earlier than a time already recorded | Fix the clock (NTP), then restart `web` |
 | *"This license starts on …"* | Start date in the future | Wait, or reissue with an earlier start |
 | *"No license is installed"* | `config/license.lic` missing or empty | Upload in Settings → License, or copy the file and restart `web` |
+| *"This licence has been revoked by Polynexus"* | Polynexus revoked it and this release carries the revocation | Contact Polynexus for a valid licence |
 | *"The license signature is not valid"* | File damaged or edited | Download/receive it again; check with `license_issuer verify` |
 | A menu / module missing | Feature not licensed | Issue a licence that includes it |
 | *"The license allows N active users"* | User cap reached | Deactivate unused accounts, or a licence with a higher cap |

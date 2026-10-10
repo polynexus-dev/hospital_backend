@@ -5,7 +5,7 @@
 | 1. Build | Make the install bundle | You | Your PC (WSL) |
 | 2. Deliver | Send the bundle to the hospital | You | USB drive or link |
 | 3. Install | First run of the installer | Hospital IT | Client's server |
-| 4. Licence | Issue the licence file | You | Your PC |
+| 4. Licence | Request and approve the licence | Licence team + SaaS Owner | SaaS console |
 | 5. Activate | Second run of the installer | Hospital IT | Client's server |
 | 6. Domain | Put it on hms.hospital.com with HTTPS | Hospital IT | Client's server |
 | 7. Backups | Send nightly backups off the server | Hospital IT | Client's server |
@@ -16,6 +16,8 @@
 **One bundle serves every client.** What differs per hospital is only its licence file: features, number of users, expiry date, and the machine it's bound to.
 
 **Never send:** the `Backend` or `Frontend` folders, `venv`, any `.env` file, or your private signing key (`license_signing_key.pem`).
+
+**The private signing key lives only on the SaaS server**, with one offline backup in a vault. Licences are created only in the SaaS console, never on a PC.
 
 ## Part 1: Build the bundle
 
@@ -30,6 +32,8 @@ cd ../Backend
 git pull
 make bundle VERSION=1.0.1
 ```
+
+**Before `make bundle`:** in the SaaS console, On-Premise Licences → **Revocation list**, save it as `Backend\apps\licensing\revocations.lic`. Every release carries the list, so a licence you revoked stops working on a server once it upgrades. `make bundle` warns if the file is missing.
 
 - The bundle contains **both** the backend and the frontend (with nginx), plus the PostgreSQL and Redis images.
 - `git lfs pull` downloads the 3D anatomy model (168 MB), which is built into the frontend. Without it the build stops and tells you to run it.
@@ -82,36 +86,44 @@ The installer asks for the **hostname or IP** staff will use, generates secrets,
 
 ## Part 4: Issue the licence
 
-On **your PC**, in **Command Prompt**:
+Licences are created only in the **SaaS console**, by two people, each confirming with a **2FA code** from their authenticator app.
+
+**Who can do what**
+
+| Person | Can |
+|---|---|
+| SaaS Owner | Request and sign licences, approve others' requests, revoke, manage the licence team |
+| Staff an Owner allowed ("May request") | Request licences — nothing is signed until an Owner approves |
+| Everyone else (including Platform Admins) | Nothing licence-related |
+
+An Owner allows someone in On-Premise Licences → **Licence team** → *Allow licences*. Every staff account has a permanent code such as **PNX-0007**.
+
+**Step 1 — Request.** Tenants & Subscriptions → the hospital → **📜 License**:
+
+| Field | What to enter |
+|---|---|
+| Deployment ID | **Paste from their REQUEST-LICENCE.txt.** Never leave it blank. |
+| Bind to one machine | Ticked, then **paste the fingerprint from REQUEST-LICENCE.txt** |
+| Expires on, grace period | From the contract (grace usually 14 days) |
+| Max users, max beds, tier | From the contract |
+| Licensed features | Tick the purchased features |
+| 2FA code | Current 6-digit code from your authenticator app |
+
+Press **Request / Generate License**. If you are a SaaS Owner the licence is signed and downloads at once. Otherwise it says *Sent to a SaaS Owner for approval*, and the Owners get an email.
+
+**Step 2 — Approve (SaaS Owner).** On-Premise Licences → **Licence requests** → check the terms and that the hospital has paid → **Approve** → 2FA code. The `.lic` file downloads. Owners get an email for every licence issued, and the register flags any licence with **No paid invoice**.
+
+The licence has the requester's and approver's staff codes signed inside it. The hospital sees them in **Settings → License → Issued by**. Anyone can check a file (no key needed):
 
 ```
 REM Command Prompt on your PC
 cd /d E:\Aniket\next\Hospital\Hospital\Backend\tools
-set LICENSE_SIGNING_KEY_PATH=C:\Users\User\Desktop\key\license_signing_key.pem
-..\venv\Scripts\python.exe -m license_issuer new
-```
-
-| Question | What to type |
-|---|---|
-| Customer / hospital legal name | The hospital's legal name, as in the contract |
-| Deployment ID | **Paste from their REQUEST-LICENCE.txt.** Never leave it blank. |
-| Start and expiry date | From the contract (YYYY-MM-DD), or Enter for today / one year |
-| Grace period | Enter for 14 days, or as agreed |
-| Maximum active users | From the contract |
-| Features | The numbers of the purchased features, e.g. `1,3,4`, then Enter on the empty line |
-| Bind to one machine? | `y`, then **paste the fingerprint from REQUEST-LICENCE.txt** |
-| Output file | e.g. `license-city-hospital.lic` |
-
-Check it before sending:
-
-```
-REM Command Prompt on your PC
 ..\venv\Scripts\python.exe -m license_issuer verify license-city-hospital.lic
 ```
 
-It must say **Signature OK**, and its Deployment ID and fingerprint must match `REQUEST-LICENCE.txt`. Then **send the `.lic` file to the hospital.** It is safe to email: it can't be edited and only works on their server.
+It must say **Signature OK**, show `Issued by : PNX-.... (approved by PNX-....)`, and its Deployment ID and fingerprint must match `REQUEST-LICENCE.txt`. Then **send the `.lic` file to the hospital.** It is safe to email: it can't be edited and only works on their server.
 
-> You can also issue licences from the SaaS console: Tenants & Subscriptions → the hospital → **License**. It produces the same kind of file.
+**When a staff member leaves:** Licence team → **Block** → 2FA code. Their sessions end immediately on every device, their licence right is removed and their pending requests are cancelled. Search the register for their code to review every licence they issued, and revoke any that shouldn't exist.
 
 ## Part 5: Activate
 
@@ -209,12 +221,7 @@ powershell -ExecutionPolicy Bypass -File .\upgrade.ps1 -InstallDir C:\hms
 
 The upgrade **backs up the database first**, then updates and restarts. The licence, settings and all data are kept.
 
-**Licence renewal** (yearly, or when they buy more users or features):
-
-```
-REM Command Prompt on your PC
-..\venv\Scripts\python.exe -m license_issuer renew license-city-hospital.lic
-```
+**Licence renewal** (yearly, or when they buy more users or features): issue a new licence for the same hospital as in Part 4 (request, then Owner approval) with the new expiry, users or features, and the same deployment ID and fingerprint. Ask the hospital for a usage report first (Settings → License → **Download usage report**) and upload it in On-Premise Licences: it shows their real number of users. If the report names a licence you never issued, the upload is refused and the Owners get a security alert.
 
 Send the new file. The hospital admin uploads it in **Settings → License** — it applies immediately, no restart.
 
