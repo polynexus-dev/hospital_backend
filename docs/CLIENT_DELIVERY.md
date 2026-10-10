@@ -23,10 +23,16 @@ On your PC, with **Docker Desktop running**, open **WSL (Ubuntu)**:
 
 ```
 # WSL (Ubuntu) on your PC
-cd /mnt/e/Aniket/next/Hospital/Hospital/Backend
+cd /mnt/e/Aniket/next/Hospital/Hospital/Frontend
+git pull
+git lfs pull
+cd ../Backend
+git pull
 make bundle VERSION=1.0.1
 ```
 
+- The bundle contains **both** the backend and the frontend (with nginx), plus the PostgreSQL and Redis images.
+- `git lfs pull` downloads the 3D anatomy model (168 MB), which is built into the frontend. Without it the build stops and tells you to run it.
 - Use a new, higher version number for every release (1.0.1, 1.0.2, 1.1.0, ...).
 - The first build takes 15–30 minutes; later builds are faster.
 - Result: `Backend\dist\bundle-1.0.1.tar.gz` (about 430 MB).

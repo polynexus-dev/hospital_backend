@@ -51,7 +51,8 @@ internet (Linux or Windows), renew a licence, and fix licence problems.
 On Linux, macOS, or WSL on Windows, with Docker running, both repos side by side (`Backend/`, `Frontend/`):
 
 ```
-cd Backend
+cd Frontend && git pull && git lfs pull && cd ..   # lfs pull fetches the 3D anatomy model
+cd Backend && git pull
 git tag v1.0.0            # the bundle is named after the version
 make test                 # backend + frontend tests
 make bundle               # builds both images, saves them, packs the bundle
@@ -61,7 +62,7 @@ Result: `dist/bundle-1.0.0.tar.gz` containing `images.tar` (backend, frontend/ng
 
 What the images contain:
 - **Backend:** Python 3.12, compiled with Cython — no application source code inside. Non-root, gunicorn, static files collected at build time. Set `COMPILE=0 ON_PREMISE=0` build args for the SaaS image.
-- **Frontend:** minified and obfuscated build, no source maps, served by nginx, which is also the reverse proxy (`/api` → backend) and turns on HTTPS when certificates are present.
+- **Frontend:** minified build with our code obfuscated, no source maps, including the 3D anatomy model (the build refuses to run if `git lfs pull` was skipped). Served by nginx, which is also the reverse proxy (`/api` → backend) and turns on HTTPS when certificates are present.
 
 Images are `linux/amd64`. They run on Linux servers and on Windows servers through Docker Desktop / WSL2.
 
