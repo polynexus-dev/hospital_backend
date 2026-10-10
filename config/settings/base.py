@@ -35,6 +35,8 @@ LICENSE_FILE_PATH = env.str("LICENSE_FILE_PATH", default=str(BASE_DIR / "license
 # On-premise: identifies this installation; a licence carrying a
 # deployment_id only works where it matches. Set by the installer.
 DEPLOYMENT_ID = env.str("DEPLOYMENT_ID", default="")
+# The release, as installed (HMS_VERSION in the deployment's .env).
+APP_VERSION = env.str("HMS_VERSION", default="dev")
 LICENSE_HOST_ROOT = env.str("LICENSE_HOST_ROOT", default="")
 LICENSE_CACHE_SECONDS = env.int("LICENSE_CACHE_SECONDS", default=600)
 LICENSE_SUPPORT_EMAIL = env.str("LICENSE_SUPPORT_EMAIL", default="support@polynexus.in")

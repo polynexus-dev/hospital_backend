@@ -2,6 +2,8 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    MyInvoicePdfView,
+    MySubscriptionView,
     OnPremiseLicenseViewSet,
     PlatformAnalyticsView,
     SaaSHospitalViewSet,
@@ -24,4 +26,6 @@ router.register("support-tickets", SupportTicketViewSet, basename="support-ticke
 
 urlpatterns = router.urls + [
     path("saas-admin/analytics/", PlatformAnalyticsView.as_view(), name="saas-admin-platform-analytics"),
+    path("subscription/", MySubscriptionView.as_view(), name="my-subscription"),
+    path("subscription/invoices/<int:invoice_id>/pdf/", MyInvoicePdfView.as_view(), name="my-invoice-pdf"),
 ]

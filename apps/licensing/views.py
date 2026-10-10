@@ -31,6 +31,30 @@ class LicenseStatusView(APIView):
         return Response(data)
 
 
+class UsageReportView(APIView):
+    """GET /licensing/usage-report/ — hospital admins download a usage report
+    (counts only, no patient data) to send to Polynexus at renewal."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not service.is_on_premise():
+            return Response({"detail": "Usage reports are for on-premise installations."}, status=http.HTTP_400_BAD_REQUEST)
+        if not _is_installation_admin(request.user):
+            return Response({"detail": "Only a hospital admin can download the usage report."}, status=http.HTTP_403_FORBIDDEN)
+        import json
+
+        from django.http import HttpResponse
+
+        from .usage import build_report
+
+        document = build_report()
+        name = f"usage-{document['report']['licence']['license_id'] or 'unlicensed'}-{document['report']['generated_at'][:10]}.json"
+        response = HttpResponse(json.dumps(document, indent=2), content_type="application/json")
+        response["Content-Disposition"] = f'attachment; filename="{name}"'
+        return response
+
+
 class LicenseUploadView(APIView):
     """POST /licensing/upload/ {"license": "<.lic file contents>"} — hospital admins only."""
 

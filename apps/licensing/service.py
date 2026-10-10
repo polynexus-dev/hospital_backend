@@ -95,6 +95,10 @@ def _public_key():
     return load_public_key(bundled.PUBLIC_KEY_PEM)
 
 
+def public_key_obj():
+    return _public_key()
+
+
 def _parse_time(value) -> datetime:
     parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)

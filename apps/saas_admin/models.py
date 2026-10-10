@@ -210,3 +210,24 @@ class OnPremiseLicense(TimeStampedModel):
 
     def __str__(self):
         return self.license_id
+
+
+class LicenseUsageReport(TimeStampedModel):
+    """A usage report an on-premise hospital exported (Settings → License) and
+    sent in, uploaded in the SaaS console. Counts only — no patient data.
+    `seal_ok` says whether the file is unchanged since the product made it."""
+
+    license = models.ForeignKey(OnPremiseLicense, on_delete=models.CASCADE, related_name="usage_reports")
+    generated_at = models.DateTimeField()
+    app_version = models.CharField(max_length=64, blank=True)
+    active_users = models.PositiveIntegerField(default=0)
+    beds = models.PositiveIntegerField(default=0)
+    report = models.JSONField()
+    seal_ok = models.BooleanField(default=False)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-generated_at"]
+
+    def __str__(self):
+        return f"{self.license.license_id} usage @ {self.generated_at:%Y-%m-%d}"

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 
 
 class TenantSubscriptionSerializer(serializers.ModelSerializer):
@@ -111,19 +111,37 @@ class SaaSHospitalSerializer(serializers.ModelSerializer):
         return obj.users.count()
 
 
+class LicenseUsageReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LicenseUsageReport
+        fields = ["id", "generated_at", "app_version", "active_users", "beds", "report", "seal_ok", "created_at"]
+        read_only_fields = fields
+
+
 class OnPremiseLicenseSerializer(serializers.ModelSerializer):
     hospital_name = serializers.CharField(source="hospital.name", read_only=True)
     issued_by_email = serializers.CharField(source="issued_by.email", read_only=True, default=None)
     status = serializers.SerializerMethodField()
+    days_left = serializers.SerializerMethodField()
+    latest_usage = serializers.SerializerMethodField()
 
     class Meta:
         model = OnPremiseLicense
         fields = [
             "id", "hospital", "hospital_name", "license_id", "tier", "issued_at", "expires_at", "grace_period_days",
             "features", "deployment_id", "enabled_modules", "max_active_users", "max_beds", "machine_fingerprint", "issued_by_email",
-            "revoked_at", "revoke_reason", "status",
+            "revoked_at", "revoke_reason", "status", "days_left", "latest_usage",
         ]
         read_only_fields = fields
+
+    def get_days_left(self, obj):
+        from django.utils import timezone
+
+        return (obj.expires_at - timezone.now()).days
+
+    def get_latest_usage(self, obj):
+        reports = list(obj.usage_reports.all()[:1])  # prefetched, newest first
+        return LicenseUsageReportSerializer(reports[0]).data if reports else None
 
     def get_status(self, obj):
         from django.utils import timezone

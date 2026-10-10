@@ -14,10 +14,11 @@ from apps.core.permissions import CanManageSaaSBilling, CanManageSaaSSupport, Ca
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from . import services
-from .models import OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 from .pdf import render_invoice_pdf
 from .serializers import (
     GenerateLicenseSerializer,
+    LicenseUsageReportSerializer,
     OnPremiseLicenseSerializer,
     SaaSHospitalSerializer,
     SaaSSupportTicketSerializer,
@@ -289,17 +290,78 @@ def license_file_response(record):
 
 
 class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
-    """Issued on-premise licenses: history, re-download, revoke."""
+    """Issued on-premise licenses across every hospital: history, renewals
+    due, re-download, revoke, and usage reports sent in by hospitals.
+
+    ?status=active|expired|revoked   ?expiring_within=<days>   ?search=<hospital or licence ID>"""
 
     serializer_class = OnPremiseLicenseSerializer
     permission_classes = [IsAuthenticated, CanViewSaaSTenants]
-    queryset = OnPremiseLicense.objects.select_related("hospital", "issued_by")
+    queryset = OnPremiseLicense.objects.select_related("hospital", "issued_by").prefetch_related("usage_reports")
     filterset_fields = ["hospital"]
 
     def get_permissions(self):
-        if self.action == "revoke":
+        if self.action in ("revoke", "upload_usage_report"):
             return [IsAuthenticated(), CanManageSaaSTenants()]
         return super().get_permissions()
+
+    def get_queryset(self):
+        from datetime import timedelta
+
+        from django.db.models import Q
+
+        qs = super().get_queryset()
+        params = self.request.query_params
+        now = timezone.now()
+        state = params.get("status")
+        if state == "revoked":
+            qs = qs.filter(revoked_at__isnull=False)
+        elif state == "expired":
+            qs = qs.filter(revoked_at__isnull=True, expires_at__lt=now)
+        elif state == "active":
+            qs = qs.filter(revoked_at__isnull=True, expires_at__gte=now)
+        if params.get("expiring_within", "").isdigit():
+            qs = qs.filter(revoked_at__isnull=True, expires_at__gte=now, expires_at__lte=now + timedelta(days=int(params["expiring_within"])))
+        if params.get("search"):
+            term = params["search"].strip()
+            qs = qs.filter(Q(hospital__name__icontains=term) | Q(license_id__icontains=term))
+        if self.action == "list" and params.get("ordering") != "-issued_at":
+            qs = qs.order_by("expires_at")  # renewals due first
+        return qs
+
+    @action(detail=False, methods=["post"], url_path="usage-reports")
+    def upload_usage_report(self, request):
+        """POST {"report": <usage report file contents>} — a report a
+        hospital exported from Settings → License."""
+        import json
+
+        from apps.licensing import public_key as bundled
+        from apps.licensing.crypto import load_public_key
+        from apps.licensing.issuing import SigningKeyMissing, signing_key
+        from apps.licensing.usage import verify
+
+        raw = request.data.get("report")
+        try:
+            document = json.loads(raw) if isinstance(raw, str) else raw
+            report = document["report"]
+            license_id = report["licence"]["license_id"]
+            generated_at = report["generated_at"]
+            usage = report["usage"]
+        except (ValueError, TypeError, KeyError):
+            return Response({"report": ["This isn't a usage report file."]}, status=status.HTTP_400_BAD_REQUEST)
+        record = OnPremiseLicense.objects.filter(license_id=license_id).first()
+        if record is None:
+            return Response({"report": [f"No licence {license_id} was issued from this console."]}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            key = signing_key().public_key()
+        except SigningKeyMissing:
+            key = load_public_key(bundled.PUBLIC_KEY_PEM)
+        saved = LicenseUsageReport.objects.create(
+            license=record, generated_at=generated_at, app_version=str(report.get("app_version", ""))[:64],
+            active_users=int(usage.get("active_users") or 0), beds=int(usage.get("beds") or 0),
+            report=report, seal_ok=verify(document, key), uploaded_by=request.user,
+        )
+        return Response(LicenseUsageReportSerializer(saved).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
@@ -324,3 +386,72 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
                 details={"action": "license_revoked", "license_id": record.license_id, "reason": record.revoke_reason},
             )
         return Response(OnPremiseLicenseSerializer(record).data)
+
+
+def _hospital_admin_or_403(request):
+    from apps.accounts.permission_catalog import is_hospital_admin
+
+    user = request.user
+    if not user.hospital_id or not (user.is_superuser or is_hospital_admin(user)):
+        return Response({"detail": "Only the hospital's administrators can see its subscription."}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+class MySubscriptionView(APIView):
+    """GET /subscription/ — the requesting hospital's own plan, usage against
+    its limits, and invoices (hospital admins). On-premise installations
+    answer {"mode": "on_premise"}: their terms are the licence (Settings → License)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.licensing.service import is_on_premise
+
+        if is_on_premise():
+            return Response({"mode": "on_premise"})
+        denied = _hospital_admin_or_403(request)
+        if denied:
+            return denied
+        from apps.accounts.models import User
+        from apps.core.modules import effective_modules
+
+        hospital = request.user.hospital
+        sub = TenantSubscription.objects.filter(hospital=hospital).first()
+        invoices = TenantInvoice.objects.filter(hospital=hospital).order_by("-billing_period_start")[:24]
+        return Response({
+            "mode": "saas",
+            "hospital_name": hospital.name,
+            "subscription": None if sub is None else {
+                "tier": sub.tier, "tier_label": sub.get_tier_display(),
+                "billing_cycle": sub.billing_cycle, "billing_cycle_label": sub.get_billing_cycle_display(),
+                "status": sub.status, "status_label": sub.get_status_display(),
+                "base_price": str(sub.base_price), "started_at": sub.started_at, "next_billing_date": sub.next_billing_date,
+                "max_staff_users": sub.max_staff_users,
+            },
+            "active_users": User.objects.filter(hospital=hospital, is_active=True).count(),
+            "enabled_modules": effective_modules(hospital),
+            "invoices": [
+                {"id": i.id, "invoice_number": i.invoice_number, "billing_period_start": i.billing_period_start,
+                 "billing_period_end": i.billing_period_end, "amount": str(i.amount), "status": i.status,
+                 "due_date": i.due_date, "paid_at": i.paid_at}
+                for i in invoices
+            ],
+            "outstanding": str(sum((i.amount for i in invoices if i.status != TenantInvoice.Status.PAID), 0)),
+        })
+
+
+class MyInvoicePdfView(APIView):
+    """GET /subscription/invoices/<id>/pdf/ — one of the hospital's own invoices."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, invoice_id):
+        denied = _hospital_admin_or_403(request)
+        if denied:
+            return denied
+        invoice = TenantInvoice.objects.filter(pk=invoice_id, hospital_id=request.user.hospital_id).first()
+        if invoice is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        response = HttpResponse(render_invoice_pdf(invoice), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{invoice.invoice_number}.pdf"'
+        return response
