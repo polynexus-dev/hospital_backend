@@ -1,0 +1,50 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+" Monitoring on
+a
+Ss
+Q
+Number of There should be endeavors =
+urinary catheter to capture the denominator 5
+days in that data through th t =
+gh the system.
+month Q
+=
+vere. The numerator can be °
+Associated captured through an incident et
+Ventetem Predmontaain cera modiule/sofware m
+mecanieradl As per the latest a month /1000 (stand-alone or integrate z
+14 | PSQab | associate CDC/NHSN X1000 | ventilato Monthly Sampling: No et SEMIS yStorn)y a
+vate jonia definition r- days &
+Number of There should be endeavors Q
+ventilator days to capture the denominator $
+in that month data through the system. vy
+Number of The numerator can be
+central line- captured through an incident
+associated reporting module/software
+| bloodstream (stand-alone or integrated
+Central line- | as perthe latest | infections in a /1000 ; with HIS/EMR system).
+15 | PSQ3b associated CDC/NHSN month X1000 pentra Monthly Sampling: No
+infection rate | Wefintion Number of days There should be endeavors
+central line to capture the denominator
+days in that data through the system.
+month
+Keeping in mind the definition of | The numerator shall be
+Number of SSI, the numbers would have to captured through an incident
+surgical site be updated on a continual basis | reporting module/software
+infections ina until such time that the (stand-alone or integrated
+given month monitoring period is over. For with HIS/EMR system).
+Surgical eine As per the latest /100 example, in January, the data for
+16 PSQ 3a inf gic ti CDC/NHSN X100 | procedu Monthly December would be reported.
+TnSeHeM CES definition res The denominator would be the
+Number of number of surgeries performed pbgisystenishell calculate)
+surgeries in December, and that would not the total number of SU EME
+performed in change. With respect to the peromed mal icnig yuo
+that month numerator, there would be some the last day of the calendar
+data but it would not be mont
+complete data. Hence, whatever z
+value the organization gets at >
+wo
+=x
+4

@@ -26,7 +26,9 @@ services:
       retries: 10
 
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
@@ -49,7 +51,9 @@ services:
         condition: service_healthy
 
   celery-worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
@@ -70,7 +74,9 @@ services:
         condition: service_started
 
   celery-beat:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app

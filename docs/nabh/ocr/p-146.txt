@@ -1,0 +1,19 @@
+NABH Standards for HIS and EMR Systems
+NABH
+References:
+
+1. Sutton, R.T., Pincock, D., Baumgart, D.C. et al. An overview of clinical decision support systems:
+benefits, risks, and strategies for success. npj Digit. Med. 3, 17 (2020).
+https://doi.org/10.1038/s41746-020-0221-y
+
+2. Chen Z, Liang N, Zhang H, Li H, Yang Y, Zong X, Chen Y, Wang Y, Shi N. Harnessing the power of
+clinical decision support systems: challenges and opportunities. Open Heart. 2023 Nov
+28;10(2):e002432.
+
+Websites:
+1. National Institutes of Health (NIH): The NIH provides resources and information on CDSS and its
+applications.
+2. Healthcare Information and Management Systems Society (HIMSS): HIMSS offers resources and
+news on CDSS and other healthcare technologies.
+3. American Medical Informatics Association (AMIA): AMIA is a professional organization focused
+on advancing medical informatics, including CDSS.

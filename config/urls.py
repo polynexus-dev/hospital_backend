@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.urls import include, path
+
+from apps.core.health import health
+from apps.licensing.views import LicenseStatusView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
@@ -35,6 +38,8 @@ urlpatterns = [
     path("api/v1/inventory/", include("apps.inventory.urls")),
     path("api/v1/", include("apps.saas_admin.urls")),
     path("api/v1/", include("apps.licensing.urls")),
+    path("api/license/status/", LicenseStatusView.as_view(), name="license-status-short"),
+    path("api/health/", health, name="health"),
     path("api/v1/privacy/", include("apps.privacy.urls")),
     path("api/v1/abdm/", include("apps.abdm.urls")),
     path("api/v1/governance/", include("apps.governance.urls")),

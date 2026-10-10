@@ -80,6 +80,9 @@ class AuditedModelViewSetMixin:
     ViewSet's create/update/destroy."""
 
     audited_fields: tuple = ()
+    # Fields recorded as changed but never by value — encrypted identifiers
+    # and contact details must not reappear in plain text in the audit log.
+    audit_redacted_fields: tuple = ()
 
     def _log(self, action, instance, old=None):
         from apps.core.audit import log_action
@@ -90,9 +93,12 @@ class AuditedModelViewSetMixin:
                 old_value = getattr(old, field)
                 new_value = getattr(instance, field)
                 if old_value != new_value:
-                    changes[field] = {"old": str(old_value), "new": str(new_value)}
+                    changes[field] = {"changed": True} if field in self.audit_redacted_fields else {"old": str(old_value), "new": str(new_value)}
         elif action == "create":
-            changes = {field: str(getattr(instance, field)) for field in self.audited_fields}
+            changes = {
+                field: ("[redacted]" if field in self.audit_redacted_fields else str(getattr(instance, field)))
+                for field in self.audited_fields
+            }
 
         if action == "update" and not changes:
             return

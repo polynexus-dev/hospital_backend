@@ -1,0 +1,44 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Finance and Procurement Management (FPM)
+
+Intent of the Chapter:
+In today’s rapidly evolving landscape, digitalization has become a cornerstone for efficient and streamlined
+business operations. For healthcare organizations, adopting digitalized finance, procurement, billing and
+insurance processes offers significant advantages - track finances and cashflows, manage procurement,
+patient billing and payment processes. This chapter focuses on how digital systems play a pivotal role in
+transforming finance and procurement processes as well as patient billing and claims processing,
+highlighting the various advantages and impact of these digital solutions for suppliers and for patients.
+Finance and Procurement Process for Suppliers:
+
+e Asset Tracking and Management: Systems should empower organizations to track assets such
+as medical devices, products, or supplies. Real-time visibility ensures optimal asset utilization and
+minimizes losses.
+
+e Stakeholder Communication: Suppliers are the key stakeholders in any healthcare ecosystem.
+Digitalized finance processes ensure suppliers remain informed throughout the payment lifecycle.
+Automated notifications, status updates, and transparent communication enhances trust and fosters
+stronger relationships.
+
+e Supply Chain and Vendor Management: Systems should extend their capabilities beyond finance
+to supply chain and vendor management. Real-time data on inventory levels, demand forecasts, and
+supplier performance enables proactive decision-making.
+
+e Vendor Collaboration: Streamlined communication with vendors ensures timely deliveries, quality
+control, and cost-effective procurement.
+
+Billing and Claims processes for patients:
+
+e Seamless Patient Billing: The digitization of billing processes significantly enhances patient
+experience. Digital platforms should manage insurance claims electronically, reducing paperwork
+and processing time. Patients should have convenient options to settle bills through various channels
+including online banking, mobile apps etc. The system should be capable of performing automated
+calculations to minimize errors, ensuring accurate billing and prompt settlements.
+
+e Claim management: Effective claim management involves handling insurance claims from initiation
+to resolution. Key steps include documenting and reviewing policy coverage, filing accurate and
+complete claims, responding to payor queries, and resolving the claims. The system plays a central
+role in automating claims processing, reducing burden for all stakeholders — healthcare
+organizations, patients and insurance providers.
+
+|| Core || Commitment || Achievement || Excellence

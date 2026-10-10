@@ -1,0 +1,45 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+. oo The Coverage Eligibility Response Bundle is a Bundle
+Claim Eligibility Response profile with type collection. The bundle profile provides the
+Bundle response and plan details from the processing of an
+Coverage Eligibility Request resource.
+This profile is based on a Bundle of type collection,
+Insurance Plan Bundle providing a description of a health insurance package that
+consists of a comprehensive list of covered benefits
+(referred to as the product), associated costs (known as
+the plan), and supplementary details regarding the
+offering, such as ownership and administration, coverage
+area, contact information, and more.
+c The system supports ICD 10/11 or SNOMED CT covering clinical terminologies for
+ore e. : : nen :
+diagnosis, morbidity and mortality data accurately.
+The system shall support ICD 10/11 or SNOMED CT codes. The system should
+have the capability to prompt and recommend the relevant ICD 10/11 or
+SNOMEDCT codes.
+Implementation of ICD 10/11 or SNOMEDCT can be done through application user
+interface, backend matching services, or through dedicated medical coding service
+Interpretation [ueenSS
+The system shall support the following coding capabilities:
+e Implement upload, upgrade and deprecation and storage of codes by version
+into the system.
+e Populate applicable outbound FHIR data exchange messages with system
+supported codes.
+A The system supports laboratory tests and observation terminologies and
+Commninen tt implements coding of lab with LOINC codes.
+The system shall support laboratory tests and observation terminologies and
+implement coding of lab with LOINC codes.
+Logical Observation Identifiers Names and Codes LOINC is a standardized coding
+system used to identify and exchange laboratory test results and clinical
+observations across different healthcare settings and information systems. By
+integrating LOINC codes into its data architecture, the system ensures that
+laboratory data is uniformly coded and can be easily exchanged and interpreted by
+Int tati healthcare professionals, regardless of the healthcare facility or system where the
+nterpretation Been performed.
+NRCeS (National Resource Centre for EHR Standards) maintains a list of LOINC
+codes for the most common laboratory tests conducted in India.
+Implement of coding of laboratory results and observations can be done through
+application user interface, backend matching services or through dedicated
+medical coding service modules.
+The system should support the following LOINC related capabilities:
+|| Core || Commitment || Achievement || Excellence

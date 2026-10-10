@@ -1,0 +1,46 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The digital system shall maintain blood transfusion-related incidents, including
+errors during transfusions. The system should also have the capability to prepare
+. an incident report for analysis and onwards submission to hemovigilance.
+
+Interpretation
+The system should assist in carrying out transfusion audits to ensure the rational
+use of blood/ blood components.
+
+Excellence d. The system has the capability to check bloodstock information through the Unified
+
+Health Interface.
+The Unified Health Interface (UHI) is a platform designed to integrate various
+health information systems. Among other functionalities, it facilitates the sharing
+of blood bank stock information by connecting the blood bank information system
+with the UHI platform.
+
+Interpretation The UHI platform aids in the integration of the blood bank information from various
+systems with UHI, healthcare organizations can effortlessly disseminate real-time
+updates on blood bank stock levels to other healthcare providers within the UHI
+network. This enables healthcare organizations to quickly identify available blood
+supplies in other facilities, potentially saving lives during emergencies.
+
+Standard
+
+cone | The system manages emergency and medico-legal cases.
+
+Objective Elements
+
+Corea The system manages the registration and record maintenance of patients inthe
+i emergency department.
+
+The system shall manage the registration of patients in the emergency department
+by enabling medical practitioners to register and retrieve patient information during
+emergency situations swiftly and accurately. This system should support an
+accelerated admission process, by allowing registration with compliance to
+mandatory information only.
+
+iciedeaciieyam lhe system shall support capturing of information of return to emergency within 72
+
+hours with similar presenting complaints.
+The system should also be able to send out communication to relevant departments
+about the condition of the patient received in the emergency department.
+
+|| Core || Commitment || Achievement || Excellence

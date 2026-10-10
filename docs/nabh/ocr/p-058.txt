@@ -1,0 +1,29 @@
+NABH Standards for HIS and EMR Systemss @
+NABH
+The system shall record the start and end time of the surgery as per the healthcare
+organization’s policies.
+, Accurate timestamps are indispensable for maintaining precise records of the
+Interpretation . . . . . . a .
+entire surgical process, including the duration of the operation. This information
+serves as a valuable resource for future reference and analysis. By scrutinizing
+the time taken for specific procedures, healthcare providers can identify
+opportunities to optimize processes for greater efficiency.
+. The system records the necessary details of the anesthesia/procedural sedation
+Commitment f. na
+administered.
+The system shall maintain digital records of anesthesia/procedural sedation
+monitoring.
+The system shall incorporate records of pre-anesthesia and pre-induction
+assessment and intra-operative monitoring.
+The type of anesthesia like local, regional, spinal or general shall be captured.
+\ ,
+nterpretation At a minimum, intraoperative monitoring should include regular recording of
+temperature, heart rate, cardiac rhythm, respiratory rate, blood pressure, oxygen
+saturation and end-tidal carbon dioxide.
+The system shall also capture the drug(s) used for procedural sedation. The
+system shall record the post-anaesthesia/ post sedation monitoring and status
+before shifting the patient on the basis of defined criteria.
+. The system records necessary details for surgical procedures / interventions
+Commitment g.
+undertaken.
+|| Core || Commitment || Achievement || Excellence

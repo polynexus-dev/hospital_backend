@@ -1,0 +1,26 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+Standard
+The system supports the migration to new system whenever needed by
+healthcare organisation.
+
+Objective Elements
+
+category rise’ Type
+
+Corea The system supports the migration to new system whenever needed by healthcare
+
+' organization.
+
+System vendor must provide a documented system and data migration plan.
+The plan must include list of data which will be made available during migration and
+what data will not be made available during migration to a new system. The system
+
+Interpretation vendor must provide documentation with the details of the relevant data structures
+
+P and definitions of all data element to healthcare provider.
+The system vendor must provide documentation on how the system data can be
+exported, and how it can be retrieved by a new system being implemented by
+healthcare provider.
+|| Core || Commitment || Achievement || Excellence

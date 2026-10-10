@@ -1,0 +1,33 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The systems should provide details such as the preferred browser and
+specifications like compatible version, screen resolution, etc.
+category ese Type
+Excellence d. The system offers ‘multiple digital channels for the patient to engage with
+healthcare organizations and avail of healthcare services.
+The system shall offer multiple digital channels for patients to engage with their
+healthcare organization and medical professionals, based on the user preferences.
+This helps healthcare organizations enhance patient engagement and service
+delivery. Key delivery channels may include:
+e Web
+Interpretation e Email
+e Online messaging
+e Chatbot
+e SMS
+e Mobile/Tablets (Android, |OS)
+e PHR app
+e Kiosk
+Srl (alea-e-w ~The system supports single sign-on.
+The system shall be capable of providing Single Sign-On (SSO) functionality. This
+feature enables authorized users to access multiple applications and systems using
+icwaciicm™ a single set of login credentials. By streamlining the authentication process, SSO
+enhances user convenience, reduces the need for multiple logins, and improves
+overall system accessibility.
+Achievement f. The system Supports a mobile application for medical professionals that is
+compatible with the prevalent mobile operating systems.
+The system shall support a mobile application that is compatible with the leading
+. mobile operating system, for example Android and/or IOS operating systems. This
+Interpretation , _ .
+enables healthcare professionals to efficiently manage common tasks from their
+smartphones or tablets.
+|| Core || Commitment || Achievement || Excellence

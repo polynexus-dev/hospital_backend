@@ -1,0 +1,52 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+wellness, etc., that can be shared across the health
+ecosystem.
+
+Medication Statement The Medication Statement resource can be used to
+record a patient’s medication information. It is used to
+record the information about the medications consumed
+by the patient in the past, present, or future.
+
+Observation Lifestyle This profile sets minimum expectations for the
+Observation Lifestyle to record, search, and fetch the
+details of the lifestyle of the patient.
+
+Observation Physical | This profile sets minimum expectations for the
+
+Activity Observation Physical Activity to record, search, and
+fetch the details of the physical activities of a patient.
+This profile sets minimum expectations for the
+Specimen resource to searching for and fetching
+information regarding a sample to be used for the
+analysis of a patient.
+
+The system has the capability to integrate with NHCX ABDM to submit and track
+Excellence d. : .
+health insurance claims.
+The system shall have the capability to support, capture and exchange NHCX ABDM
+resource profiles:
+Reference: NHCX Profiles - FHIR Implementation Guide for ABDM v6.0.0 (nrces.in)
+D Sa
+Profile escription
+Claim bundl The profile is based on a Bundle of type collection, where
+aim bunale all the supporting information required for processing
+claim can be shared. Multiple entries can be added in a
+bundle to provide information like financial, clinical,
+provision of health care services with payors and for
+reporting to regulatory bodies and firms which provide
+data analytics. The bundle can be generated depending
+Interpretation on the nature of the request defined by ‘use’ element in a
+claim resource, like preauthorization, predetermination
+and claim and can be shared over NHCX ecosystem.
+Claim R B \ The profile is based on a Bundle of type collection, where
+aim Response Bundle adjudicated response to a Claim, Predetermination or
+Preauthorization related information is carried. Multiple
+entries included in a bundle carries the information and
+provides application level adjudication results.
+Claim Eligibility Request | The profile is based on a Bundle of type collection, where
+Bundle all the information required to process Coverage Eligibility
+Request can be shared. Depending on the purpose of the
+request like validation, discovery, auth-requirement, and
+benefit data can be included in the entries of a bundle.
+|| Core || Commitment || Achievement || Excellence

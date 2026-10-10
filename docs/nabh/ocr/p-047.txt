@@ -1,0 +1,33 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall allow medical practitioners to place medication orders for patients,
+as per regulatory guidelines, for example ePrescription in India etc. This functionality
+empowers medical practitioners to electronically prescribe medication. The system
+may also support safety checks (e.g., dosage, drug-drug interaction, conflict with
+patient condition) to reduce medication errors.
+\ :
+nterpretation The system should also provide the comparison if and when required with the
+radiology or laboratory reports while ordering medication for reactions and
+medication reconciliation.
+This functionality diminishes the likelihood of errors from illegible handwriting or lost
+documents, thereby ensuring patients receive precise prescriptions.
+Commitment i. The system creates order sets (laboratory and diagnostics) based on the patient's
+diagnosis.
+The system shall create order sets (laboratory and diagnostics) based on the
+patient's diagnosis.
+For example, when a medical practitioner encounters a patient with kidney disease
+and requests specific tests such as Kidney Function Tests (KFT), Complete Blood
+TTC UCI Count (CBC), and Ultrasonography (USG), the system should recommend pre-
+defined order sets for both laboratory and radiology procedures.
+This functionality empowers medical practitioners to select appropriate test sets for
+patients. The system helps streamline clinical workflows, saving time, and
+enhancing both the efficiency and quality of patient care.
+Comminnenel The system allows importing patient specific information / results for review and
+comments.
+The system shall allow medical practitioners to import patient-specific information /
+results obtained from laboratory, radiology/imaging, or other departments for review
+. and comments.
+Interpretation
+This capability supports the creation of complete medical records in the system-
+needed for continuity of care and to ensure patient safety.
+|| Core || Commitment || Achievement || Excellence

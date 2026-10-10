@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Once a unique identifier of a patient is created, the system shall populate data on
+entering the unique patient Identifier For example, for a repeat patient, all
+clele-iciicelime Gemographic details, medical history, etc. should be auto populated in as soon as
+the unique patient ID is entered. A similar workflow/process is expected to be
+followed in case a patient is transferred from OPD to IPD.
+. The system sends notifications to all relevant departments and staff during the
+Commitment g. a.
+admission / transfer process.
+The system shall have the capability to send notifications to all departments and
+staff, for example flooramangers/administrators/ registration desk during
+admission and transfer related processes in the healthcare organizations. These
+Interpretation notifications should include:
+e Ward assignment, ward type, and details
+e Bed allocation, bed type, bed number, etc.
+e Transfer details
+Cy Mine The system displays details of occupied beds.
+The system shall provide real-time data regarding vacant, preoccupied, occupied
+and under maintenance, and information on reserved beds. The system shall also
+Interpretation provide real-time insights into bed information, enabling employees and
+management to optimize capacity planning and make data-driven decisions.
+The system may also be able to reflect daycare, emergency beds etc.
+rNeleiiiiaine The system displays details of occupied beds.
+The system shall provide real-time data regarding vacant, preoccupied, occupied
+and under maintenance, and information on reserved beds. The system shall also
+Interpretation provide real-time insights into bed information, enabling employees and
+management to optimize capacity planning and make data-driven decisions.
+The system may also be able to reflect daycare, emergency beds etc.
+|| Core || Commitment || Achievement || Excellence

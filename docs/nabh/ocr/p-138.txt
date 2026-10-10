@@ -1,0 +1,37 @@
+NABH Standards for HIS and EMR Systems
+NABH °
+Annexure-4 Emergency Codes
+
+Emergency Codes
+Emergency codes in a hospital are standardized alerts used to quickly communicate specific types of
+emergencies to staff and coordinate responses efficiently. Codes are used to maintain patient privacy and
+to avoid causing unnecessary panic among patients and visitors. These codes can vary across regions and
+healthcare facilities, but there are some common ones used across many hospitals. Here is a list of
+frequently used emergency codes and their meanings:
+
+1. Code Red: Fire
+
+2. Code Blue: Medical Emergency (e.g., cardiac arrest)
+
+3. Code Black: Bomb Threat
+
+4. Code Pink: Infant or Child Abduction
+
+5. Code Orange: Hazardous Material Spill or Release
+
+6. Code Silver: Active Shooter or Hostage Situation
+
+7. Code Yellow: Disaster or Mass Casualty Incident
+
+8. Code Brown: Severe Weather
+
+9. Code White: Aggressive or Violent Person
+
+10. Code Green: Emergency Evacuation
+
+11. Code Purple: Shelter in Place (e.g., external air contamination, external threat)
+
+12. Code Grey: Combative Person
+
+Note: The codes mentioned above in the annexure are only suggestive and may be changed as per the policy
+of the organization.

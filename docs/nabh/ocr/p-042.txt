@@ -1,0 +1,20 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Care Of Patients (COP)
+Intent of the Chapter:
+It is imperative for healthcare organizations to consistently provide superior quality care across all care settings.
+The "Care of Patients" chapter describes the essential specifications for EMR/HIS to support standardized care
+delivery, which is of critical significance as use of digital systems is becoming an increasingly important part of
+care delivery. The objective of this chapter is to foster and prioritize patient care and safety by using EMR/HIS.
+Healthcare organizations need to adopt digital technology to effectively manage health conditions, diseases and
+foster preventive care. Such technology should support all facilities in a healthcare organization, including
+outpatient departments, daycare centres, and inpatient wards. Further, the system should support patient
+services in remote settings.
+Digital systems must allow medical practitioners to access medical records and proficiently initiate orders for
+laboratory tests, radiological examinations, and pharmaceutical services. Systems should also manage dietary
+consultation and specific nutritional therapy. On the other hand, systems should also support infection related
+cases and sentinel events.
+Digital systems can also provide clinical decision support — Clinical Decision Support Systems (CDSS) - for
+medical professionals, leveraging the data available in the system and the ability to apply evidence based
+guidelines to enhance care and patient safety.
+|| Core || Commitment || Achievement || Excellence

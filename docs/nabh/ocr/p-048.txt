@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+ose The system notifies treating medical practitioners when placing duplicate orders.
+The system shall notify treating medical practitioners when placing duplicate
+orders (For example laboratory / radiology / pharmacy requests/other diagnostics
+procedures).
+There are chances of placing duplicate orders when patients consult multiple
+medical practitioners, who independently prescribe the same tests or medications.
+Interpretation For example, two physicians making the same order or test ordered when a valid
+test result is already in the system. The system should notify the medical
+practitioner when aduplicate order is placed Additionally, the systems should
+allow medical practitioners to access and review tests and medications previously
+prescribed by other medical practitioners. The system should also be able to notify
+the medical practitioner to take into account the recent tests and interventions
+undertaken for the same patient to avoid unnecessary duplication.
+(oreyililiiicai@ee |he system allows patients to access their prescriptions.
+The system shall allow patients to access their prescriptions. This empowers
+patients to manage their medications more effectively and ensure adherence to
+prescribed regimens.
+niteeyeleiieyime| For example, digital access to prescriptions via SMS, mobile applications, online
+messaging platform, email notifications, or patient portals, enables patients to
+retrieve and review their prescriptions at any time. Active involvement of patients in
+their health management ensures improved engagement and higher medication
+adherence.
+eign The system sends alerts in case of critical test results.
+The system shall notify critical laboratory values to relevant staff/departments
+such as the treating medical practitioner or health care providers involved in
+patient care. If a patient's laboratory findings indicate critical values (significantly
+exceeding or falling below the normal range), they are promptly identified as
+Interpretation critical results.
+The system may also give the trend analysis for ICU /OT /CRITICAL patients, as
+a delta check.
+The system shall send notifications or alerts via SMS, online messaging platform,
+email, or a secure messaging system to the relevant staff.
+|| Core || Commitment || Achievement || Excellence

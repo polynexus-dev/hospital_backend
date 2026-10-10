@@ -1,0 +1,29 @@
+References
+
+e = https://abdm.gov.in/
+
+e = https://www.nrces.in/standards/ehr-standards-for-india#intro
+
+e = https://esanjeevani.mohfw.gov.in/assets/guidelines/ehr_guidlines.pdf
+
+e — https://www.altexsoft.com/blog/ehr-certification/
+
+e — https://k-his.or.kr/menu.es?mid=a20201010100
+
+e = https://www.digitalhealth.gov.au/healthcare-providers/initiatives-and-programs/interoperability-and-
+digital-health-standards
+
+e https://norden.diva-portal.org/smash/get/diva2:1340369/FULLTEXTO1.pdf
+
+e = https://www.healthit.gov/sites/default/files/pdf/fact-sheets/standards-and-interoperability-
+framework.pdf
+
+e = https://www.healthit.gov/topic/interoperability/standards-interoperability-si-framework
+
+e —https://www.himss.org/resources/interoperability-healthcare
+
+e = https://www.nrces.in/ndhm/fhir/r4/index.html
+
+e = https://iris. who.int/bitstream/handle/10665/44186/9789241598590 eng Checklist.pdf
+
+e = https://cdn-links.lww.com/permalink/prs/c/prs_142 3 2018 07 03 martindale abs-18-023 sdc1.pdf

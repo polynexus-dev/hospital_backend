@@ -24,6 +24,8 @@ PACKAGES = ("apps", "config")
 COPY_IGNORE = shutil.ignore_patterns(
     ".git", "venv", ".venv", "htmlcov", "media", "staticfiles", "__pycache__", "*.pyc", "*.sqlite3",
     ".env", ".pytest_cache", "build", "*.so", "*.pyd", "*.c",
+    # Platform-side and docs only: never shipped to a hospital.
+    "tools", "docs", "deploy",
 )
 # Platform-side tooling that has no business on a customer's server.
 PLATFORM_ONLY = ("apps/licensing/management/commands/generate_license_keypair.py",)

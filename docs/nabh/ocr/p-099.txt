@@ -1,0 +1,25 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Human Resource Management (HRM)
+Intent of the chapter
+Human resources are a vital aspect of any organization, serving as a key asset for effective and efficient
+operations. The Human Resource Management (HRM) chapter defines how leveraging HIS systems can
+optimize HR processes and enhance overall organizational efficiency. By digitizing routine tasks such as
+onboarding, records management, attendance tracking, and training administration, HIS frees HR staff
+from manual administrative burdens. This chapter highlights the capabilities designed to minimize manual
+data entry and processing, thereby enabling healthcare organizations to achieve operational efficiency.
+A centralized database for staff information helps to ensure accuracy and compliance with privacy
+regulations.
+The system should enable staff to independently manage their HR information, thereby reducing the
+workload of the HR team and allowing them to focus on more strategic tasks.
+The system should be capable of providing critical information on demand. Access to workforce analytics
+and performance metrics empowers informed decision-making, driving organizational success.
+The system should efficiently manage training needs, including induction programs and upskilling
+requirements, while maintaining comprehensive records of these activities.
+Digital Human Resource Management goes beyond administrative functions, acting as a catalyst for
+organizational excellence. Embracing digitalization empowers the workforce, ensures compliance, and
+positions organizations for sustained growth.
+Note: The term “employee” refers to all salaried personnel working in the organization. The term “staff”
+refers to all personnel working in the organization including staff, “fee for service” clinicians, part time
+workers, contractual personnel, and volunteers.
+|| Core || Commitment || Achievement || Excellence

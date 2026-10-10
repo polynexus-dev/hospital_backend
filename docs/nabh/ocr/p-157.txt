@@ -1,0 +1,52 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =x
+" Monitoring o
+4
+»
+=
+Q
+http://www.who.int/entity/gpsc/5 2
+may/Observa 5
+tion_Form.doc?ua=1 a
+2
+Sampling: Yes =
+Sampling methodology: 77)
+Stratified random. However, the 2
+organization should try to ensure et
+that all staff relevant categories m
+of staff are covered at least once =
+in a quarter. a
+2
+The appropriate prophylactic g
+Number of antibiotic should be according to | The system shall calculate $
+patients who hospital policy. The numerator the number of patients who a
+did receive shall include patients who did receive appropriate
+appropriate received the appropriate drug prophylactic antibiotic(s)until
+Percentage of prophylactic X100 Berea Monthly (and dose) within the midnight of the last day of the
+cases who antibiotic(s) age appropriate time. A patient who | calendar month.
+receive was not given prophylactic
+appropriate antibiotic because it was not
+18 PSQ 3b prophylactic indicated (for example clean
+antibiotics Numata of surgery) shall be included in the | The system shall calculate
+ona " the total number of patients
+penn patients who numerator who underwent surgeries
+specified time underwent A patient who is given a il midnight of th ch el
+frame surgeries prophylactic antibiotic even Chal ne) ats GLitinS EES CE
+though it was not indicated, shall of the calendar month.
+be considered as having
+received it inappropriately.
+Sampling: No
+Any case included in the OT list
+Re-scheduling of (including tentative/provisional)
+surgeries but rescheduled/canceled shall The system shall calculate
+19 Percentage of ccmeeliation and Number of Percent The sat Hime for calculation of hove curgery was anceled
+PSQ Se SF surgeries postponement scheduled X100 age Monthly any delay shall be the first or delayed beyond 4 hours
+(beyond 4 booked time for that particular from the planned time as per
+hours) of the case. OT list.
+surgery.
+Sampling: No 7?)
+>
+wo
+=x
+4

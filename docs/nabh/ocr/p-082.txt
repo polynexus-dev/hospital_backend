@@ -1,0 +1,32 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Core b. The system provides a help section in the system to guide the users.
+The system shall include a help section designed to offer guidance and support for
+users. This feature should encompass documentation, frequently asked questions
+: (FAQs), and tutorials. Its purpose is to assist users in understanding system
+UNTIL functionalities, troubleshooting common issues, and optimizing their overall user
+experience.
+Core c The system has a robust security mechanism to protect data against external
+' vulnerabilities.
+The system shall be free from known technical vulnerabilities listed by various cyber
+security organizations.
+This requirement is similar to the requirements of WASA certification. The system
+should be WASA compliant and must obtain a formal WASA certification at least
+every 2 years or whenever there is a major upgrade of the systems, whichever is
+earlier.
+Interpretation
+Apply regular updates and patches in the system to mitigate vulnerabilities. Monitor
+systems for suspicious activities and respond promptly to incidents.
+Good references for ensuring security in HIS/EMR systems could be OWASP and
+SANS guidelines, adhering to secure coding practices such as input validation,
+output encoding, and authentication controls as outlined in OWASP's Top Ten and
+SANS CWE Top 25 Most Dangerous Software Errors to avoid common pitfalls.
+aa risse i
+. The system is capable of sharing the master data across all the modules of the
+Commitment d.
+system.
+The system shall store and share master files and data across all modules. This
+Interpretation feature is essential for maintaining consistent system performance, preventing
+P data duplication, and ensuring that the master data remains efficient and
+responsive.
+|| Core || Commitment || Achievement || Excellence

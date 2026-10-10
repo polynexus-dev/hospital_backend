@@ -1,0 +1,21 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall also have the capability to capture the mode of payment along
+with other relevant information for easy reconciliation.
+Ceri meme The system maintains a record of all payables and receivables.
+The system shall have the capability of maintaining comprehensive digital records
+Interpretation of allpayable and receivables. In the context of a healthcare organization this
+includes detailed financial transactions with suppliers.
+(oreyiiliiuiaimene| |The system generates debit/credit notes for suppliers.
+: The system shall have the capability to generate both debit notes and credit notes
+Interpretation :
+for suppliers.
+PNdiciiacme Ihe system configures individual supplier payment scheduling.
+The system shall include a payment scheduling capability allowing users to
+Interpretation schedule payments to individual suppliers at specific times, thereby preventing
+delays.
+PXenCiaee” [he system monitors and tracks vendor payables.
+The system shall incorporate vendor payment functionalities to streamline all
+Interpretation vendor bill payments. It should include a dashboard for tracking payments and
+monitor the total payables in real-time.
+|| Core || Commitment || Achievement || Excellence

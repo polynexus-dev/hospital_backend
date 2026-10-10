@@ -1,0 +1,28 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+e Clock Synchronization
+e Use of privileged utility programs
+e Installation of system on operational systems
+e Use of Cryptography
+e Separation of development, test and production environment
+e Change management
+=> x-Vi(ala-wem The system adheres to ISO 82304 health software standards.
+ISO 82304 provides standards to enable the safety and security of health software
+products designed to operate on general computing platforms and intended to be
+placed on the market without dedicated hardware. The standard provides common
+requirements for health software manufacturers to ensure quality and safety of
+healthcare software.
+The software manufacturers should demonstrate testing and validation of HIS/EMR
+has been performed in adherence to ISO 82304 standard and guidelines
+A e Demonstrate that the organization has defined quality processes,
+Interpretation : :
+procedures, and controls defined and implemented
+e Demonstrate the software has been developed in adherence to the defined
+quality processes. The documentary evidence of adherence, implemented
+controls / stage-gates should be produced with appropriate authority
+approvals
+e Demonstrate documentary evidence of risk assessment, mitigation planning
+and implementation
+e Documented evidence of testing with traceability to requirements and
+design
+|| Core || Commitment || Achievement || Excellence

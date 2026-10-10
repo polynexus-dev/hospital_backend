@@ -1,0 +1,28 @@
+NABH Standards for HIS and EMR Systems 9)
+NABH
+NABH Standard for HIS Systems
+[wre smd Se oncom soir |
+
+AAC 8 70 21 37 8 4
+COP 13 20 7 7 3 3
+MOM 4 7 4 2 1 0
+DAC 2 9 2 3 2 2
+DOM 5 16 11 4 1 0
+FPM 4 29 5 16 7 1
+
+HRM 3 14 1 6 5 2
+IMS 3 6 0 3 0 3
+Total 42 171 51 78 27 15
+
+NABH Standard for EMR Systems
+Fw oi | ene cami tt | t
+AAC 8 70 22 37 6 5
+CoP 13 43 5 18 13 7
+MOM 4 16 7 3 4 2
+DAC 2 9 2 3 2 2
+DOM 5 16 11 4 1 0
+FPM 0 0 0 0 0 0
+HRM 0 0 0 0 0 0
+IMS 3 12 2 4 2 4
+Total 35 166 49 69 28 20
+@

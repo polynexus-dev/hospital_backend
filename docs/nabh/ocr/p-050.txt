@@ -1,0 +1,37 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Objective Elements
+
+Core a. The system captures nursing notes for inpatients.
+Every patient admitted to a healthcare organization is placed under the care of a
+designated nurse, who is responsible for completing nursing notes during his/her
+shift hours.
+
+cweeelielim he system shall enable nurses to document nursing notes for patients. These notes
+typically include patient identification, nurse identification, an overview of the
+patient's condition, clinical findings, significant events, and observations regarding
+the patient's response to care. Nursing notes serve as comprehensive
+documentation outlining the nursing care administered.
+The system facilitates digital handover between medical practitioners/ nurses during
+
+Core b. . . P
+shift changes for inpatients.
+The system shall capture handovers between healthcare providers during shifts and
+maintain comprehensive records of nursing care plans for all inpatients. At the
+conclusion of each shift, the designated healthcare provider, whether a nurse or
+medical practitioner, conducts a verbal handover supplemented by a documented
+handover (in a standardized template) to the respective healthcare provider in
+subsequent shifts.
+This handover template shall at a minimum include essential details such as the
+
+icweeeliem healthcare worker's identification details (employee ID, name etc.) and patient-
+related information such as vital signs, procedures undergone, scheduled
+diagnostics or procedures for the day, information related to the patient’s current
+condition, recent changes in condition, ongoing treatment and possible changes or
+complications and any other relevant information.
+The system shall enable the organization to monitor the compliance to hand over.
+The opportunities for handover shall be based on the staff ROTA. Refer to HRM 1.d.
+
+Standard
+COP.3. The system supports blood transfusion services.
+|| Core || Commitment || Achievement || Excellence

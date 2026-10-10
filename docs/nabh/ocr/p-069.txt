@@ -1,0 +1,50 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Based on the real time updates provided by the system on the availability of
+medications and stocks available, the medical practitioners should be able to
+prescribe medications. In case of low stocks, the practitioners shall be given a choice
+
+Teaseieiitam| tO prescribe alternate medicines.
+
+This feature shall also help in streamline the processes of indenting, dispensing, and
+administration of pharmacy orders in all the departments. The system shall maintain
+records of all activities.
+
+Core b. The system provides a timestamp at the time of dispensing of medication or devices.
+
+The system shall capture the timestamp for dispensing of medicines and devices at
+. different patient care stations such as at pharmacy, ward, ICU, emergency etc.
+
+Interpretation ; . . | ao .
+
+With timestamp, healthcare providers can avoid duplication (giving the same
+medication twice) or omission (missing a dose).
+The system alerts the prescription of a high-risk medication and has the capability
+
+Core c. : F . .
+to verify at the time of dispensing.
+
+The system shall alert the prescription and dispensing of high-risk medications (for
+example, narcotic drugs, psychotropic substances, chemotherapeutic agents,
+radioactive substances) to designated medical practitioners, nursing
+professionals, para-medical professionals, etc.
+
+: The system could also implement a mechanism that is capable of visually tagging
+
+SUC high-risk medications.
+
+The system should also support the verification of high-risk medication by two
+pharmacists, at the time of dispensing as per the policy of the healthcare
+organization.
+
+Core d. The system generates reports of stock inventory.
+
+The system shall generate reports with medication stocks in the healthcare
+organization to facilitate the management of inventory levels.
+
+Interpretation In addition, the system shall provide insights into inventory levels, usage patterns,
+and potential shortages. By analyzing this data, healthcare organizations can
+make informed decisions about stock management, prevent stockouts, and
+ensure that essential supplies are always available when needed.
+
+|| Core || Commitment || Achievement || Excellence

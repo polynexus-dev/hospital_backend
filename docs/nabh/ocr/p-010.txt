@@ -1,0 +1,13 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+would be onboarded. These established NESTAs would test the HIS and EMR systems based on the test
+cases and validation approaches defined by NABH, suggest corrective actions, if any, and submit their report
+to NABH. The NABH Software Assessor (NSA) would review the final HIS/EMR Test report and submit the
+recommendation to the NABH Certifying Committee. The NABH Certifying Committee will review the Final
+HIS/EMR Test report and NSA recommendation and make the final recommendation. Each successful
+certification will have a validity of 2 years.
+The NABH Standards for HIS and EMR systems are designed to complete the loop of digital health standardization
+in India. With the 6th edition of hospital accreditation standards focusing on hospital processes, and the Digital Health
+Standards driving the digitalization of these processes, the HIS and EMR standards now aim to standardize the
+products and systems used in hospitals. Together, these efforts are building a robust and well-integrated digital
+healthcare ecosystem across the country.

@@ -1,0 +1,39 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+wow system supports the safe administration of medications.
+Objective Elements
+The system correctly identifies the patient at the time of medication administration
+Excellence a.
+and captures records.
+The system shall offer a range of capabilities to ensure the correct identification
+and administration of medicines and allows record capturing thus enhancing
+patient safety and healthcare efficiency. Identification of the patient can be done
+using digital tools like bar code, RFID, unique patient identifier search for
+medication administration. The system shall provide digital options for labelling.
+injectables and intravenous infusions for example RFID and Bar code etc.
+The system should have the capability of correctly identify the patients and
+. medications to be administered. By scanning the patient-identification and the
+Interpretation a ; ae .
+medication barcodes, the system ensures that the right medication is
+administered to the correct patient.
+The system ensures that the right patient gets the right medication in the right
+dose (including right dosages calculation where relevant) at the right time, via the
+right route, right reason, and with the right necessary documentation.
+The system should have the capability to provide workflow to capture, and
+authenticate the drugs ordered verbally by the concerned physician.
+Commitment b. The system has the capability of maintaining an electronic medication
+administration record (eMAR).
+An eMAR provides a comprehensive view of medication administration to the
+medical practitioners administering medications.
+The electronic Medication Administration Record (eMAR) system should have the
+capability to record drugs administered using a specific template. The eMAR
+should contain:
+Interpretation
+e Dosage: The prescribed amount of the medication.
+e Route of Administration: The method by which the medication is administered
+(for example, oral, intravenous, subcutaneous).
+e Date and Time: When the medication was given.
+e Administering Personnel: The name or initials of the person who administered
+the medication and who verified the medication in case of high- risk medications.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,36 @@
+NABH Standards for HIS and EMR Systems
+NABH
+> Analyse the validity of responses and measure the time taken to complete the
+questionnaire.
+e Data Collection and Measurement
+> Educate patients on the purpose of PREMs and how it will benefit them.
+> Explain the importance of taking the survey and differentiating it from other service
+feedback is important to generate a good response rate.
+> Define the time frame of data analysis and share results with relevant stakeholders.
+> It is advisable to refrain from taking feedback from patients who may be unable to
+provide precise information due to their current condition.
+Limitations of PREMs:
+PREMs are an indicator of a patient’s perception of the quality of healthcare, not a direct
+measure of patient outcome/ patient’s clinical condition.
+Interpretation of PREMs in conjunction with data from PROMs is recommended as best
+practice. However, availability of tools and challenges to capture multiple forms is practically
+difficult in the current scenario.
+The patient’s responses can be quite subjective and could be biased by their previous
+experiences.
+Experiences in implementing PREMs:
+PREMs about MRI safety —The MRI unit in the hospital is a busy unit as the hospital caters to
+huge orthopedic load. Usually, busy units in any hospital are prone to accidents due to
+miscommunication, and MRI is one such diagnostic facility where there needs to be very close
+and clear communication with the patients. Lack of clear communication of safety
+precautions inside the MRI suite can lead to disastrous consequences and hence it is
+recommended to use PREMs to assess the degree of clear communication with patients
+about MRI.
+Example of Patient Reported Experience Measures (Prems) on MRI Safety
+Patient
+Response
+1 Did the doctor inform you about the need for the MRI in the plan of Yes/No
+treatment?
+2 Did the hospital staff/ doctor explain to you about the cost of doing Yes/No
+an MRI?
+3 Did the doctor inform you about the type of MRI and the part of the Yes/No
+body involved?

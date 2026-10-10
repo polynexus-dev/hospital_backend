@@ -1,0 +1,42 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Standard
+The system supports healthcare data and interoperability standards for
+patient, clinical, administrative information to ensure continuity of care,
+including ABDM.
+Objective Elements
+c The system supports a minimum set of clinical ABDM FHIR profiles to exchange
+ore a. :
+data with other systems.
+FHIR — Fast Health Interoperability resource is a globally accepted standard for
+healthcare information management and exchange. The system should support
+ABDM FHIR profiles to exchange data with other systems.
+ABDM provides a framework for implementation and exchange of FHIR to create
+an interoperable digital healthcare ecosystem.
+The system should implement capture and exchange of the following ABDM FHIR
+resource profiles as a core capability.
+Profile Description
+. . This profile represents diagnostic reports including
+Diagnostic Report Record Radiology and Laboratory reports that can be
+shared across the health ecosystem.
+This represents the outpatient visit consultation note
+\ A OP Consult Record which may include clinical information on any OP
+nterpretation a . an
+examinations, procedures along with medication
+administered, and advice that can be shared across
+the health ecosystem.
+Disch Ss Clinical document used to represent the discharge
+ischarge summary summary record for ABDM HDE data set.
+Record
+| ization Ri d This represents the immunization records with any
+mmunization Recor additional documents such as vaccine certificate,
+the next immunization recommendations, etc.
+Pp iption R d This represents the medication advice to the patient
+rescription records in compliance with the Pharmacy Council of India
+(PCl) guidelines, which can be shared across the
+health ecosystem.
+ABDM FHIR standards for a reference are available at the National Resource
+center for EHR standards: https://www.nrces.in/ndhm/fhir/r4/index.html
+Commitnentbe The system supports an extended set of clinical ABDM FHIR profiles to exchange
+data with other systems.
+|| Core || Commitment || Achievement || Excellence

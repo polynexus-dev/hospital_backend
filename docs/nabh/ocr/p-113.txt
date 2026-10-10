@@ -1,0 +1,48 @@
+NABH Standards for HIS and EMR Systems 69)
+6
+NABH
+The system shall also publish the KPls to be sent to NABH every quarter, as per
+the format defined by NABH. This ability to publish NABH KPIs will provide
+significant benefit to healthcare organizations and substantially reduce the effort
+needed by them to comply with NABH report needs. Similarly, by receiving NABH
+KPIs across thousands of hospitals in a pre-defined electronic format will save
+NABH significant effort in compiling and aggregating this information.
+Interpretation The list of KPIs to be computed by HIS/EMR system based on NABH accreditation
+standards is given in Annexure-8.
+The list of KPIs to be computed by HIS/EMR system based on NABH Digital health
+standards is given in Annexure-9.
+The format for exporting KPI data to NABH is given in ‘Resources’ folder on NABH
+portal.
+The system complies with Information Security (ISO 27001:2022) and
+Safety and Security of Health Software Products (ISO 82304) standards
+Srl (teem The system complies with ISO 27001 — 2022 information security standards.
+With digital healthcare delivered in a connected model, healthcare information
+requires a comprehensive approach to privacy and cybersecurity. ISO 27001
+provides the requirements for establishing, implementing, maintaining and
+continually improving an information security management system within the
+context of the organization.
+1. The system should be built in adherence to applicable chapter 8 — Technological
+controls of ISO 27001-2022 standards. These include-
+e Secure Development lifecycle
+e Application security requirements
+e Secure system architecture and engineering
+e Secure coding
+e Outsourced development
+e Separation of Development, test and production environments
+Ticudsetioim 2. rhe system should support implementation of the following security
+requirements-
+e Tracking of user endpoint devices
+e Implementation of privileged access rights
+e Information access rights
+e Access to source code
+e Secure authentication
+e Protection against malware
+e Management of technical vulnerabilities
+e Configuration management — HIS/EMR security configuration
+e Information deletion
+e Data Masking
+e Data leakage prevention
+e Information backup
+e Redundancies of Information processing facilities
+e Monitoring activities
+|| Core || Commitment || Achievement || Excellence

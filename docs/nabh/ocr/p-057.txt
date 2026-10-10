@@ -1,0 +1,32 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system may also have the ability to provide the demo of any procedure or surgery
+pre and post requirements to patients in recording before obtaining consent.
+The system should also allow for updating the patient information based upon patient
+consent.
+The consent process could include Aadhar-based OTP? fingerprints of the patient/kin/
+legal guardian.
+Refer to the Digital Personal Data Protection Act (DPDP) Act, 2023 where the
+HIS/EMR systems have been considered as Data Fiduciaries.
+. The system schedules, re-schedules, or cancels interventional procedures/
+Achievement d. :
+surgeries.
+The system shall provide real-time OT availability status, assisting in scheduling
+upcoming surgeries and finalization of OT list as per the timelines defined by the
+organization. The system should allow for seamless booking of available slots as
+well as facilitate changes or rescheduling as necessary. In case a surgery is
+rescheduled the system shall capture the duration of delay.
+The system should flag any UHID undergoing a second surgery within a span of
+30 days and have a provision for marking the surgery as planned or unplanned.
+While the OT is booked by designated staff, nurses and the billing department
+Interpretation also play pivotal roles in facilitating OT clearances. For example, before a patient
+is transferred to the OT, nurses ensure that all preoperative patient workup is
+completed.
+The system could have the capability to notify other relevant departments, for
+example laboratory, radiology, and dietary departments about the forthcoming
+planned procedures.
+By streamlining the booking process and integrating designated staff/ department
+roles within the system, errors and miscommunications related to surgery
+scheduling can be significantly reduced.
+(ofeJiiiiiigemes) |he system records the start and end times of the planned operation.
+|| Core || Commitment || Achievement || Excellence

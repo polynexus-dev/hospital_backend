@@ -1,0 +1,57 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+70 | SNOMED CT Systematized Nomenclature of Medicine Clinical Terms
+The Systematized Nomenclature of Medicine Clinical Terms
+(SNOMED CT) is a comprehensive and universal clinical
+terminology system used by healthcare
+professionals to accurately record, store, and exchange
+clinical information across different healthcare settings and
+systems. It consists of clinical concepts and terms
+that are organized into hierarchies and relationships,
+allowing health professionals to communicate clinical
+information in a more consistent and accurate manner.
+SNOMED CT is designed to support clinical decision-
+making, improve patient safety, and enhance the
+interoperability of healthcare information systems.
+
+71 = ‘| Specialist In this document, specialist refers to the medical
+practitioners who have a specialization in a particular area,
+e.g., dermatology, gynaecology etc.
+
+72 | Stakeholder A person, group or organisation that has interest or
+concern in an organisation. Stakeholders can affect or be
+affected by the organisation’s actions, objectives and
+policies. Internal stakeholders are individuals who are
+already committed to serving the organisation such as
+board members, staff and volunteers, including surveyors.
+External stakeholders are individuals who are impacted by
+the work of the organisation such as clients and community
+partners.
+
+73 | Surgical safety checklist The Surgical Safety Checklist is a tool developed by the
+World Health Organization (WHO) to improve the safety of
+surgical procedures. It was created with the aim of
+reducing errors and adverse events and enhancing
+teamwork and communication in surgery.
+
+The checklist is composed of 19 items and is used in
+operating rooms worldwide. The use of the checklist has
+shown significant reduction in both morbidity and
+mortality. The checklist is used at three critical points in the
+surgical process:
+
+Before induction of anaesthesia
+
+Before skin incision
+
+Before the patient leaves the operating room
+
+74 | System In this document, system refers to the digital system or
+software that is deployed in the healthcare organizations.
+
+75 | Teleconsultation Teleconsultation, also known as remote consultation or
+telehealth, refers to interactions that happen between a
+clinician and a patient for the purpose of providing
+diagnostic or therapeutic advice through electronic means.
+Its a type of telemedicine service, where digital information

@@ -1,0 +1,40 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+Summary of Standards
+
+FPM.1. The system provides the ability to manage the supply chain processes.
+
+FPM.2. The system manages vendor payments.
+
+FPM.3. The system performs patient billing functions.
+
+FPM.4. The system supports insurance payment functions.
+
+Standard
+
+rou The system provides the ability to manage the supply chain processes.
+
+Objective Elements
+
+, The system configures masters, workflows and rules for procurement
+Commitment a.
+management.
+Procurement is a critical process through which healthcare organizations acquire
+medical equipment, products, or services they need. The procurement process
+comprises of following key capabilities:
+e Need identification
+e Supplier identification
+¢ Solicitation of bids
+e Supplier selection
+e Purchase order approval
+e Order placement
+Interpretation ° Order receipt & quality control
+The system shall have the ability to configure masters needed for procurement
+and inventory management, including material master, supplier master etc. The
+system should have the capability of configuring workflows for supplier
+onboarding, procurement, quality control and stock management.
+The system should provide flexibility to adapt workflows and rules of procurement
+and inventory management based on the specific product or services needs da
+healthcare organization. For example, medical devices vs general supplies.
+|| Core || Commitment || Achievement || Excellence

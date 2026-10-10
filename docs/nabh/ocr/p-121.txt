@@ -1,0 +1,57 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+29 | HL7 Health Level 7 (HL7) is a set of international standards for
+the exchange, integration, sharing, and retrieval of
+electronic health information. Its used in healthcare
+settings to facilitate communication between various
+healthcare systems, such as electronic health records
+(EHRs), medical devices, and other healthcare applications.
+The HL7 standards ensure that health information is
+transferred accurately, securely, and in a standardized
+format, which can improve patient care and help
+healthcare organizations operate more efficiently. The
+standards are produced by Health Level Seven
+International, an international standards organization, and
+are adopted by other standards issuing bodies such as
+American National Standards Institute and International
+Organization for Standardization.
+
+30 | HPR Healthcare Professionals Registry, or HPR, is a
+comprehensive repository of verified and registered
+healthcare practitioners.
+
+31 | ICD The International Classification of Diseases is a globally
+used diagnostic tool for epidemiology, health management
+and clinical purposes. The ICD is originally designed as a
+health care classification system, providing a system of
+diagnostic codes for classifying diseases, including nuanced
+classifications of a wide variety of signs, symptoms,
+abnormal endings, complaints, social circumstances, and
+external causes of injury or disease.
+
+32 | Inpatient days Inpatient days refers to the total number of days that
+patients stay in a hospital or healthcare facility.
+
+33 | Incident Events that are unusual, unexpected, may have an element
+of risk, or that may have a negative effect on patients,
+groups, staff or the organisation.
+
+34 | Inventory Inventory, also known as stock, refers to the goods and
+materials that a healthcare facility has on hand.
+
+35 Part of a healthcare facility or hospital where patients are
+admitted for over 24 hours.
+
+An IPD of the hospital is generally fitted with beds, medical
+equipment, and 24x7 availability of doctors and nurses.
+
+36 | IRDAI Insurance Regulatory and Development Authority of India
+(IRDAI), is a statutory body formed under an Act of
+Parliament, i.e., Insurance Regulatory and Development
+Authority Act, 1999 (IRDA Act, 1999) for overall supervision
+and development of the Insurance sector in India.
+
+37 | ISO 27001 ISO/IEC 27001 is the international standard for information
+security management. Part of the ISO 27000 series, ISO
+27001 sets out a framework for all organisations to

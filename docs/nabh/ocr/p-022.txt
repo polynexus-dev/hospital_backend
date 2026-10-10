@@ -1,0 +1,48 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall have a robust mechanism to generate notifications (including
+reminders). These notifications can be sent through SMS, online messaging
+platform, Web mail, or on a patient portal.
+
+Interpretation
+For in-person appointments, notifications shall include the date and time of the
+appointment, the name of the doctor, and the location. For teleconsultation
+appointments, notifications should include a link for the same.
+
+Core c. The system has the capability to record time stamps.
+
+The system shall capture time stamps for all important touchpoints both in OPD,
+IPD and diagnostics.
+
+For example, for outpatients, the touch points could be registration, the arrival of
+the patient to the outpatient department, and the start of consultation by the
+consultant.
+
+In case of diagnostics (at a minimum laboratory and radiology), the touch points
+could be the time at which the service is ordered, the billing time, the time at which
+
+Interpretation the patient comes to the diagnostics service, the time at which the test is initiated
+and the time at which the report is signed and released.
+
+Similarly, in an IPD scenario, the touch point may include admission of the patient
+being carried out, arrival of the patient at the ward bed, the time at which the initial
+assessment was completed, the time when the care plan is countersigned, time
+of administration of medications , time of initiation of discharge and the time at
+which the patient left the ward.
+
+The time stamps should enable the organization to capture the various waiting
+times and the turnaround times.
+
+Excellence d. The system captures details of appointments made through external systems.
+There are many ways to book an appointment, e.g., through phone calls,
+healthcare organization's patient portals/websites, mobile applications, online
+messaging platforms, SMS email etc. The system shall have the capability to
+
+: transfer appointment information into the HIS/EMR system.
+
+Interpretation
+Patients may also book an appointment through third-party websites or mobile
+applications. Such websites/ mobile applications shall also be integrated with
+HIS/EMR systems.
+
+|| Core || Commitment || Achievement || Excellence

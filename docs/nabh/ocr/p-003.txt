@@ -1,0 +1,54 @@
+NABH, a constituent board of the Quality Council of India, has been at the forefront of ensuring quality
+and excellence in healthcare services for the past 19 years. Over the years, NABH standards have
+transformed healthcare delivery, raising awareness among healthcare workers, patients, and their
+families about their rights and responsibilities. Dedicated to the SDG-3-Target 2030 and Viksit Bharat
+2047, we aim to ensure healthy lives and promote well-being for all ages, with a special focus on
+patient safety and empowerment.
+The evolving healthcare landscape, driven by technological advancements, has made Hospital
+Information Systems (HIS) and Electronic Medical Records (EMR) crucial for efficient patient data
+management and enhanced communication among healthcare providers.
+With the mission to establish an accreditation program that sets a benchmark for the progress of the
+healthcare industry, fostering a culture of quality and safety in healthcare, | am delighted to introduce
+NABH's latest initiative—the first edition of standards for HIS and EMR systems in India.
+These pioneering standards are aligned with NABH core standards and the NABH Digital Health
+Standards for Hospitals, marking a transformative shift in digital healthcare. This alignment places
+NABH ina globally unique position, where a single entity oversees all three standards, developed with
+consistent rigour. By upholding the highest standards in digital health, we are laying the foundation
+for amore efficient, transparent, and patient-centered healthcare ecosystem in India.”
+The new standards include Objective Elements (OEs) structured to be assessed across four levels:
+Core, Commitment, Achievement, and Excellence- mirroring the structure of our Digital Health
+Standards for Hospitals. Developed by a committee of technology specialists, NABH technical
+experts, and leading medical practitioner, these standards cover critical clinical and administrative
+workflows, data security, revenue management, interoperability, and scalability.
+NABH acknowledges the commendable work being done by NHA and the significant role of the ABDM
+platform in promoting interoperability. We also value NHA's effort in evaluating and certifying Digital
+Health products for ABDM interoperability and ensuring necessary security certifications (including
+WASA testing). Hence NABH standards for HIS/EMR systems mandate that all products must be
+evaluated and approved by NHA for ABDM and security requirements, prior to applying for NABH
+certification. This alignment strengthens the collaboration between NHA and NABH ensuring that
+robust Digital Health solutions get certified and used by hospitals across India.
+In developing the NABH certification for HIS/EMR systems, we have also drawn inspiration from
+global standards in Digital Health, as well as best practices in software development and security. We
+have also engaged extensively with industry experts, who have made valuable contributions to these
+standards. We are truly excited about the potential of NABH certification for HIS/EMR systems to
+accelerate the adoption of Digital Health in India, by driving standardization in product requirements
+and making it easier for hospitals to procure high-quality HIS/EMR products.
+We recognize that developing these standards is an ongoing journey, and we welcome feedback from
+Digital Health companies, hospitals, and other organizations to continuously refine the standards.
+Additionally, we are working on the testing and certification approach for HIS/EMR systems including
+the selection of NABH-approved software testing agencies.
+As we embark on this journey, | urge all clinicians, healthcare organizations, HIS and EMR system
+companies, other stakeholders, and policymakers for their support in the adoption of these
+standards. Together, we can elevate healthcare quality, promote patient-centric care, and contribute
+to ahealthier India where every individual benefits from cutting-edge digital health solutions.
+l extend my best wishes to all products adopting these standards and applaud their commitment to
+quality and patient safety. Thank you for your dedication to excellence, and | look forward to seeing
+the positive impact of these standards on our healthcare ecosystem.
+The 1st edition of NABH Digital Health Standards for HIS/ EMR Systems serves as a valuable resource
+for organizations committed to providing safe, effective, and patient-centered care. May this edition
+inspire a new era of excellence in healthcare advancing our shared goal of ensuring that every patient
+receives the highest standard of care.
+NABH remains committed to its mission of taking Quality, Safety and Wellness to the last in the line.
+Wid whlh,
+Dr. Atul Mohan Kochhar
+CEO, NABH

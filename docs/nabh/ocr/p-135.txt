@@ -1,0 +1,44 @@
+NABH Standards for HIS and EMR Systems
+NAB 1
+Benefits of PROMs as a Quality Tool
+Patient-Reported Outcome Measures (PROMs) are becoming increasingly valuable tools for healthcare
+quality improvement because of the following benefits-
+1. Direct Patient Feedback
+2. Assessment of Quality of Life
+3. Reduced Costs
+4. Improved Patient Satisfaction
+One of the PROMs used in India is Clinical Outcome Measures. These measures assess the clinical
+outcomes of specific procedures or treatments, such as post operative pain management or diabetes
+control. These measures help healthcare providers evaluate the effectiveness of their treatments &
+interventions and make necessary adjustments to improve patient outcomes. Clinical Outcome Measures
+are particularly useful in assessing the impact of chronic diseases on patients’ lives, such as diabetes or
+hypertension.
+Health-Related Quality of Life Measures are also an essential PROM used in India. These measures assess
+the impact of healthcare on patients’ quality of life, such as physical functioning, emotional well-being,
+and social functioning. Health-Related Quality of Life Measures are particularly useful in assessing the
+effectiveness of long-term treatments and interventions, such as cancer treatment or chronic disease
+management.
+Case Scenarios for Guidance
+
+Case Scenario 1:
+Patient: 65-year-old male with type 2 diabetes, hypertension, and coronary artery disease.
+Chief Complaint: Chest pain on exertion.
+History of Present Illness: The patient has a 10-year history of type 2 diabetes and hypertension. He has
+been taking oral medications for both conditions, but his blood sugar and blood pressure have not been
+well controlled. He also has a 5-year history of coronary artery disease, and he has had one stent placed
+in his left anterior descending coronary artery.
+Physical Examination: The patient's vital signs are within normal limits. His physical examination is
+unremarkable except for a slightly enlarged heart.
+Investigations: The patient's electrocardiogram (ECG) shows signs of ischemia. His stress test is positive
+for ischemia. His coronary angiogram shows significant stenosis in his right coronary artery.
+Diagnosis: Coronary artery disease with stable angina pectoris.
+Treatment Plan: The patient is scheduled for coronary artery bypass grafting (CABG) surgery.
+Patient-Reported Outcome Measures (PROMs):
+Before surgery:
+= The patient's quality of life is impaired by his chest pain. He is unable to exercise without experiencing
+
+chest pain. He is also worried about the risk of a heart attack.
+After surgery:
+= The patient's chest pain is relieved. He is able to exercise without experiencing chest pain. His quality
+
+of life has improved significantly. He is also less worried about the risk of a heart attack.

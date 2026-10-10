@@ -1,0 +1,49 @@
+NABH Standards for HIS and EMR Systems
+NABH .
+INTRODUCTION
+The healthcare industry is in the midst of rapid evolution, driven by transformative digital innovations that are
+fundamentally reshaping the delivery and management of healthcare services. Recognizing the critical need for
+robust standards to ensure quality and interoperability across platforms, the National Accreditation Board for
+Hospitals & Healthcare Providers (NABH) has developed standards for HIS/EMR systems. These standards are
+pivotal in fostering a more efficient, interconnected, and technologically advanced healthcare ecosystem in India.
+They empower hospitals to leverage digital technologies effectively, thereby improving patient outcomes, optimizing
+operations, and elevating overall healthcare delivery standards.
+Aligned with both the NABH Core standards and the NABH Digital Health Standards for Hospitals, these HIS/EMR
+standards uniquely position NABH as the sole entity responsible for these critical benchmarks, developed with a
+cohesive and consistent approach on a global scale. The NABH continues its hallmark methodology of Standards
+and Objective Elements, maintaining a structured approach to framework of standards. The categorization of
+Objective Elements into Core, Commitment, Achievement, and Excellence reflects a commitment to continual
+improvement. The total number of Objective Elements for HIS are 170, comprising 51 in the Core category, which
+are essential to be complied with during each assessment; 78 in the Commitment category; 26 in the Achievement
+category and 15 in the Excellence category. The total number of Objective Elements for EMR systems are 161,
+comprising 49 in the Core category, which are essential to be complied with during each assessment; 65 in the
+Commitment category; 27 in the Achievement category and 20 in the Excellence category. There are 8 objective
+elements (OEs) where Head has been mentioned either as Common/ HIS or as Common/ EMR. For these OEs, the
+categorization ( i.e Core, Commitment, Achievement or Excellence) for HIS and EMR is different and is marked &
+colour coded accordingly in their respective standards. This streamlined approach ensures comprehensive
+evaluation while emphasizing ongoing enhancement of healthcare standards.
+There are two certification levels offered by NABH namely Base Level and Advanced Level. For a system to qualify
+for Base Level certification, it would be required to comply with 100% Core, 60% Commitment, and 30 %
+Achievement requirements. For a system to qualify for Advanced Level certification, compliance to 100 % Core, 80%
+Commitment, 60% Achievement and 60% Excellence would be required.
+NABH acknowledges and applauds the National Health Authority (NHA) for its pivotal role in driving interoperability
+through the ABDM platform. NHA's certification efforts ensure that Digital Health products meet rigorous ABDM
+interoperability and security standards, including comprehensive WASA testing. Consequently, NABH’s standards
+for HIS/EMR systems mandate that products undergo NHA evaluation and approval prior to seeking NABH
+certification. This collaborative effort harmonizes NHA and NABH initiatives, ensuring that only robust Digital Health
+solutions are certified and widely adopted across hospitals in India.
+The development of the NABH Standards for HIS/EMR systems certification has been a meticulously orchestrated
+endeavor, drawing inspiration from global Digital Health standards and integrating best practices from software
+development and security. Extensive collaboration with industry experts has enriched these standards, refining them
+to effectively meet the dynamic and evolving requirements of the healthcare sector.
+The potential impact NABH Standards for HIS/EMR systems certification in advancing Digital Health adoption in India
+is profound. By establishing standardized product requirements, the certification streamlines the procurement
+process for hospitals, promoting the widespread adoption of high-quality HIS/EMR products nationwide.
+While these standards represent a significant achievement, NABH recognizes that their development is an ongoing
+journey. Feedback and insights from Digital Health companies, hospitals, and stakeholders will continue to be
+instrumental in refining and enhancing these standards further. In parallel, NABH is diligently working on the testing
+and certification framework for HIS/EMR products, including the selection of NABH-approved software testing
+agencies. This proactive approach underscores NABH's commitment to ensuring the integrity and efficacy of certified
+products.
+Together, these initiatives underscore NABH's steadfast dedication to fostering excellence and innovation in Digital
+Health, paving the way for a more interconnected and efficient healthcare ecosystem in India and beyond.

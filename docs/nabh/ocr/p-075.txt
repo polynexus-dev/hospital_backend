@@ -1,0 +1,24 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Digital Application Controls (DAC)
+Intent of the Chapter:
+With the increasing use of Digital technologies in a healthcare organization, it is imperative for HIS/EMR
+systems to provide secure and easy access to all stakeholders. This chapter focuses on ease of access and
+provisions to protect the security and privacy of personal health data. By prioritizing compatibility, security,
+and ease of use, the system can empower healthcare professionals to focus on patient care while maintaining
+data integrity.
+The system should be designed to function seamlessly across major web browsers. The system should have
+controls in place to secure data i.e., data is encrypted at-rest (in all places, including back-up) and in-transit.
+The system should have robust capability to ensure that all patient data sharing outside the healthcare
+organization (or with other departments within the healthcare organization) happens with appropriate patient
+consent.
+The systems should take cognizance of India's Personal Data Protection Act 2023, which establishes a
+framework for the processing of personal data, ensuring the protection of individuals’ privacy. It mandates
+the consent of individuals for data processing, outlines individuals’ rights such as data access and correction,
+and imposes obligations on data fiduciaries regarding data handling and security. The act also introduces
+penalties for data breaches and non-compliance, and it establishes the Data Protection Board of India to
+oversee enforcement. There are special provisions for the processing of children's data.
+Summary of Standards
+DAC.1. The system provides secure and flexible access to users.
+DAC.2. The system has robust access and data security controls
+|| Core || Commitment || Achievement || Excellence

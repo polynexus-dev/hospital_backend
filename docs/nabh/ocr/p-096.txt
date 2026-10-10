@@ -1,0 +1,38 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+(oT iieese The system enables easy patient authentication.
+
+The system shall assist in smooth auto-verification via various digital modes
+available, for example digilocker. Auto verification enables the fetching of various
+
+Interpretation KYC documents (with the help of an OTP from the patient) that are required as a
+part of the initial documentation process for an insurance patient at any healthcare
+organization.
+
+Commitment c. The system captures pre-authorization details from the payor for planned
+treatment/procedures.
+
+The system shall be able to capture pre-authorization or pre-approval information
+for billing requirements. Pre-authorization from the payor could be performed
+either digitally or manually.
+
+Interpretation Pre-authorization functionality allows the system to submit planned treatment
+details to payors for pre-approval on the estimated treatment costs done either
+digitally or manually. The payer category includes TPA/Insurance companies or
+any applicable government insurance schemes.
+
+PXel(itiaemes The system captures the claim submission for the payors.
+
+The system shall be able to capture the details and cost of the final treatment
+provided to the patient and as submitted for reimbursement purposes to the payor
+(can be done digitally or manually).
+
+Interpretation
+In addition to the claim submission, the system should also have the capability to
+capture any associated or relevant correspondence made with the insurance
+company towards the claim settlement.
+
+PN (e(iiiiacwe The system checks the status of the requests.
+
+|| Core || Commitment || Achievement || Excellence

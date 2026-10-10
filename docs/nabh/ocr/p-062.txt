@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Category . .
+Achievement Head EMR Type Functional
+. The system maintains records of the healthcare organization staff, exposure to
+Achievement d. , .
+any infections at the workplace
+The system shall capture and maintain digital records of healthcare organization
+staff who have been exposed to infectious agents such as HIV, Hepatitis B, and
+Hepatitis C during their duty hours (e.g., needle stick injury, spillage). It should be
+able to maintain comprehensive digital health records detailing the post -exposure
+. prophylaxis administered to affected employees. The same should be linked to
+Interpretation ,
+the employee’s personnel records and health records to enable due follow-up.
+By meticulously tracking exposed staff, the system facilitates the identification of
+individuals at risk due to potential infection exposure, enabling prompt intervention
+and implementation of preventive measures.
+Standard
+core The system supports the risk assessment of patients.
+Objective Elements
+: The system assists the organization to identify vulnerable patients, patients at the
+Achievement a. I F F . F
+risk of fall or developing/worsening of pressure ulcers, or deep vein thrombosis.
+The system shall assist healthcare providers in recognizing patients who are
+vulnerable to adverse health outcomes. Vulnerable patients might include those
+with chronic illnesses, the elderly, individuals with multiple comorbidities, or those
+with socioeconomic factors that affect their health.
+The system shall also be able to assist healthcare providers in recognizing
+Interpretation patients who have an increased likelihood of experiencing falls, developing
+pressure ulcers and deep vein thrombosis by using validated tools for the
+assessment of risk of fall, pressure ulcers and deep vein thrombosis and findings
+recorded in the system. Few examples of tools for assessing pressure ulcers are
+Branden Scale, The European and US National pressure ulcer Advisory panels
+(EPUAP and NPUAP) staging systems.
+|| Core || Commitment || Achievement || Excellence

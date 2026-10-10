@@ -1,0 +1,52 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+The system shall have the capability to capture and exchange the following ABDM
+FHIR resource profiles:
+
+Observation Vital Signs This profile sets minimum expectations for the
+Observation Vital Signs to record, search, and
+fetch the details of the vital signs of a patient.
+
+Observation General This profile sets minimum expectations for the
+
+Assessment Observation General Assessment to record,
+search, and fetch the details of the general health
+assessment of a patient.
+
+Procedure This profile sets minimum expectations for the
+
+Interpretation Procedure resource to record, search, and fetch
+procedures associated with a patient.
+
+Diagnostic Report Imaging This profile represents the set of information
+related to the imaging diagnosis report generated
+by imaging services like Radiology, Cardiology,
+Endoscopy, etc. are ordered for the patient.
+
+Family Member History This profile sets minimum expectations for the
+Family Member History resource for searching
+and fetching significant health conditions of a
+person related to the patient in the context of care.
+
+ABDM FHIR standards for a reference are available at the National Resource
+center for EHR standards: https:/Awww.nrces.in/ndhm/fhir/r4/index.html
+: The system supports an advanced set of clinical ABDM FHIR profiles to
+Achievement c.
+exchange data with other systems.
+The system shall have the capability to capture and exchange the following ABDM
+FHIR resource profiles:
+ABDM FHIR standards for reference are available at the National Resource center
+for EHR standards: https://www.nrces.in/ndhm/fhir/r4/index.html
+| Profile Description
+Interpretation Health Document Record This represents the unstructured historical health
+records as a single of multiple Health Record
+Documents generally uploaded by the patients through
+the health locker and can be shared across the health
+ecosystem.
+This represents regular wellness information of patients
+
+Wellness Record typically through the Patient Health Record (PHR)
+application covering clinical information such as vitals,
+physical examination, general wellness, women’s
+
+|| Core || Commitment || Achievement || Excellence

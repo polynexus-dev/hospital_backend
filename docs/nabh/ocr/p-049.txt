@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Coren The system allows medical practitioners to access past medical records within the
+' healthcare organization.
+
+The system should have provisions for treating or referring medical practitioners
+to access patients’ medical records within the healthcare organization. Patient
+records can be retrieved using key identifiers such as ABHA, patient name, mobile
+number, UHID etc.
+
+Interpretation : ; . ; a ;
+Access to comprehensive medical records, medical history, medication history,
+surgical history, and vaccination records, holds significant importance for treating
+medical practitioners. This longitudinal data aids in identifying patterns and trends
+for future care decisions.
+
+Core o. The system has the capability to link patient's health records to their ABHA.
+
+The system shall have the capability to establish a link to the medical records of
+
+Interpretation patients with their ABHA. These records can then be shared with other healthcare
+providers or other entities upon receiving the patient’s consent.
+
+This corresponds to Milestone 2 (M2) of ABDM.
+Core p. The system provides access to a patient’s past medical records through ABHA.
+The system shall have the capability to access a patient's past medical records
+(including laboratory results, imaging studies, and clinical notes) using the patient’s
+ABHA, once the patient gives consent to the healthcare organization.
+Interpretation
+Medical practitioners can use past medical records to make accurate diagnosis and
+deliver optimal clinical care.
+This corresponds to Milestone (M3) of ABDM
+Standard
+cor, The system manages nursing care processes.
+|| Core || Commitment || Achievement || Excellence

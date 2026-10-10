@@ -1,0 +1,26 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Xen (-llaiae |he system connects with external devices and stores captured information.
+For carrying out day to day administrative functions in a healthcare organization
+several devices may be required to be connected with HIS/EMR system. These
+devices could be
+e Biometric device (e.g. for attendance, access to the system)
+e RFID Reader (e.g. for restricted areas access, patient identification)
+Cyc iitelame © Scanners (e.g. for patient related documents)
+e Printers (e.g. for billing, reports)
+e Barcode scanners (e.g. for pharmacy, lab samples)
+The system shall have provisions to connect with such devices and capture data
+transmitted.
+Standard
+AAC.2 The system supports patient appointments and the medical practitioner
+schedules.
+Objective Elements
+(oyiiuiciie-we The system creates and manages appointments.
+The system shall have provisions for booking, changing or cancelling patient
+appointments. The appointments can be:
+e New or follow-up.
+Interpretation e Physical visit or teleconsultation.
+The system shall also capture details of the patient for example contact
+information, patient condition, doctor's name, appointment date and time, location
+(oJiiiuicuigeme The system generates and sends notifications to the patients.
+|| Core || Commitment || Achievement || Excellence

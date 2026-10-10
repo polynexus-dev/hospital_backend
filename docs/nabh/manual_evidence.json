@@ -1,0 +1,93 @@
+{
+  "AAC.1.c": "`patients.Patient._generate_uhid` issues a UHID on save (unique per hospital)",
+  "AAC.2.a": "`appointments` app: Doctor, SlotTemplate, Slot, Appointment, Waitlist viewsets; portal booking in `portal/views.py`",
+  "AAC.2.b": "`communications.services.send_appointment_reminder` (24h/2h reminders over SMS/WhatsApp); `clinical/notify.py` notify_patient",
+  "AAC.2.e": "`/appointments/slots/` with Doctor profile (speciality, department); `/portal/doctors/<id>/slots/` for patients",
+  "AAC.2.g": "`/doctors/<id>/schedule/` (JSON, or `?output=pdf` to print)",
+  "AAC.4.a": "`radiology` app: procedure catalogue, orders, appointments/slots, reports, verify workflow (`radiology/workflow.py`)",
+  "AAC.4.c": "`radiology.workflow.notify_radiology_new_order` raises a department alert on every booking (urgent/stat as warning)",
+  "AAC.4.f": "RadiologyReport amendments (`is_amended`, addendum) in `radiology/workflow.py`",
+  "AAC.4.j": "`radiology.workflow.notify_radiology_report_ready` → `clinical/notify.py`",
+  "AAC.5.b": "Configurable templates: `clinical.AssessmentTemplate`, `laboratory.LabReportTemplate`, `radiology.RadiologyTemplate`, communication templates",
+  "AAC.5.c": "`ipd.Admission`, BedAllocation, AdmissionRule (`ipd/models.py`)",
+  "AAC.5.f": "Admission is keyed on the patient (UHID); demographics, allergies, ABHA and insurance come from the patient record (`ipd/serializers.py`)",
+  "AAC.6.a": "`ipd.DischargeSummary` create/edit (`ipd/services.py`); PDF and FHIR DischargeSummary bundle",
+  "AAC.6.d": "`ipd.WardTransfer` for internal transfers",
+  "AAC.8.b": "`feedback` app: NPSResponse analytics, Complaint and ServiceRecoveryTask; PROM/PREM scores in `portal`",
+  "COP.1.b": "Patient detail page and timeline (`patients.TimelineEvent`, `Frontend/src/features/patients/PatientDetailPage.tsx`)",
+  "COP.1.h": "`patients.Prescription` e-prescription with PDF; lab and radiology orders (CPOE) with CDSS checks in `clinical/services.py`",
+  "COP.1.p": {
+    "status": "Partial",
+    "evidence": "`abdm` ConsentRequest and HealthRecordFetch flow; live retrieval needs ABDM gateway credentials (currently the stub gateway)"
+  },
+  "COP.2.a": "`nursing.NursingNote` (`nursing/views.py`)",
+  "COP.3.c": "`bloodbank.BloodUnit` stock with component and expiry; `bloodbank/workflow.py`",
+  "COP.6.g": "`ot` app: SurgeryRequest, OTSchedule, OperativeNote, AnaesthesiaRecord, ImplantUsage, SurgicalSafetyChecklist",
+  "DAC.1.a": "HTTPS-only in production: `config/settings/prod.py` (SECURE_SSL_REDIRECT, HSTS, secure cookies)",
+  "DAC.1.b": "Responsive React UI plus installable web app (`Frontend/public/manifest.webmanifest`)",
+  "DAC.1.c": {
+    "status": "Partial",
+    "evidence": "Standards-based React/Vite build targeting evergreen browsers; a cross-browser test run (Chrome, Edge, Firefox, Safari) still needs to be recorded"
+  },
+  "DAC.1.d": "Patient portal `/portal` (OTP login), SMS/WhatsApp messages, teleconsultation join links, queue display screens",
+  "DAC.1.e": "OpenID Connect single sign-on with Microsoft Entra ID, Google Workspace or any OIDC provider (`accounts/sso.py`, `accounts/sso_views.py`): PKCE, signed ID-token validation, identity linking, per-hospital 'require SSO' policy with admin fallback; configured in Governance › Single sign-on",
+  "DAC.1.f": "Installable web app for staff on phones and tablets (`Frontend/public/manifest.webmanifest`); no native store app",
+  "DAC.2.a": "At rest: field-level AES-GCM encryption (`core/fields.py`, `core/encryption.py`), encrypted backups. In transit: TLS with HSTS (`config/settings/prod.py`)",
+  "DAC.2.b": "Role templates in `accounts/permission_templates.py`; per-action permissions on every viewset",
+  "DOM.1.a": "Role and permission management in `accounts` (roles, templates, block/unlock); admin UI `/admin`",
+  "DOM.1.c": "API throttling (`REST_FRAMEWORK` DEFAULT_THROTTLE_*), login lockout, password policy, CORS allow-list, access-denied logging (`governance`)",
+  "DOM.1.d": "Shared masters used by all modules: departments (`/departments/`), doctors, users, tariffs (`finance.ServiceTariff`), ICD-10 (`mrd`)",
+  "DOM.1.f": {
+    "status": "Organisational",
+    "evidence": "Vendor process: git-based source control with reviewed merges; to be documented in the vendor's SDLC policy"
+  },
+  "DOM.2.b": {
+    "status": "Organisational",
+    "evidence": "Vendor support SLA; the in-app Help Centre (`/help`) and release notes (`governance`) support it"
+  },
+  "DOM.5.a": "Bulk CSV and FHIR export (`integrations/views.py` EXPORTERS, FHIRExportView), logged as data-export security events",
+  "FPM.1.d": "`inventory.PurchaseOrder`/POItem with approval rules and GRN (`inventory/procurement.py`)",
+  "FPM.2.b": {
+    "status": "Deferred",
+    "evidence": "Online payment gateway postponed by product decision; UPI, card and bank transfer are recorded manually (`billing.Payment`)"
+  },
+  "FPM.3.b": "Billing templates via `finance.ServiceTariff` and `packages`",
+  "FPM.3.c": "`enquiries.TreatmentEstimate` with cost breakdown",
+  "FPM.3.d": "`billing.Bill`/BillItem with GST fields, interim bills and bill numbering",
+  "FPM.3.e": {
+    "status": "Deferred",
+    "evidence": "Online payment gateway postponed by product decision; UPI, card and bank transfer are recorded manually (`billing.Payment`)"
+  },
+  "FPM.3.g": "`automation` tasks and `communications` triggers (reminders, feedback requests); `notify_patient` events",
+  "FPM.4.b": "Patient identity via UHID, mobile OTP (`patients.MobileOTP`) and ABHA (`abdm.AbhaLink`)",
+  "FPM.4.c": "`tpa.PreAuthRequest`",
+  "FPM.4.d": "`tpa.Claim` and `billing.InsuranceClaim`",
+  "FPM.4.e": "Pre-auth and claim status tracking (`tpa` status fields); NHCX transaction status (`abdm.NHCXTransaction`)",
+  "FPM.4.i": {
+    "status": "Partial",
+    "evidence": "`abdm.NHCXTransaction` model and API; live NHCX submission needs gateway onboarding (currently `StubNHCXGateway`)"
+  },
+  "HRM.1.b": "`hr.Employee.employee_code` (unique per hospital) linked to user roles",
+  "HRM.1.g": "`hr.Attendance`",
+  "IMS.1.b": {
+    "status": "Partial",
+    "evidence": "Base profiles built (OPConsultation, Prescription, DiagnosticReport, DischargeSummary in `integrations/abdm_fhir.py`); extended profiles (Immunization, Wellness, HealthDocument) still to be built"
+  },
+  "IMS.1.c": {
+    "status": "Gap",
+    "evidence": "Advanced ABDM FHIR profile set not built yet"
+  },
+  "IMS.1.d": {
+    "status": "Partial",
+    "evidence": "`abdm.NHCXTransaction` model and API; live NHCX submission needs gateway onboarding (currently `StubNHCXGateway`)"
+  },
+  "IMS.3.a": {
+    "status": "Organisational",
+    "evidence": "ISO 27001:2022 certification of the vendor/hosting; supporting controls are built (audit trail, encryption, access control, backups)"
+  },
+  "IMS.3.b": {
+    "status": "Organisational",
+    "evidence": "ISO 82304-1 health software conformity; a vendor certification"
+  },
+  "MOM.1.b": "`pharmacy.Medicine`/MedicineBatch search and stock, StockAdjustment, MedicineRecall"
+}

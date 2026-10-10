@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from . import public_key as bundled
 from .crypto import LicenseTampered, load_public_key, open_license
+from .features import FEATURE_KEYS, modules_for
 from .fingerprint import machine_fingerprint
 
 VALID = "valid"
@@ -23,11 +24,13 @@ GRACE_PERIOD = "grace_period"
 EXPIRED = "expired"
 TAMPERED = "tampered"
 INVALID_MACHINE = "invalid_machine"
+WRONG_DEPLOYMENT = "wrong_deployment"
+NOT_YET_VALID = "not_yet_valid"
 MISSING = "missing"
 
 EXPIRING_SOON_DAYS = 30
 CLOCK_TOLERANCE = timedelta(hours=1)
-REQUIRED_FIELDS = ("license_id", "hospital_id", "hospital_name", "issued_at", "expires_at", "machine_fingerprint")
+REQUIRED_FIELDS = ("license_id", "issued_at", "expires_at")
 ANY_MACHINE = "*"
 
 
@@ -58,19 +61,26 @@ class LicenseStatus:
             "grace_ends_at": self.grace_ends_at.isoformat() if self.grace_ends_at else None,
             "days_left": self.days_left,
             "read_only": self.read_only,
+            # Not sensitive, and every user's menu depends on it.
+            "features": licence_features(self.payload) if self.payload else None,
         }
         if detail:
             p = self.payload or {}
             data.update({
                 "license_id": p.get("license_id"),
                 "hospital_name": p.get("hospital_name"),
+                "deployment_id": p.get("deployment_id"),
                 "tier": p.get("tier"),
                 "issued_at": p.get("issued_at"),
-                "enabled_modules": p.get("enabled_modules"),
+                "starts_at": p.get("starts_at"),
+                "features": licence_features(p),
+                "enabled_modules": licence_modules(p),
                 "max_active_users": p.get("max_active_users"),
                 "max_beds": p.get("max_beds"),
+                "hardware_binding": hardware_bound(p),
                 "licensed_fingerprint": p.get("machine_fingerprint"),
                 "machine_fingerprint": self.fingerprint,
+                "installed_deployment_id": getattr(settings, "DEPLOYMENT_ID", ""),
             })
         return data
 
@@ -105,17 +115,44 @@ def open_payload(blob: str) -> dict:
     """Signature-checked payload with its required fields. Raises LicenseTampered."""
     payload = open_license(blob, _public_key())
     missing = [f for f in REQUIRED_FIELDS if not payload.get(f)]
+    if not (payload.get("deployment_id") or payload.get("hospital_id")):
+        missing.append("deployment_id")
+    if hardware_bound(payload) and not payload.get("machine_fingerprint"):
+        missing.append("machine_fingerprint")
     if missing:
         raise LicenseTampered(f"The license is missing {', '.join(missing)}.")
     try:
         _parse_time(payload["issued_at"]), _parse_time(payload["expires_at"])
+        if payload.get("starts_at"):
+            _parse_time(payload["starts_at"])
     except ValueError:
         raise LicenseTampered("The license dates are unreadable.")
     return payload
 
 
+def hardware_bound(payload: dict) -> bool:
+    """Licences without the flag predate it and were always bound."""
+    return payload.get("hardware_binding", True) is not False
+
+
 def machine_matches(payload: dict, fingerprint: str) -> bool:
+    if not hardware_bound(payload):
+        return True
     return payload.get("machine_fingerprint") in (ANY_MACHINE, fingerprint)
+
+
+def licence_features(payload: dict):
+    """Feature keys the licence enables (older licences listed modules instead)."""
+    if "features" in payload:
+        return [f for f in payload["features"] if f in FEATURE_KEYS]
+    return None
+
+
+def licence_modules(payload: dict):
+    features = licence_features(payload)
+    if features is not None:
+        return modules_for(features)
+    return list(payload.get("enabled_modules") or []) or None
 
 
 def verify_license(blob: str | None = None, *, now=None, check_clock=True, check_hospital=True) -> LicenseStatus:
@@ -137,7 +174,15 @@ def verify_license(blob: str | None = None, *, now=None, check_clock=True, check
         status.state, status.message = INVALID_MACHINE, "This license was issued for a different server."
         return status
 
-    if check_hospital:
+    if payload.get("deployment_id"):
+        installed = getattr(settings, "DEPLOYMENT_ID", "")
+        if payload["deployment_id"] != installed:
+            status.state = WRONG_DEPLOYMENT
+            status.message = (f"This license is for deployment {payload['deployment_id']}, but this installation is "
+                              f"{installed or 'not configured (DEPLOYMENT_ID is empty)'}.")
+            return status
+
+    if check_hospital and payload.get("hospital_id"):
         from apps.core.models import Hospital
 
         if Hospital.objects.exists() and not Hospital.objects.filter(pk=payload["hospital_id"]).exists():
@@ -154,6 +199,9 @@ def verify_license(blob: str | None = None, *, now=None, check_clock=True, check
             return status
     if now < issued_at - CLOCK_TOLERANCE:
         status.state, status.message = TAMPERED, "The system clock is earlier than the license issue date. Correct the server time."
+        return status
+    if payload.get("starts_at") and now < _parse_time(payload["starts_at"]):
+        status.state, status.message = NOT_YET_VALID, f"This license starts on {payload['starts_at'][:10]}."
         return status
 
     status.days_left = (expires_at - now).days
@@ -194,9 +242,30 @@ def licensed_modules():
     if not is_on_premise():
         return None
     payload = current_status().payload
-    if not payload or not payload.get("enabled_modules"):
+    return licence_modules(payload) if payload else None
+
+
+def licensed_features():
+    """Feature keys the license enables, or None for no license-level limit
+    (SaaS mode — the subscription governs — or no readable license)."""
+    if not is_on_premise():
         return None
-    return list(payload["enabled_modules"])
+    payload = current_status().payload
+    return licence_features(payload) if payload else None
+
+
+def feature_enabled(key: str) -> bool:
+    features = licensed_features()
+    return features is None or key in features
+
+
+def outbound_allowed(feature: str) -> bool:
+    """On-premise installations run offline: integrations that leave the
+    building only connect when the licence includes their feature."""
+    if not is_on_premise():
+        return True
+    features = licensed_features()
+    return features is not None and feature in features
 
 
 class CapacityExceeded(Exception):

@@ -1,0 +1,39 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+DAC.1. The system provides secure and flexible access to users.
+Objective Elements
+
+(ofyiiisuia-ee | he system supports secure URL access.
+The system shall enhance the security and integrity of patient data by offering
+secure URL access. Authorized users with proper credentials should be able to
+access the system through designated URLs. This implementation mitigates the
+
+: risk of unauthorized access, ensuring that patient information remains confidential
+
+Interpretation and protected from potential security breaches. If there is an urgent need to provide
+access from outside the healthcare organization, it should be through a VPN/two-
+factor authentication for remote access, for example through OTP on mobile.
+This feature is relevant for web-based and hosted applications.
+
+PXe(a-ui-igeme Ihe system supports the application usage on multiple devices.
+The system shall support users to seamlessly access the application through
+multiple devices including desktops, laptops, tablets, and mobile devices. It should
+be able to dynamically detect the device’s resolution and adjust the display
+accordingly (a responsive design is recommended).
+This approach ensures a consistent and optimized user experience across various
+
+Interpretation devices, enhancing accessibility and usability. This feature also empowers
+healthcare professionals to stay connected and efficiently perform critical tasks
+while on the move.
+Note: Specific modules of HIS/ EMR may not be accessible on tablet or mobile
+devices for security reasons. Also, some modules (e.g., patient portal) may be only
+designed for tablet or mobile devices.
+
+Coreyiiit-iigese! The system supports cross-browser compatibility where applicable.
+The system shall have the capability to be used with common browsers (including
+
+Interpretation Chrome, Microsoft Edge and Safari) to ensure a consistent user experience across
+browsers.
+
+|| Core || Commitment || Achievement || Excellence

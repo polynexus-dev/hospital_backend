@@ -1,0 +1,36 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+A patient may give multiple samples during the visit, or a particular sample may
+be used for multiple tests. The reports from these multiple tests will be prepared
+Interpretation at different times. The system should have the capability to append or consolidate
+P these multiple test reports and issue one final report to the patient. There should
+be a clear audit trail regarding the changes made.
+The system generates a non-editable final report once it is signed by the
+Core g. .
+pathologist.
+The system shall have the capability to generate a final report with the ability of a
+iteeeicidelime| pathologist to sign the report. Final reports generated and signed by the pathologist
+shall not be editable.
+Core h. | The system clearly marks the damaged/ rejected samples.
+The system shall have the capability to mark a sample as damaged or rejected along
+with the reason. This could include adding a specific code or annotation to indicate
+the sample’s status. For example, appending “DAMAGED” or “REJECTED” to the
+sample ID can help clearly distinguish it from other samples. This ensures that the
+samples are not used for further testing.
+Interpretation
+Indicators: The system could use color coding/ icons to visually highlight damaged
+or spoiled samples. For example:
+e Red labels or tags could indicate damaged samples.
+e Yellow labels or tags could indicate samples that need retesting due to spoilage.
+e Green labels or tags could represent valid samples.
+Core i The system displays the reference range for a test and highlights abnormal/out of
+/ range results.
+The system shall maintain reference ranges for each laboratory test. These ranges
+define normal values for a specific test based on factors such as age, gender, and
+health condition. For example: If a patient's cholesterol level is 200 mg/dL, the
+, system should indicate whether this falls within the normal range (e.g., “Normal”) or
+Interpretation
+not.
+To draw attention to abnormal results, the system could use color-coding such as:
+Green: Normal results
+|| Core || Commitment || Achievement || Excellence

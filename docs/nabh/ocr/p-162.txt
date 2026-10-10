@@ -1,0 +1,53 @@
+2
+>
+Frequency of wo
+S Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+Nor Monitoring n
+i)
+3
+The US Falls may be: The numerator shall be =
+Department of captured through an incident a
+Veteran Affairs ummlser Gi * at different levels —i.e., from | reporting module/software a
+National Centre | patient falls one level to ground level, for | (stand-alone or integrated Cy
+for Patient Safety example from beds, with HIS). >
+defines fall as wheelchairs or downstairs =
+“Loss of upright * onthe same level as aresult | The denominator shall °
+position that _ Total number of slipping, tripping, or include the total number of 5}
+results in landing | ¢¢ inpatient stumbling, or from a in-patient days until midnight =
+on the floor days collision, pushing, or of the last day of the calendar py
+ground or an shoving, by or with another month. To calculate the Es]
+object or furniture person number of in-patient days o
+or a sudden, * below ground level, i.e. into only patients admitted in the <
+uncontrolled, a hole or other opening in wards and ICUs shall be ES
+lisktenaoc! unintentional, /1000 the surface included. Daycare patients 3
+28 PSQ 3d " non-purposeful, x1000 patient Monthly including patients o
+patient falls downward days All types of falls are to be undergoing dialysis, and
+displacement of included whether they result emergency shall not be a
+the body to the from physiological reasons part of this count
+floor/ground or (fainting) or environmental
+hitting another _ reasons. Assisted falls (when
+object like a chair another person attempts to
+or stair.” minimize the impact of the fall by
+assisting the patient's descent to
+It is an event that the floor) should be included.
+results ina (NDNQI, 2005).
+person coming to
+rest inadvertently Sampling: No
+on the ground or
+floor or other
+lower level.
+A near miss is an The number of near misses
+unplanned event can be captured through an
+that did not result | Number of near incident reporting
+in injury, illness, | Msses Akey to any near miss report is | Module/software (stand-
+or damage — but reported the “lesson learned”. Near miss alone or integrated with
+had the potential X100 reporters can describe what they | HIS/EMR system).
+Percentage of | to do so. Percent- observed at the beginning of the
+29 PSQ 3d near misses age Monthly event, and the factors that The number of incidents
+Errors that did Number of prevented loss from occurring. reported can be captured
+not result in incidents through an incident reporting
+patient harm, but | reported Sampling: No module/software (stand-
+could have, can alone or integrated with z
+be categorized as HIS/EMR system). =
+near misses. =
+4

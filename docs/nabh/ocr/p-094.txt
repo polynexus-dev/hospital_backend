@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The healthcare organization system shall be capable of generating estimated
+, costs for selected packages. These estimates should include all relevant
+Interpretation ‘ . . .
+parameters such as consulting physician fees, medication costs, surgery costs (if
+applicable), room charges based on the length of stay, and applicable taxes.
+Core d. The system generates patient bills as per the goods and services provided.
+The system shall generate bills based on the services provided, goods and services
+consumed, taxes, and discounts. The billing process begins by gathering essential
+information from patients or insurers, including insurance policy numbers and
+, demographic data. After insurance clearance, the healthcare organization
+Interpretation : : :
+generates and sends patient bills or statements for any outstanding balances.
+The system should support discounts at various levels: individual item level,
+category level, or across the entire bill.
+Core e. The system supports payments through various digital payment modes.
+The system shall support multiple digital payment methods for patients to pay their
+icWeeciiclime medical bills. These include cash, credit / debit cards, UPI, bank transfers and other
+digital payments.
+Commitment f. The system manages the patient's account and provides details on payment
+transactions and other relevant details to the patient.
+The system shall manage the patient’s account and captures episode or stepwise
+Interpretation billing details. The system shall provide details of treatment charges, payment
+P information to the patients through email, SMS, online messaging platform or using
+a patient portal.
+, The system has the capability to send out/receive system and workflow related
+Achievement g. .
+triggers.
+|| Core || Commitment || Achievement || Excellence

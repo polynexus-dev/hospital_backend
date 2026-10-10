@@ -1,0 +1,40 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system should be able to reflect the stage of the discharge process for better
+visibility and faster discharge. The summary should reflect if it is at the draft stage,
+final stage, or completed but not finalized, finalized.
+. The system creates and processes a checklist and manages clearances for
+
+Commitment c. : ; .
+patient discharge, if any.
+A discharge checklist should be available that captures all checkpoints before a
+patient is discharged. This checklist is needed for clearances across the
+healthcare organization prior to discharge, clinical clearance, financial clearance,
+and final clearance.
+
+Interpretation
+The system should also reflect and be able to capture patient discharge
+turnaround time with time stamps. The entire activity should be downloadable for
+reference of hospital administration in improving their turnaround time.
+
+(oreyiiiaaene [he system manages the transfer of patients within the healthcare organizations.
+The system shall enable patient transfers and notify relevant staff of the
+healthcare organization and the treating medical practitioner. During the transfer,
+the handover of documents is duly given to the receiving medical practitioner/
+staff.
+This information is vital in ensuring that the patient receives appropriate care
+
+Interpretation during and after the transfer.
+The transfer protocol applies when the patient is transferred across two
+departments (for example, from the OT to post-operative recovery, and then from
+a post-recovery room to the ward, or from the emergency department to the ward);
+from one primary medical practitioner to another, or from one healthcare
+organization to another.
+
+rXeleiiacme The system raises interim bills upon the patient's request.
+The system shall generate an interim bill on request of the patient. The interim bill
+
+Interpretation should be configured as online message, SMS or email where daily notification
+goes to the patient on timely basis.
+
+|| Core || Commitment || Achievement || Excellence

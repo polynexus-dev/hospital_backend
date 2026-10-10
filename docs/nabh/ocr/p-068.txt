@@ -1,0 +1,42 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+im ries’ Common/EMR i
+
+Achievement b. The system has the capability to search, track and maintain inventory records of
+
+medicines and consumables in the pharmacy.
+The system shall manage the inventory of medicines and consumables, which
+helps in streamlining supply management. The system should be able to search
+and track inventory levels, monitor expiration dates, and quickly locate specific
+items when needed. This ensures that the supplies are readily available for patient
+care. The system should also maintain records of inventory with proper grouping
+and categorization of medicines.
+
+Interpretation This could be done by utilizing Bar Code / QR code technology to enhance
+tracking accuracy.
+
+For example, high-risk medications (including sound-alike drugs) and varying
+concentrations of the same medications should be appropriately managed. The
+system should flag the stock out of any identified emergency medications.
+
+. The system notifies and alerts the minimum re-order levels of medication to the
+
+Achievement c.
+relevant staff/ departments.
+
+The system shall notify and alert relevant staff/ departments such as pharmacists,
+supply chain, and purchase departments if inventory falls below the minimum re-
+order levels of a given medication.
+
+Interpretation In addition, the system shall be able to track consumption and propose optimal
+re-order levels based on the trends observed. This will prevent outages and
+optimize stock usage.
+
+Standard
+ows The system supports the process of medication management.
+Objective Elements
+The system manages the process of prescribing, indenting, dispensing and
+Core a. a . :
+administration of pharmacy orders and maintenance of records.
+|| Core || Commitment || Achievement || Excellence

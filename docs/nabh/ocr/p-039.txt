@@ -1,0 +1,42 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+Core f. The system links the discharge summary of the patient with their ABHA.
+The system shall link a patient’s discharge summary to their ABHA. Going
+forward, healthcare providers treating a patient can access their discharge
+
+Interpretation summary to get a comprehensive overview of the patient's medical history,
+including any critical/ sensitive health issues and medications from the past.
+This corresponds to Milestone 2 (M2) of ABDM.
+
+Standard
+AAC.7 The system has the capability to disseminate information to
+“ patients.
+Objective Elements
+
+(ofeyiiTiliwitlacee! The system provides important care delivery information for patients.
+The system shall provide important care delivery information to patients through
+email, online messaging platform, SMS, patient portal etc. This information could
+include:
+e Appointment details (location, address, contact details)
+e Reports availability
+e Follow-up schedule
+
+int of e Daily status update on patient's health
+
+nterpretation e Time of discharge in case of admitted patient
+With appropriate consent, the system shall send notifications to designated kin or
+relatives. This is especially useful for elderly patients or those with limited digital
+fluency.
+To cater to local preferences, the information could be provided in multiple
+languages.
+
+(efyiiTiiuiciaese] The system has the capability to display its NABH certifications.
+After achieving NABH certification, the HIS/EMR system shall clearly display the
+same on the system's login page/screen and other relevant pages/screens.
+
+Interpretation The system should also allow the configuration of NABH mark across all the
+reports and consultation sheets in case the user hospital is NABH accredited/
+certified.
+
+|| Core || Commitment || Achievement || Excellence

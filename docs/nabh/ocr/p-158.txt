@@ -1,0 +1,55 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =x
+" Monitoring o
+4
+2
+Ss
+The system shall calculate a
+. 2
+the total number of patients a
+for whom the surgeries were 7)
+planned until midnight of the s
+Number of last day of the calendar =
+Slacnod: month. However, for the =
+Planne\ purpose of calculation, the n
+system shall not include any =
+planned surgeries of the Qa
+subsequent month. m
+5
+The system shall calculate o
+Time taken isto | Sum of time the sum of time taken for the $
+be calculated taken (in issue of all blood and blood z
+Theremnel from the time the | minutes) This will include blood components. 3
+time request is outsourced from other a
+raninel sate received in the Blood Banks, for those .
+20 PSQ 3c of blood and _| blood bank till Total number Minutes Monthly organizations not having in- The denominator shall
+‘toes the blood is of blood house Blood Bank. include the total number of
+ae GIOES. and blood blood and blood
+P matched/reserve | Components Sampling: No components cross-
+d and available CTOSS: matched/reserved until
+fon EU WeOM. matched/reser midnight of the last day of the
+ved calendar month.
+The HCOs should calculate the The system shall calculate
+staffing patterns separately for .
+ICUs and the wards. the number of nursing staff in
+The in-charge/supervisor of the each location, each shift,
+each day. This data shall be
+area shall not be included for used to calculate the average
+5 calculating the number of staff. 9
+Nurse-patient . for a particular category
+24 PSQ 3c ratio for ICUs Number of Ratio Continuous It is preferable that in the case of (ward beds/ ICU
+nursing staff ICU, the organization captures -
+and wards the ratio for ventilated and non- ventilated/ICU non-ventilated)
+: for each shift and day. The
+ventilated patients separately. . -
+4 final step of the calculation
+To be calculated for each shift . .
+separately involves capturing the ;
+. average of all the categories
+Sampling: No of beds for all shifts.
+z
+>
+wo
+=x
+4

@@ -1,0 +1,53 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Objective Elements
+. The system records and reviews initial assessment in OPD and IPD and patient
+Commitment a.
+
+progress.
+
+The system shall record and review the initial assessment of patients undergoing
+
+treatment in OPD and IPD. During the initial assessment, a thorough review is
+
+conducted bya designated member of staff. The records of review include vital
+signs, medical history, physical examination findings, and diagnostic tests. The
+system shall maintain a comprehensive record of all these details.
+
+The system should be able to capture initial assessment and re-assessment for
+
+Interpretation different categories of patients including antenatal, obstetrics, pediatrics,
+ophthalmology, ENT etc.
+
+The system shall allow nurses and medical practitioners to monitor and analyze
+
+the progress ofthe patient, enabling them to track trends in patients’ condition
+
+over time. This feature empowers nurses and medical practitioners to make
+informed decisions regarding patient care.
+: The system provides a summary of the patient's condition, medication order and
+Commitment b. os we
+
+follow-up visit for OPD visit.
+
+The system shall generate a concise overview of a patient’s health condition,
+
+thereby enhancing clinical efficiency and patient care in the OPD.
+
+The following shall be included in the overview:
+
+e« Summary of the patient’s condition: The summary could include relevant
+medical history, current symptoms, diagnosis, and any significant findings from
+
+Interpretation physical examinations or tests.
+
+e« Medication Order Management: The system should provide the history and
+details of the medications being prescribed along with the dosage, frequency,
+route of administration, any episode of allergic/ adverse reaction, etc.
+
+e Follow-Up Visits: The system should facilitate the scheduling and
+documentation of follow-up visits. This helps healthcare providers and patients
+to manage upcoming appointments and capture follow-up consultation notes.
+
+PXentav-l-iaeme Ihe system creates order sets based on frequently prescribed medications.
+|| Core || Commitment || Achievement || Excellence

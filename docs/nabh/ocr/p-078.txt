@@ -1,0 +1,32 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The common tasks which should be supported on a mobile application include-View
+Patient history, Medication records, Records of laboratory and diagnostic
+investigations etc.
+Mobile applications should be updated regularly with the latest feature/ security
+updates.
+Standard
+prea The system has robust access and data security controls.
+Objective Elements
+amas reed a
+Core a. The system is able to encrypt all the healthcare data at rest and that in transmission.
+To safeguard personal and sensitive data from unauthorized access and maintain
+confidentiality, the system shall ensure that all healthcare data at rest is encrypted
+(including backup data). Also, all healthcare data in transmission should be
+nCusccitae encrypted.
+The system should employ contemporary data encryption techniques. These
+techniques utilize encryption algorithms and protocols to securely encode sensitive
+PHI (Personal Health Information).
+mamas reed ne
+The system provides role-based access to patient data in line with the role assigned
+Core b.
+to the healthcare staff.
+The system shall support role-based access based on rules configured by the
+healthcare organizations. Typical roles could be medical practitioners, nursing staff,
+administrative staff, and other authorized personnel.
+Interpretation Each user should be granted permissions and data access rights based on their role
+P and responsibilities within the healthcare organization to prevent unauthorized
+individuals from accessing sensitive patient information.
+The system should capture the outcome of regular reviews and update access
+controls to reflect changes in staff roles and responsibilities.
+|| Core || Commitment || Achievement || Excellence

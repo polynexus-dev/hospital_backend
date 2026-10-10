@@ -1,0 +1,23 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+
+Intent of the Chapter:
+This chapter highlights the digital systems requirements for management of medication. The system must
+have the capabilities to ensure consistent prescription, indentation, dispensing and safe administration of
+medications. The system should provide real-time clinical decision support to medical practitioners while
+prescribing medications. For example, with regard to drug interactions, allergies and contraindications.
+Further, it is important for the system to issue alerts for high-risk medication orders and require the healthcare
+professional to re-confirm the correctness of prescribed dosage, frequency and route of administration. This
+is important for adherence to stringent safety protocols to reduce risks and protect both patients and
+healthcare professionals. For example, narcotics, chemotherapeutic agents and radioactive substances.
+Summary of Standards
+MOM.1 The system maintains inventory records for medicines and consumables in the
+
+“ pharmacy.
+MOM.2. The system supports the process of medication management.
+MOM.3. The system supports the safe administration of medications.
+MOM.4 The system manages and supports the implementation of emergency
+
+_ medication protocols and maintains records.
+
+|| Core || Commitment || Achievement || Excellence

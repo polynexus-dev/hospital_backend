@@ -1,0 +1,46 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+Achievement e. The system suggests medication based on the healthcare organization's
+formulary.
+The system shall maintain and display the healthcare organization’s formulary for
+the medical practitioners and other relevant staff/ departments. The system shall
+also capture updations in formulary from time to time whenever new drugs are
+introduced. It should also be able to provide suggestions while prescribing the
+medications by the medical practitioners.
+Maintaining formulary helps to ensure standardization of the treatment plan, cost
+
+: effectiveness of treatment, compliance with any legal or regulatory requirement
+
+te rpre tation] and use of therapeutic alternatives as needed.
+
+Additionally, medical practitioners should be able to access essential information
+about medications available at the healthcare organization. This includes details
+such as thegeneric name of drugs, dosage, indications, and potential side effects.
+Having this information readily available saves time and reduces errors, allowing
+practitioners to make informed decisions about patient care.
+
+Excellence f. The system highlights the drugs and devices sourced from outside the formulary.
+The treating medical practitioners are encouraged to prescribe from the healthcare
+organization formulary list. In certain cases, the medical practitioners may be
+required to prescribe drugs from outside the formulary. For example, in emergency
+cases or in case of rare diseases where the desired drug or devices is not in the
+
+Interpretation [MMMUEIaISS
+In such cases, the treating medical practitioner should still be able to prescribe
+those drugs or devices. The system shall have the capability to highlight such
+prescriptions for necessary evaluation and record purposes.
+
+Core The system records the history of drug allergy/adverse reactions and alerts the
+
+9- prescribing medical practitioner.
+The system shall record any allergic reaction/ adverse reaction linked to any
+medication or other factors related to the patient and alert the prescribing medical
+practitioner.
+
+Interpretation
+This feature promotes safer prescribing practices and leads to improved patient
+outcomes, as patients receive medications that are safe and compatible with their
+health conditions.
+
+|| Core || Commitment || Achievement || Excellence

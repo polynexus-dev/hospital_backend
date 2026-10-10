@@ -1,0 +1,63 @@
+NABH Standards for HIS and EMR Systems
+NABH °
+
+PROMs can be used to assess the patient's outcomes in several ways:
+
+= Quality of life: PROMs can be used to assess the patient's quality of life before and after surgery. This
+can be done by using a quality-of-life questionnaire, such as the Short Form-36 (SF-36).
+
+= Symptoms: PROMs can be used to assess the patient's symptoms before and after the surgery. This
+can be done by using a symptom questionnaire, such as the Seattle Angina Questionnaire (SAQ-7).
+
+= Functional status: PROMs can be used to assess the patient's functional status before and after the
+surgery. This can be done by using a functional status questionnaire, such as the Duke Activity Status
+Index (DASI).
+
+Case Scenario- 2
+
+Patient: 40-year-old female with rheumatoid arthritis (RA).
+
+Chief Complaint: Pain and stiffness in her joints.
+
+History of Present Illness: The patient has a 5-year history of RA. She has been taking oral medications
+
+for RA, but her pain and stiffness have not been well controlled. She has also experienced some joint
+
+damage.
+
+Physical Examination: The patient's vital signs are within normal limits. Her physical examination shows
+
+swelling and tenderness in her joints. She also has some limited range of motion in her joints.
+
+Investigations: The patient's blood tests show elevated inflammatory markers with CRP, ESR, RA factor
+
+and Anti CCP positive. Her X-rays show features of joint damage.
+
+Diagnosis: Rheumatoid arthritis.
+
+Treatment Plan: The patient is started on a new biologic medication for RA.
+
+Patient-Reported Outcome Measures (PROMs):
+
+Before treatment:
+
+= The patient's pain and stiffness are severe. She is unable to perform activities of daily living without
+difficulty. She is also worried about the long-term effects of RA on her joints.
+
+After treatment:
+
+= The patient's pain and stiffness are significantly reduced. She is able to perform daily activities without
+difficulty. She is also less worried about the long-term effects of RA on her joints.
+
+PROMs can be used to assess the patient's outcomes in a number of ways:
+
+«Pain and stiffness: PROMs can be used to assess the patient's pain and stiffness before and after
+treatment. This can be done by using a pain and stiffness questionnaire, such as the Visual Analogue
+Scale (VAS) for pain and the Health Assessment Questionnaire-Disability Index (HAQ-DI) for disability.
+
+= Functional status: PROMs can be used to assess the patient's functional status before and after
+treatment. This can be done by using a functional status questionnaire, such as the Health Assessment
+Questionnaire-Disability Index (HAQ-DI).
+
+= Quality of life: PROMs can be used to assess the patient's quality of life before and after treatment.
+This can be done by using a quality-of-life questionnaire, such as the Short Form-36 (SF-36).

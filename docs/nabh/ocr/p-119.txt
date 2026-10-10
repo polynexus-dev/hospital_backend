@@ -1,0 +1,51 @@
+NABH Standards for HIS and EMR Systems
+NABH
+d. Biometric signatures: These involve using unique
+
+personal characteristics, such as fingerprints or facial
+recognition, to authenticate the signer.
+Blockchain-based signatures: These are a relatively new
+type of digital signature that uses blockchain technology
+to create a secure, tamper-proof record of the
+signature.
+
+18 | DPDP The Digital Personal Data Protection Act, or DPDP Act,
+passed in August 2023, is legislation in India that balances
+the rights of individuals to protect their personal data with
+the necessity of processing such data for lawful purposes.
+
+20 | Emergency codes Emergency codes are predefined systems used by
+emergency services to describe the priority and response
+assigned to calls for service. They are also used in
+healthcare facilities to alert all staff members of potential
+issues arising in a facility. These codes include unique
+prescribing criteria for how staff members should respond
+to a particular situation, ranging from an active shooter
+incident to cardiac arrest. Here are some common
+emergency codes:
+
+Code Blue: This typically means a medical emergency, such
+as cardiac arrest.
+
+Code Red: This is used to indicate fire or smoke.
+
+Code Black: This typically means there is a bomb threat.
+Code Silver: This is used to indicate an active shooter.
+
+21 | Employee Employees of the organisation including temporary and
+permanent staff.
+
+22 | Encryption techniques Encryption of hospital data is the process of converting
+sensitive patient information into an unreadable format
+that can only be deciphered with a specific key or assword.
+This is done to ensure the security and privacy of patient
+data, as it prevents unauthorized access and keeps the
+information safe from hackers or other outside threats.
+
+23 | FHIR Fast Healthcare Interoperability Resources, or FHIR, is a
+standard for exchanging healthcare information
+electronically. It is designed to make it easier for different
+healthcare systems to share and exchange data with each
+other. FHIR uses modern web technologies, such as RESTful
+APIs, to allow healthcare organizations to securely
+access patient data from other systems. This can improve

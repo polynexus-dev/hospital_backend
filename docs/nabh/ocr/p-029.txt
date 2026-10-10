@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system identifies tests that have been referred to external laboratories and
+CoPyiiitieiee| maintains the records of the results.
+The system shall maintain a list of tests sent to external laboratories and
+Interpretation maintain digital records of these tests. These tests should be clearly identifiable
+and sample collection material clearly labeled accordingly.
+Core n. The system links the laboratory reports of the patients to their ABHA.
+The system shall have the capability to link a patient's laboratory reports to
+patient's ABHA. Linking patient's laboratory reports to their ABHA makes this
+information more sharable and helps healthcare providers to have acomplete
+Interpretation and accurate understanding of patient’s health status, allowing them to make
+more informed decisions about diagnosis, treatment, and care planning.
+This corresponds to Milestone 2 (M2) of ABDM.
+Standard
+The system supports patient admissions.
+Objective Elements
+. The system configures clinical and administrative workflow for the management
+Commitment a. :
+of the radiology department.
+The management of the Radiology department is an important part of healthcare
+organizations and the system being used should support the same.
+Radiology Management is vital for healthcare organizations. The system should
+Int tati support:
+nterpretation e Workflows: Setup of master data, process configurations, and information flow
+between practitioners, radiology, and billing.
+¢ Quality Controls: Configuration of essential quality controls.
+e Report Generation: Ability to generate specialty-specific reports (e.g., CT, X-
+ray, USG etc.).
+|| Core || Commitment || Achievement || Excellence

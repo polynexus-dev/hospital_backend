@@ -20,7 +20,7 @@ from apps.ipd.models import Admission, BedAllocation
 from apps.ipd.services import admit_patient
 from apps.patients.models import Patient
 
-COLLECTION = Path(__file__).resolve().parents[3] / "docs" / "postman" / "Hospital-CRM-ERP.postman_collection.json"
+COLLECTION = Path(__file__).resolve().parents[2] / "docs" / "postman" / "Hospital-CRM-ERP.postman_collection.json"
 # if (EXPR !== undefined && EXPR !== null) save('var', EXPR);
 CAPTURE = re.compile(r"if \((.+?) !== undefined && .+?\) save\('(\w+)', ")
 

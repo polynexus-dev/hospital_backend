@@ -1,0 +1,26 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH °
+WHAT IS AN INTERPRETATION?
+The interpretation provides guidance on what the organization needs to do to ensure that the
+requirement(s) of the objective element is met. Where applicable, it provides references and suggests a
+specific methodology that the organization needs to adhere to. The word ‘shall/should’ or ‘will/would’ is
+used to reflect a mandatory requirement. The interpretation also lists out desirable aspects for the
+organization to implement, and the word ‘can/could’ be used to reflect this. During scoring, the desirable
+aspects are not considered, and they are only used to reflect on the overall achievement of the standard,
+which is reflected in the assessment report. At places, the interpretation would not be specific and would
+have used the words like ‘adequate/appropriate’. This has been done keeping in mind the diverse nature
+of healthcare delivery and adhering to the intent of this standard which is to improve the quality of
+healthcare and at the same time, be feasible. The expectation is that whenever such a phrase has been
+used in the interpretation/objective element, the organization shall base its practice on evidence-
+based/best practice. In some places, the interpretation has listed examples. The examples are only
+illustrative in nature, and the organization has the liberty to decide what/how to implement. However, the
+requirement of the objective element would have to be adhered.
+Core Objective Element
+Certain Objective Element in the standard have been designated as Core. These are Objective Element
+that the organization should have in place to ensure the quality of care or the safety of people within the
+organization.
+Categories of Objective Elements
+The rest of the standards have been divided into three levels, namely commitment, achievement, and
+excellence.
+Some requirements in the standards apply exclusively to HIS systems, some to EMR systems, and others
+are common and apply to both.

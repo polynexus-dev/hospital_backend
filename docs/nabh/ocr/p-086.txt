@@ -1,0 +1,29 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Core b. The system has the capability to configure auto screen lock feature.
+The system shall have the capability to set up an automatic screen lock feature (i.e.,
+. idle aftera certain duration). This functionality enhances security by automatically
+Interpretation . tes : . . .
+locking user screens after a specified period of inactivity, thereby preventing
+unauthorized access in situations where users leave their workstations unattended.
+a) reed a
+Core c. The system has the capability to block user-based security provisions.
+To enhance security measures, the system shall include a user block feature. This
+, functionality should automatically block user access following a specified number of
+Interpretation . . : .
+unsuccessful logins attempts or access from multiple locations, thereby reducing the
+risk of unauthorized entry resulting from password guessing.
+(eTeTiiaiciacam The system has effective centralized user management.
+The system shall have the feature for centralized user management, enabling
+. efficient administration of user accounts, permissions, and roles from a single
+Interpretation . . . ae .
+interface. This streamlines user management, simplifies account maintenance,
+and ensures security and consistency.
+PN niece Ihe system has the capability to configure multi-factor authentication (MFA).
+The system shall offer a Multi-Factor Authentication (MFA) configuration. MFA
+adds an extra layer of protection by requiring users to verify their identity through
+: multiple authentication methods. Administrators should be able to customize and
+Interpretation configure MFA settings based on the healthcare organization’s security policies,
+ensuring enhanced data protection and user verification.
+MFA can include mobile OTP, fingerprint reader, facial recognition software, etc.
+|| Core || Commitment || Achievement || Excellence

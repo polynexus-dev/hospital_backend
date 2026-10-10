@@ -1,0 +1,51 @@
+NABH Standards for HIS and EMR Systems
+NABH
+demonstrates a commitment to patient safety and well-
+
+being.
+
+14 | Data Fiduciary According to the Digital Personal Data Protection Act
+(DPDP) of India, a data fiduciary is a person or group that
+decides how to handle personal data, either independently
+or with others.
+
+15 | Designated IT personnel Designated IT personnel refer to individuals who are
+assigned specific duties related to information technology
+within an organization. These duties can range from
+managing and maintaining IT infrastructure, implementing
+security measures, troubleshooting technical issues, to
+overseeing software and hardware upgrades. These
+individuals are expected to have the necessary knowledge,
+skills, and training to effectively perform their assigned
+duties.
+
+16 | DICOM DICOM is the standard for the communication,
+management and exchange of medical imaging information
+and related data. It is used in medical imaging to enable the
+integration of medical imaging devices, such as MRI
+machines, CT scanners, and ultrasound machines, with
+medical image processing and analysis software. DICOM
+enables the sharing of medical images and information
+between different healthcare organizations, ensuring that
+medical images can be viewed and analyzed by healthcare
+professionals around the world.
+
+17 | Digital signatures There can be several options for digital signatures:
+
+a. Electronic signatures: These are the most basic type of
+digital signature. They involve using a digital image of a
+handwritten signature or a typed name as a way of
+indicating agreement or authorization.
+
+b. Advanced electronic signatures (AES): These are more
+secure than regular electronic signatures and are often
+used in situations where a higher level of security is
+required. AES typically involves using a digital certificate
+to encrypt the signature, making it more difficult to
+tamper with.
+
+c. Digital certificates: These are used to verify the identity
+of the signer and ensure the integrity of the signed
+document. Digital certificates are issued by trusted
+third-party organizations called Certificate Authorities
+(CAs).

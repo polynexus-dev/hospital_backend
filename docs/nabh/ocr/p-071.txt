@@ -1,0 +1,65 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+(eeyiitiiiciisune) The system facilitates medication reconciliation.
+
+The system shall enable medical practitioners to review and reconcile all
+
+. medications a patient is taking during hospitalization or clinical encounter,
+
+Interpretation . .
+
+including the drug name, dosage, frequency, and route. The system shall also
+
+facilitate modification in the prescription based on this information received.
+
+Commitment i. The system has the capability to notify about the medications or devices nearing
+
+expiry date.
+
+The system shall generate notification for the relevant staff/ departments when
+
+medications are nearing their expiry dates. The notifications can be sent through
+
+system dashboard, emails, online messaging platform, or other alert mechanisms
+integrated into the healthcare organization’s workflow.
+
+Interpretation
+
+This feature shall also be integrated with the pharmacy management for the
+
+purpose of records. By doing so, healthcare organizations can minimize
+
+medication wastage, dispose off medications promptly, and prevent their use
+beyond the expiration date.
+, , The system maintains record of medications or devices that are returned or
+
+Commitment j.
+
+recalled.
+
+The system shall be able to track medications and devices that are recalled/
+
+returned and capture the reason for such action.
+
+The system can also track returned or recalled medications by
+
+location/department, by supplier, or by date. This enables healthcare
+
+organizations to identify trends and take remedial actions.
+
+It benefits healthcare organizations in the following ways:
+
+Der Er tau e Accurate Record-Keeping: By digitally tracking returns and recalls, the system
+maintains precise records of the reasons behind these actions. This includes
+potential adverse reactions or quality issues associated with the product.
+
+e Patient Safety: Recording medication or product returns digitally helps
+healthcare organizations ensure patient safety. It prevents the use of expired,
+damaged, or defective items that could harm patients.
+
+e Reasons for Returns: Healthcare organizations may need to return medications
+or products for various reasons, such as expiration, recalls, damage, incorrect
+orders, or overstock situations.
+
+|| Core || Commitment || Achievement || Excellence

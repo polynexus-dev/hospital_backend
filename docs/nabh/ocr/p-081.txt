@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Summary of Standards
+Standardized methodology is used to design and implement the system
+DOM.1. across the healthcare organization.
+DOM.2. The system provides software support and guidance to the users.
+DON.3. The system captures and manages critical incidents.
+The system manages access controls to provide secure access to the
+DOM.4. users.
+The system supports the migration to new system whenever needed by
+DOM.S. healthcare organization.
+Standard
+Standardized methodology is used to design and implement the system
+across the healthcare organization.
+Objective Elements
+Core a. The system configures access rights based on the technical roles.
+The system shall have a role-based access control mechanism. Different technical
+user roles should be defined, each with varying levels of access privileges. This
+ensures that each user can only access information and functionalities relevant to
+their specific role. For example, a software developer and a technical support
+professional should have different access rights.
+One commonly used model for implementing hierarchical access control is Role-
+Interpretation Based Access Control (RBAC). In RBAC, permissions are assigned to roles rather
+P than individual users. Users are thereafter assigned to specific roles based on their
+responsibilities.
+The access privileges can be:
+Create Access: Allows the user to create records.
+Read Access: Allows users to view data.
+Update Access: Enables users to update data.
+Delete Access: Permits users to delete the data.
+|| Core || Commitment || Achievement || Excellence

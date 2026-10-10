@@ -1,0 +1,19 @@
+NABH Standards for HIS and EMR Systems 69)
+NAB 1
+Access, Assessment and Continuity of Care
+Intent of the Chapter:
+The Access, Assessment, and Continuity of Care chapter covers administrative, and operational and
+clinical functionalities required by an HIS/EMR system. The chapter includes patient registration,
+admission, referral, discharge and transfer, patient education and ancillary functions like laboratory,
+radiology, and patient feedback.
+HIS/EMR system brings efficiency by gathering and sharing current and accurate information about
+patients including diagnostics, and clinical services.
+HIS/EMR system enhances laboratory operations by enhancing the quality of test results, streamlining
+workflows and increasing process efficiency. Likewise, in radiology, technology adoption helps in the
+seamless management of imaging services in a systematic, practical, and efficient manner.
+HIS/EMR enables the healthcare staff to monitor patient progress and plan admission, discharge, or
+transfer. With the help of digital systems, the entire patient journey gets well integrated.
+Patient information through digital tools ensures that health-related information is easily accessible
+and understandable. This results in improved decision-making by patients and family members and
+a better perception of care at the healthcare organization.
+|| Core || Commitment || Achievement || Excellence

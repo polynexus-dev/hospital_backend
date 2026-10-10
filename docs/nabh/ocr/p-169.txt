@@ -1,0 +1,52 @@
+Zz
+Frequency of >
+ies)
+Standard Definition collation! GIS x=
+Monitoring %
+2
+Ss
+Q
+Surgery 2
+a
+If it is possible to 2
+Number of cases where retrieve data from Q
+bile duct injuries . HIS/EMR, the data
+. Optional. The injury : z=
+Bile Duct injury | a . occurred during may be detected shal pe captured Oo
+rate requiring Bile duct injury during a laparoscopic intra-operative or in prougn t ie system. 2
+operative Laparoscopic , cholecystectomy and the postoperative Considering the =
+intervention Cholecystectomy $ an | required subsequent period. All injuries challenges of data py
+7 PSQ 3a during unintentional injury to operative intervention to X100 Monthly interven operaie capture for this Es]
+. the biliary tree that repair the injur intervention shall be indicator through the o
+Laparoscopic Pp yury included for
+Chol tect occurs during the calculation of the system, there should ia
+jolecystecto isi
+¥ operation. F indicator irrespective be a provision for o
+my Laparoscopic of the severity. entering the manual/ 3
+cholecystectomies ; electronically °
+performed collected (app/
+online forms) data.
+Biochemistry
+Number of POCT tests
+which resulted in a
+Clinical intervention Optional If it is possible to
+where indicated. ptional retrieve data from
+Point of care testing is The organization HIS/EMR, the data
+defined as laborator should have a shall be captured
+testing conducted y mechanism to ensure | through the system.
+Percentage of | Cigge to the site of Number of POCT tests that all POCT results Considering the
+POCT results 5 ‘i a are documented.
+Psa hich led patient care typically by | where clinical X100 Percentage Monthly Based on these challenges of data
+3a wt ic led toa | non-lab personnel e.g. intervention was results, it is preferable capture for this
+clinical ; NUISeS, deemed necessary. that the organization | indicator through the
+intervention. e.g. blood gases, identifies results system, there should
+electrolytes, troponin, which require clinical | @ @ provision for
+and blood glucose. intervention and entering the manual/
+documents the same. | €lectronically
+collected (app/
+online forms) data.
+z
+>
+wo
+=x
+4

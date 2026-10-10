@@ -1,0 +1,50 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+" Monitoring on
+a
+this stage would at best be a a
+preliminary value. The =
+organization will continue to 7)
+monitor the patients and by the 3
+end of January, will have =
+complete data with respect to =
+procedures which have a 30- 1/7)
+day surveillance period. 2
+a
+At this point in time, based on m
+the data that the organization =
+has collated the numerator may a
+change and hence, the SSI rate. &
+However, this again would not Q
+be the final data. The @
+organization will continue to Fy
+monitor procedures that have a
+90-day surveillance period, and
+if there are new SSls, it would
+get added to the numerator and
+thus the rate would change. The
+surveillance period for surgeries
+which are done in December
+and have a 90-day surveillance
+period would end on March 30th
+(give or take a few days). It is
+only at this point in time that the
+organization can have the final
+SSI rate for December.
+Sampling: No
+Total number of Observation involves directly Considering the challenges
+actions watching and _ recording the of data capture for this
+performed hand hygiene behavior of indicator through the system,
+Compliance healthcare workers and the there should be a provision
+to hand Percent- physical environment. A good for entering the manual/
+7 ie hygiene 100 age Monthly reference is the WHO hand electronically collected (app/
+practices Total number hygiene compliance monitoring online forms) data.
+of hand tool. Please refer:
+hygiene http://www.who.int/gpsc/Smay/to
+opportunities ols/en/
+©
+>
+wo
+=x
+4

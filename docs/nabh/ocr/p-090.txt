@@ -1,0 +1,23 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Coryiiiiliaeme |The system tracks the movement of stocks within the healthcare organization.
+The system shall capture the stock movements across healthcare organization
+units/ departments. It shall clearly indicate the available stock throughout these
+units/ departments for example OPD, IPD, day care, sub store, laboratory,
+aration pharmacy, OT, CSSD, Laundry, Kitchen etc.
+The system should be configurable to generate alerts when stock levels approach
+or fall below certain thresholds. This capability helps in preempting shortages and
+ensures optimal resource utilization across the organization.
+Coreyiiiuiliaeme [he system generates and manages indents.
+The system shall have the capability of creating and managing indents. This
+Interpretation capability enables healthcare organizations to ascertain available stocks and
+efficiently place orders.
+CereTiNciaeme The system creates and tracks the purchase order.
+The system shall have the capability to create, modify, and track purchase orders
+. as per the healthcare organization’s policy. The system should streamline the
+Interpretation are . .
+procurement process, minimizing the time and effort needed for creating and
+tracking the orders.
+Commitment e. The system captures the receipt of items as per the purchase order and generates
+receipt notes, and flag discrepancies.
+|| Core || Commitment || Achievement || Excellence

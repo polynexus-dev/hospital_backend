@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+it should include management functions for controlling permissions and ensuring
+data security.
+The system should also extend its capability to include the setting up leave types
+and policies, as well as setting up parameters needed for attendance, payroll, skills
+& competencies, and training.
+Core b. The system assigns unique IDs and role/s to each staff.
+The system shall be able to assign a unique identifier to each member of staff within
+the healthcare organization. This unique ID is essential for organizing data efficiently
+Interpretation and facilitating seamless retrieval of individual staff information. Upon creating a new
+P staff record and providing the respective role, the system should automatically
+generate a unique staff ID, ensuring that each ID remains exclusive across the entire
+system.
+mci eas aie
+(oPeyiyiiiar-llaeme! The system has the capability to configure duty rules for the staff.
+The system shall have the capability to configure duty rules for the staff, which is
+essential for efficient workforce scheduling. Real-time parameters for this process
+may include dynamic adjustments to templates based on factors such as staff
+availability, skill sets, unexpected absences, urgent tasks, or operational changes
+and compliance with labour regulations.
+Interpretation
+Additionally, the system should be configured to capture, store, perform, and
+execute operations in real-time based on available data. This includes staff-specific
+duty start and end hours for each shift and break, day offs, weekends, monthly leave
+allowance, additional shifts, shift codes, tour or event schedules, overtime, and extra
+shifts.
+ler imem The system creates and manages a roster of the working staff.
+The system should be configurable to meet the staffing ratios as prescribed by the
+regulatory/statutory framework.
+erie aon The system shall enable administrators in the healthcare organization to createa
+staff roster based on regulatory/ statutory framework, staff availability, shifts
+assignment and workload distribution and historical workload patterns. The system
+|| Core || Commitment || Achievement || Excellence

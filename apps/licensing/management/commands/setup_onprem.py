@@ -36,7 +36,10 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             service.install_license(blob)
-            hospital = Hospital.objects.filter(pk=payload["hospital_id"]).first()
+            if payload.get("hospital_id"):
+                hospital = Hospital.objects.filter(pk=payload["hospital_id"]).first()
+            else:  # deployment-scoped licence: the installation's first hospital
+                hospital = Hospital.objects.order_by("created_at").first()
             if hospital is None:
                 email = options["admin_email"] or input("Owner email: ").strip()
                 password = options["admin_password"] or getpass.getpass("Owner password: ")
@@ -44,12 +47,13 @@ class Command(BaseCommand):
                     raise CommandError("An owner email and password are required.")
                 from apps.saas_admin.tenant_service import onboard_hospital_tenant
 
+                name = payload.get("hospital_name") or payload.get("customer_name") or "Hospital"
                 hospital = onboard_hospital_tenant({
-                    "id": payload["hospital_id"],
+                    "id": payload.get("hospital_id"),
                     "is_on_premise": True,
-                    "name": payload["hospital_name"],
-                    "slug": slugify(payload["hospital_name"])[:60] or "hospital",
-                    "enabled_modules": payload.get("enabled_modules") or None,
+                    "name": name,
+                    "slug": slugify(name)[:60] or "hospital",
+                    "enabled_modules": service.licence_modules(payload),
                     "owner": {"email": email, "password": password},
                     # The license caps users on-premise, not the SaaS subscription.
                     "subscription": {"max_staff_users": 0},

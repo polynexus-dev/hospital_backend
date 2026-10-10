@@ -1,0 +1,26 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+> Tilaeman Ihe system maintains performance appraisal ratings for all the hospital staff.
+The system shall facilitate the evaluation of the performance of staff and maintain
+performance appraisal ratings. The system shall include a performance rating form
+where administrators can input and update the ratings for individual hospital staff
+based on their performance evaluations.
+icuedeiciieam™s Ihe system may also have a mechanism for gathering feedback from peers,
+subordinates, and supervisors to provide a comprehensive view of staffs
+performance.
+The system should ensure data accuracy, accessibility, and historical tracking of
+performance ratings over time.
+(oeTiitul-igee! |The system has the capability to calculate, maintain, and share staff payroll.
+The system shall have the capability to compute and distribute staff payroll, based
+on preconfigured rules. The system should automate payroll calculations based on
+attendance, leaves, and deductions, ensuring accurate and timely salary
+Interpretation processing.
+The system may be integrated within the payroll module which enables staff to view
+and download configured rules for salary components, tax calculations, pay slips,
+and other payroll-related documents.
+Standard
+vous | The system manages recruitment and exit related activities.
+Objective Elements
+The system configures and manages rules to manage the staff recruitment process.
+Achievement a.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,42 @@
+NABH Standards for HIS and EMR Systems
+NABH
+and communication technologies, such as computers and
+mobile devices, are used to deliver healthrelated
+information.
+
+76 | Therapeutic diet A therapeutic diet is a meal plan that controls the intake of
+certain foods or nutrients. It is part of the treatment of a
+medical condition and is usually prescribed by a physician
+and planned by a dietician. A therapeutic diet is usually a
+modification of a regular diet and is modified or tailored to
+fit the nutrition needs of a particular person.
+
+77 ‘| Time stamp A "timestamp" is a sequence of characters or encoded
+information identifying when a certain event occurred,
+usually giving date and time of day, sometimes accurate to
+a small fraction of a second.
+
+78 | United Health Interface United Health Interface (UHI) is a digital platform
+developed by the Indian government to facilitate the
+integration of various health information systems across
+the country. ABDM (Ayushman Bharat Digital Mission) is a
+flagship initiative of the Indian government aimed at
+providing affordable healthcare to the underprivileged
+sections of society.
+
+The UHI platform is part of ABDM and serves as a common
+interface for healthcare organizations, insurers, and
+beneficiaries. It enables the secure exchange of health
+information, including medical records, prescription details,
+and payment information, among all stakeholders in the
+healthcare ecosystem. The platform also incorporates
+various data analytics tools to provide insights into
+healthcare deliveryand utilization patterns, enabling
+policymakers to make informed decisions.
+
+79 | User In this document, users refer to all the nonclinical
+professionals using the system like administration staff,
+technicians etc.
+
+WASA Web Application Security Testing is a process to identify
+the vulnerabilities present in a web application.

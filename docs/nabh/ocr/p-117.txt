@@ -1,0 +1,56 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+5 | Audit log An audit log, also known as an audit trail or audit history, is
+a chronological record of events, actions, and changes
+within a computer system, software application, network,
+or organization. It provides documentary evidence of the
+sequence of activities that have affected at any time a
+specific operation, procedure, event, or device.
+
+CDSS The hospital shall use a clinical decision support system
+(CDSS) to provide healthcare professionals with assistance
+in making clinical decisions by providing patient-specific
+information and recommendations. Some examples of
+CDSS include drug interaction alert systems, clinical
+guidelines, and diagnostic decision support systems.
+
+7 Centralized user management Centralized user management (CUOM) is a framework that
+helps IT departments manage user data, server requests,
+and user access and activity. It's part of the Centralized
+Identity and Access Management (IAM) system.
+
+Certification Formal recognition of compliance with set standards
+validated by external evaluation.
+
+Chat platforms Chat platforms are software applications that facilitate
+real-time communication between individuals or groups.
+They can be used for various purposes, such as personal
+communication, team collaboration, and customer
+support. Some examples include WhatsApp, Telegram,
+Microsoft teams etc.
+
+10 | CPOE Computerized provider order entry, sometimes referred to
+as computerized physician order entry or computerized
+provider order management, is a process of electronic
+entry of medical practitioner's instructions for the
+treatment of patients under his or her
+care - including medication, laboratory, and radiology
+orders
+
+11 | CPT Current Procedural Terminology (CPT) codes are numbers
+assigned to each task and service that a healthcare
+provider can perform. They are used to track and bill
+medical, surgical, and diagnostic services. For example, a
+routine check-up or a lab test has a specific CPT code
+attached to it.
+
+12 | Critical values Critical values are results that indicate an urgent and often
+life-threatening health issue, such as extremely high or low
+levels of certain chemicals or substances in the body. By
+receiving these alerts, patients and physicians can work
+together to develop a treatment plan that addresses the
+issue quickly, potentially saving the patient's life or
+preventing serious complications. In addition, timely
+notification of critical lab value alerts can help improve
+patient satisfaction and trust in the healthcare system, as it

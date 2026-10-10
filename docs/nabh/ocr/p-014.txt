@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH °
+MATURITY LEVEL SCHEMES
+NABH’s maturity level schemes for certification of HIS/EMR systems is as follows-
+1. Base Level
+2. Advanced Level
+Base Level Advance Level
+Category of OE Percentage Category of OE Percentage
+Core 100% Core 100%
+Commitment 60% Commitment 80%
+Achievement 30% Achievement 60%
+Excellence NA Excellence 60%
+Note:
+
+1) In case a vendor has applied for certification of both the systems i.e. HIS and EMR they
+will be assessed for applicable OEs independently as per the respective requirements for
+certification. This stands applicable to common OEs which are mentioned in the standards
+as a requirement for both HIS/EMR systems.
+
+2) A HIS/EMR vendor may concurrently apply for any combination For example Advance
+Level for HIS and Base Level for EMR, Advance Level for both HIS and EMR.
+
+3) NABH will award independent certifications for HIS and EMR systems and separate
+certificates will be issued for each. For example, Advance Level for HIS and Base Level
+for EMR will be awarded as per the application and compliance demonstrated by the
+vendor.
+
+4) Where the vendor has applied for certification of both the systems and meets NABH criteria
+for only one (HIS or EMR), it will be awarded acertificate only for the system that complies
+with the requirements. The vendor will have to apply afresh to NABH after taking
+appropriate corrective actions for the non-compliant system.
+
+5) The certification will be awarded for two years for any given product/system version and
+vendors will have to apply for renewal of certification six months prior to the expiry of
+certification.

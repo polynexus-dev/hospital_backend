@@ -1,0 +1,37 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+The system shall analyze and summarize patient experiences and satisfaction
+levels across various touchpoints, such as:
+e appointments
+
+Interpretation e healthcare organizations stay
+e post-treatment follow-ups
+This data could identify areas of improvements as well as tracking progress over
+time.
+
+Xo acuiaems Ihe system captures Patient-reported outcome measures (PROMs) .
+Patient-reported outcome measures (PROMs) are standardized surveys that help
+patients report their health status and quality of life at a specific time. The system
+shall be able to collect and record data directly from patients regarding their own
+health conditions, symptoms, and overall well-being. PROMs are valuable
+because they provide insight from the patient's perspective about the
+
+Interpretation effectiveness of treatments, the impact of diseases or conditions on daily life, and
+overall quality of life. This information can be used by healthcare providers to
+better understand patient experiences, tailor treatments, and improve the quality
+of care.
+
+The sample list of important PROMs is given in Annexure 2
+
+PXlnilaema Ihe system captures Patient-reported experience measures (PREMs) .
+Patient-reported experience measures (PREMs) are surveys that ask patients and
+their families about their experiences with healthcare services. The system shall
+be able to gather and record data directly from patients about their experiences
+with healthcare services. PREMs focus on the patients' perspectives regarding
+
+Interpretation the quality and accessibility of care they receive, including aspects such as
+communication with healthcare providers, the responsiveness of the healthcare
+system, and overall satisfaction with the care process.
+
+The sample list of important PREMs is given in Annexure 1
+|| Core || Commitment || Achievement || Excellence

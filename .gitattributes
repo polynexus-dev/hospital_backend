@@ -1,0 +1,6 @@
+*.sh text eol=lf
+*.ps1 text eol=crlf
+Makefile text eol=lf
+Dockerfile* text eol=lf
+deploy/env.template text eol=lf
+deploy/docker-compose.yml text eol=lf

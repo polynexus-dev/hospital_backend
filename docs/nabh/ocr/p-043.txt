@@ -1,0 +1,24 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH °
+Summary of Standards
+COP.1. The system manages consultation services in OPD and IPD.
+COP.2. The system manages nursing care processes.
+COP.3. The system supports blood transfusion services.
+COP.4. The system manages emergency and medico-legal cases.
+COP.5. The system supports Intensive care services.
+cop.6 The system has the capability to record the surgical/procedure safety
+_ checklist in operating rooms/wards/OPD.
+COP.7. The system manages dietary consultation and specific nutritional therapy.
+The system tracks and monitors all infection prevention and control related
+COP.8. sas :
+activities and sentinel events.
+COP.9. The system supports the risk assessment of patients.
+COP.10. The system supports patient services in remote settings.
+The system manages the assessment and re-assessment of patients
+COP.11. i vee gt .
+availing rehabilitation services.
+COP.12. The system provides a Clinical Decision Support System.
+COP.13. The system has the capability to create care plans.
+Standard
+COP.1. The system manages consultation services in OPD and IPD.
+|| Core || Commitment || Achievement || Excellence

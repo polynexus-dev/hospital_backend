@@ -1,0 +1,41 @@
+NABH Standards for HIS and EMR Systems
+NAB 1
+Annexure-7 Criteria for Admission in ICU
+Admission to an Intensive Care Unit (ICU) is typically based on the severity of a patient's condition and
+the need for intensive monitoring and treatment that cannot be provided in a regular hospital ward. While
+criteria can vary slightly depending on the hospital and specific circumstances, here are some common
+criteria for ICU admission:
+1. Respiratory Failure: Patients requiring mechanical ventilation or non-invasive respiratory
+support.
+2. Hemodynamic Instability: Patients needing continuous monitoring and support for unstable
+blood pressure or cardiac conditions.
+3. Severe Sepsis or Septic Shock: Patients with a systemic inflammatory response to infection that
+results in organ dysfunction or failure.
+4. Postoperative Care: Patients requiring intensive monitoring and care after major surgery,
+particularly if complications are anticipated.
+5. Neurological Compromise: Patients with conditions such as severe traumatic brain injury,
+stroke, or status epilepticus.
+6. Multisystem Organ Failure: Patients with multiple organ systems failing who require complex
+and continuous management.
+7. Severe Trauma: Patients with life-threatening injuries needing intensive monitoring and
+treatment.
+8. Acute Coronary Syndromes: Patients with conditions like myocardial infarction that require
+intensive monitoring and intervention.
+Criteria for Discharge from ICU
+Discharge from the Intensive Care Unit (ICU) is generally based on clinical judgment and specific criteria
+indicating that the patient no longer requires the intensive level of monitoring and care provided in the
+ICU. Here are common criteria for ICU discharge:
+1. Stability in Vital Signs: The patient has stable vital signs without the need for continuous
+invasive monitoring.
+2. Respiratory Stability: The patient is able to maintain adequate oxygenation and ventilation
+without mechanical ventilation or with minimal respiratory support.
+3. Hemodynamic Stability: The patient does not require continuous intravenous vasoactive
+medications to maintain blood pressure and cardiac output.
+4. Neurological Stability: The patient's neurological status is stable or improving, and they do not
+require continuous intensive neurological monitoring.
+5. Resolution or Improvement of the Acute Condition: The acute medical issue that necessitated
+ICU admission has resolved or significantly improved.
+6. Tolerating Oral Intake: The patient can tolerate oral intake or has a manageable alternative for
+nutrition and hydration.
+7. Ability to be Managed in a Lower Level of Care: The patient's care needs can be safely managed
+in a general ward or step-down unit.

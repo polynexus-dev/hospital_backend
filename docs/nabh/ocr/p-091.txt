@@ -1,0 +1,43 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall generate a material receipt note to acknowledge the receipt of
+goods and services. This document enables healthcare organizations to
+accurately track goods and services received, including their quantity, quality,
+price and life span/expiry, etc.
+
+Interpretation The system should be capable of issuing an alert when discrepancies are
+detected either in (a) quantity (b) price or (c) quality. This feature ensures accurate
+inventory management.
+
+The system shall include reconciliation functionality, reconcile with returned,
+discarded stocks and purchased stocks.
+
+(oreyii-lilaimee The system records feedback about the quality of purchased goods.
+
+The system shall record quality concerns and feedback on goods received. This
+
+Interpretation feature enables healthcare organizations to document and track issues such as
+
+P item expiry dates, volume discrepancies, and SKU (Stock Keeping Unit) numbers.
+A scoring mechanism may be used to rate the quality of suppliers.
+Standard
+rou The system manages vendor payments.
+Objective Elements
+
+(oeyiTiliiciaee! The system configures rules and workflows to manage vendor invoices.
+
+. The system shall capture, validate, and process vendor invoices as well as
+
+Interpretation . . .
+configure rules associated with these processes.
+
+(oPyuiilaeme The system supports payments through multiple online/digital channels.
+
+The system shall support a range of commonly used digital payment channels for
+. making payments. These channels include Electronic Funds Transfer (EFT), wire
+
+Interpretation P . , .
+transfer, online bill payment through a bank’s website, mobile payment
+applications, Unified Payments Interface (UPI), credit/ debit card payments, etc.
+
+|| Core || Commitment || Achievement || Excellence

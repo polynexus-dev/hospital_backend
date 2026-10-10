@@ -1,0 +1,45 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+The system shall update dashboards on a monthly basis. It is desirable that the
+data from preceding months is also displayed.
+
+foreyiiliilai@eme [he system supports the healthcare organization’s antimicrobial usage policy.
+Antimicrobial policy provides detailed indications for antimicrobial usage, criteria
+for antimicrobial selection, appropriate dosing regimens, preferred routes of
+administration, the optimal duration of treatment, and timing considerations. The
+overarching objective is to achieve maximal clinical efficacy in curing infections or
+preventing their onset, while concurrently minimizing the risk of unintended
+consequences associated with antimicrobial use, such as antimicrobial resistance
+and adverse effects.
+The system should incorporate controls based on the antimicrobial usage policy
+defined by healthcare organizations. The antimicrobial usage policy shall be
+readily available to medical practitioners in a digital format.
+
+\ ,
+
+nterpretation The system shall flag any restricted antimicrobial and mandate the medical
+practitioner to provide a justification for prescribing the same. The list of antibiotics
+among the restricted antimicrobials shall adhere to WHO's AWaRe classification.
+The system shall help the medical practitioner to identify the appropriate pre
+surgery prophylactic antibiotic based on the organization’s policy. The system
+should also monitor selection of the right drug, duration of prophylaxis and
+administration of the first prophylactic dose in accordance with the organization’s
+policy.
+
+(oreyiiiicaimeme [he system captures all patient care incidents and sentinel events.
+In the event of patient care incidents and sentinel events, the system triggers real-
+time alerts to staff, ensuring a swift response, and enhancing overall patient
+safety.
+Common patient care incidents and sentinel events include wrong site surgery,
+
+: foreign body retention, falls, suicide, delays in treatment, and medication errors.
+
+Interpretation
+The system should possess the capability to record and track the incidents to
+closure. In addition, the system should analyze the data and generate
+dashboards and reports. Through the examination of patterns, trends, and
+potential areas for enhancement, healthcare organizations can proactively identify
+opportunities to enhance patient safety and optimize care delivery processes.
+
+|| Core || Commitment || Achievement || Excellence

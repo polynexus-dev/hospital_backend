@@ -1,0 +1,23 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Annexure-3 High Risk Medications
+Definition-
+High risk / alert medications can be defined as those drugs that have a heightened risk for adverse events
+or have heightened risk of catastrophic harm whenever there is an error. These drugs generally have a
+low therapeutic index.
+Some examples of high-risk medications include:
+Anti-infectives: Amphotericin, vancomycin, and aminoglycosides.
+Potassium and concentrated electrolytes: Injectable electrolyte preparations, such as potassium chloride
+and magnesium sulfate.
+Insulin: All insulins.
+Narcotics and sedatives: All opioids, and sedatives such as benzodiazepines.
+Chemotherapy agents: Cytotoxic chemotherapy.
+Heparin and other anticoagulants: Heparins and all anticoagulants, including the New Oral
+Anticoagulants.
+Lithium, methotrexate, amiodarone, and phenobarbital: These are also considered high-risk
+medications.
+The list of high-risk medications may vary across hospitals and healthcare settings.
+Look-alike and sound -alike medications are also included in high-risk medications.
+Reference : .
+For Example , https://www.intmedsafe.net/wp-content/uploads/2018/04/5.-High-Alert-
+Medications-2018.pdf

@@ -1,0 +1,17 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+(ofeJiiiitigesea| The system configures rules to capture and retain audit logs.
+Administrators shall have the ability to configure rules within the system, specifying
+how audit logs should be collected and retained. These logs should capture details
+such as: User Information, Action Type, Actions performed, Timestamp, Status and
+IP Address login.
+Automated tools may be deployed for continuous monitoring and analysis of audit
+logs to detect and respond to security incidents promptly.
+
+Wikenieeaer: Audit logs for key events and transactions should include successful log-in,
+unsuccessful log-in, patient registration, patient discharge etc.
+This capability allows control over the recording of system activities, ensuring
+compliance with requirements and facilitating any forensic analysis when needed.
+
+|| Core || Commitment || Achievement || Excellence

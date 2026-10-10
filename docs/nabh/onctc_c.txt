@@ -1,0 +1,2203 @@
+Test Cases for Cancer Care and Oncology
+®
+Introduction to Oncology Annexure and Objective Elements Test Cases
+This document contains the test cases developed for evaluating the NABH Digital Health Standards and objectives for Oncology annexure. These test cases are meticulously designed to ensure that the HIS and EMR systems meet the required performance, functionality, and compliance standards. The purpose of these test cases is to provide a structured, unied, and comprehensive approach to testing, enabling NABH, HIS and EMR vendors to maintain a uniform standard while testing different HIS and EMR products. With the help of these test cases, the HIS and EMR vendor can assess the current gaps in their systems while doing the Self-Assessment (SAT) and accomplish the testing phase successfully.
+Structure of the Test Case Each test case is divided into four key parts to ensure thorough and systematic testing. 1. Test Case: This section provides a brief description of the specic feature or functionality being
+tested. It outlines the objective of the test. 2. Test Validation: This section outlines the mode of testing. An objective can be validated by self-
+attestation (submitting relevant certication) or by manually demonstrating the steps of the test case. 3. Pre-requisite: Before executing the test case, certain conditions or congurations must be in place. This section lists all the necessary prerequisites, including system settings, data requirements, and any other dependencies that must be satised. 4. Steps to Follow: This section provides a detailed, step-by-step procedure to execute the test case. Each step is carefully articulated to ensure clarity and consistency, enabling testers to accurately carry out the test. 5. Expected Outcome: This section describes the anticipated results upon successful execution of the test case. It serves as a benchmark against which actual outcomes are compared to determine whether the test has passed or failed.
+Usage Guidelines · Preparation: Ensure all prerequisites are met before starting the test. · Execution: Follow the steps meticulously to avoid any discrepancies. · Documentation: Record the actual outcomes and compare them with the expected outcomes. · Reporting: Document any deviations, bugs, or issues encountered during testing and take
+necessary actions.
+1
+
+Test Cases for Cancer Care and Oncology
+®
+
+AAC.3 : The system handles laboratory test orders and samples.
+
+AAC.3.a : The system congures clinical and administrative workow for laboratory management.
+Test Case : Verify conguration and end-to-end workow of laboratory management including Oncology Module.
+
+Pre-requisite for test
+
+Test Validation
+
+1. The laboratory management module must be enabled in the system.
+2. Master data for laboratory tests, practitioners, and billing codes must be pre-congured.
+3. User must have valid credentials with appropriate access rights for laboratory management and oncology workow conguration.
+4. Laboratory Information System (LIS) integration should be established and active.
+5. EMR module should be congured for clinician authorization workows.
+6. Keep a dummy patient whose tumour board meeting is scheduledin the system.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Navigate to the Laboratory Management 1. Laboratory master
+
+module from the main dashboard.
+
+data, workows
+
+Step 2. Set up laboratory workow congurations to enable information ow between
+
+congurations are successfully set up.
+
+practitioners, the lab, and billing.
+
+2. Quality controls are
+
+Step 3. Congure essential quality control parameters within the laboratory
+
+properly congured and applied.
+
+management system.
+
+3. Specialty-specic
+
+Step 4. Generate specialty-specic reports such as microbiology and biochemistry to validate reporting capabilities.
+For the Oncology requirement
+
+laboratory reports (e.g., microbiology, biochemistry) are generated accurately.
+
+Step 5.
+
+Initiate a molecular-specic sample using 4. Molecular-specic
+
+barcode-based tracking and validate correct sample registration
+
+entry.
+
+with barcode
+
+Step 6. Initiate EMR-enabled test requisition workow tracking is
+
+with clinician authorization and conrm successfully
+
+seamless data transfer to LIS.
+
+completed.
+
+Step 7. Step 8.
+
+Validate bidirectional integration by ensuring 5. EMR-enabled
+
+LIS updates are reected in the EMR.
+
+requisition
+
+Generate structured bioinformatics reports for molecular test results, which may include (Patient & Case Details, Molecular Test Performed,Tools, Databases & References,
+
+workows function correctly with clinician authorization.
+
+Primary Molecular Findings, etc) and
+
+Select Yes/No
+
+2
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+integration into the patient's EMR and 6. LIS and EMR
+
+longitudinal health history for dummy patient. integration is
+
+Step 9. Verify generation of unied reports combining molecular biology ndings with IHC and histopathology results with stage .(As
+
+seamless with realtime bidirectional updates.
+
+Applicable)
+
+7. Structured
+
+Step 10. Conrm that the unied report is accessible for tumor board discussions and supports development of integrated treatment plans.
+
+bioinformatics reports are generated and integrated into the
+
+patient's EMR and
+
+longitudinal history.
+
+8. Unied reports combining molecular, IHC, and histopathology data are generated successfully.
+
+9. Unied reports are accessible for tumor board use and support comprehensive treatment planning.
+
+Select Yes/No
+
+COP.1 : The system manages consultation services in OPD and IPD
+
+COP.1.a : The system records and reviews initial assessment in OPD and IPD, and patient progress.
+
+Test Case: Verify recording and review of initial assessment and patient progress in OPD and IPD, including Oncology Enhancements.
+
+Pre-requisite for test
+
+Test Validation
+
+1. User must have valid credentials with roles assigned (doctor, nurse, or authorized staff).
+2. Master data for patient categories (antenatal, obstetrics, paediatrics, ophthalmology, ENT, oncology, etc.) must be congured.
+3. EMR must be integrated with diagnostic, radiology, and laboratory systems.
+4. Oncology-specic modules (Surgical Oncology, Radiation Oncology, Chemotherapy Oncology) must be enabled and accessible.
+5. Keep two dummy patients registered in the system.
+
+Manual
+
+3
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Navigate to the OPD module and initiate a 1. Initial assessment
+
+dummy patient encounter.
+
+records are
+
+Step 2. Record the initial assessment details
+
+successfully
+
+including vital signs, medical history,
+
+captured and
+
+physical examination ndings, diagnostic
+
+reviewed in both
+
+tests, and previous treatments.
+
+OPD and IPD
+
+modules.
+
+Step 3. Save and review the recorded initial
+
+assessment and conrm its availability in the 2. Category-specic
+
+patient's medical record.
+
+assessments and
+
+re-assessments
+
+Step 4. Repeat the initial assessment process for IPD
+
+are recorded and
+
+patients and validate proper storage and
+
+retrievable.
+
+review functionality.
+
+3. Diagnostic tests,
+
+Step 5. Select a patient category (antenatal,
+
+primary diagnosis,
+
+obstetrics, paediatrics, ophthalmology, ENT,
+
+and TNM staging
+
+etc.) and capture category-specic
+
+are accurately
+
+assessment and re-assessment details.
+
+captured and
+
+Step 6. Navigate to the patient progress monitoring
+
+stored.
+
+section and review the ability to track trends, 4. Radiotherapy-
+
+vitals, diagnostic results, and treatment
+
+specic details are
+
+progress over time.
+
+recorded,
+
+Step 7. Capture and conrm the primary diagnosis
+
+including scans,
+
+details, including date of diagnosis, TNM
+
+positioning, and
+
+staging, and modalities used such as
+
+immobilisation.
+
+imaging, histo-cytopathology, and special tests.
+
+5. Surgery-related data, including
+
+Step 8. Document initial radiotherapy assessment
+
+extent and
+
+including scan details, patient positioning,
+
+pathology results,
+
+and immobilisation information.
+
+are stored in the
+
+Step 9. Capture surgery-related data including
+
+system.
+
+procedure details, name, extent, frozen
+
+6. Chemotherapy
+
+sections, and HPR.
+
+and radiation
+
+Step 10. Record chemotherapy and radiation therapy details including cycles, intervals, dates, type, indication (adjuvant, concurrent, neoadjuvant, palliative), and treatment response or toxicity.
+Step 11. Update patient records with chemotherapy scheduling details including indications, vitals, laboratory results, and radiology reports/images.
+Step 12. Record the cause of death if it occurs during or within 30 days post-treatment, specifying the modality involved.
+
+therapy data including cycles, type, indication, and treatment responses are captured and reviewed.
+7. Chemotherapy schedules with diagnostic results and vitals are updated and accessible.
+
+Step 13. Validate that the identity of the user entering or updating the data is captured and logged by the system.
+
+8. Cause of death data is properly recorded when
+
+applicable.
+
+Select Yes/No
+
+4
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 14. Generate and review oncology reports referencing Annexure (A) Surgical Oncology, (B) Radiation Oncology, and (C) Chemotherapy Oncology modules.
+
+10. User identity for each data entry is logged and auditable.
+11. Comprehensive oncology reports are generated and accessible as per dened modules.
+
+COP.1 : The system manages consultation services in OPD and IPD
+
+COP.1.b : The system provides a summary of the patient's condition, medication order and followup visit for the OPD visit.
+
+Test Case : Verify summary of patient's condition, medication order, and follow-up visit in OPD including Oncology Module
+
+Pre-requisite for test
+
+Test Validation
+
+1. The OPD module must be enabled in the system.
+2. User must have valid login credentials with access rights to record and review OPD visits.
+3. Patient master data must be available in the system.
+4. Medication master list, allergy/adverse reaction records, and clinical diagnosis catalog must be pre-congured.
+5. Oncology enhancement features must be enabled for follow-up status management.
+
+Manual
+
+Steps to produce
+
+Expected Outcome
+
+Step 1. Step 2.
+Step 3. Step 4.
+Step 5.
+
+Navigate to the OPD module and select a 1. 1.A concise patient
+
+registered patient for consultation.
+
+summary is
+
+Record the patient's condition including generated,
+
+relevant medical history, current symptoms, capturing medical
+
+physical examination ndings, diagnostic history, symptoms,
+
+results, and conrmed diagnosis.
+
+diagnosis, and
+
+examination/test
+
+Save the summary and verify that the system ndings.
+
+generates a concise overview of the patient's
+
+condition.
+
+2. Medication orders
+
+are recorded with
+
+Navigate to the medication order section and complete details
+
+prescribe medications by selecting drug including dosage,
+
+name, dosage, frequency, and route of frequency, route,
+
+administration.
+
+and adverse
+
+Record any allergy, adverse reaction, or drug reactions or drug
+
+interaction identied during prescription interactions.
+
+entry.
+
+Note/Deviation Select Yes/No
+
+5
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 6. Review the system-generated medication 3. Medication history
+
+history and validate its inclusion in the is integrated into
+
+patient's OPD summary.
+
+the patient's OPD
+
+Step 7. Navigate to the follow-up visit section and summary.
+
+schedule a follow-up appointment including 4. Follow-up visits are
+
+date, time, and clinician details.
+
+scheduled,
+
+Step 8. Record follow-up consultation notes after the documented, and
+
+visit is completed.
+
+retrievable in the
+
+system.
+
+Step 9. Navigate to the oncology follow-up section
+
+and update follow-up status such as active 5. Follow-up
+
+surveillance, stable disease, no evidence of consultation notes
+
+disease, relapse, referral, or long-term are recorded and
+
+complications.
+
+linked to the
+
+patient's record.
+
+Step 10. Capture and validate follow-up appointment
+
+details including planned visit dates and 6. Oncology-specic
+
+actual outcome (death, survivorship, or follow-up statuses
+
+treatment discontinuation).
+
+are updated
+
+accurately in the
+
+patient's prole.
+
+7. Planned visit dates and actual outcomes are captured and accessible in the system.
+
+COP.1 : The system manages consultation services in OPD and IPD
+
+COP.1.c : The system creates order sets based on frequently prescribed medicines
+
+Test Case: Verify creation and management of order sets for frequently prescribed medicines including Oncology Module
+
+Pre-requisite for test
+
+Test Validation
+
+1. The medication database must be congured with drug names, dosage forms, routes, strengths, indications, contraindications, and side effects.
+2. The system must have pre-established templates for common medical conditions or procedures.
+3. User must have valid credentials with prescribing rights.
+4. Oncology module must be enabled with chemotherapy drug pathways and brand selection options.
+
+Manual
+
+Steps to produce
+
+Expected Outcome
+
+Step 1: Log in to the system and navigate to the 1. Pre-established Medication / Order Set Management section. order set templates
+
+Note/Deviation Select Yes/No
+
+6
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 2:
+
+Create a new Order Set by entering a unique name, adding medicines, and dening dosage, frequency, route, duration, and any clinical notes or precautions.
+
+are available for common medical conditions or procedures.
+
+Step 3: Save the Order Set and reopen it to verify that 2. Medical
+
+all medication details and congurations are practitioners can
+
+captured accurately.
+
+personalise order
+
+Step 4: Select an existing Order Set, modify medicine details or add/remove medicines, and verify that the system prompts for a Justication for
+
+sets by modifying or adding medicines.
+
+Change.
+
+3. Saved customised
+
+Step 5: Enter a valid justication, save the updates, and conrm that the changes-along with justication, user identity, timestamp-are
+
+order sets are retrievable for future prescribing.
+
+recorded in the audit log or version history. 4. Predened
+
+For the Oncology requirement
+
+Step 6:
+
+Navigate to the Chemotherapy Order Set module and create a new predened order set by selecting the disease group/organ or custom-dened pathway.
+
+chemotherapy order sets are available with dosage, capping, and brand selection details
+
+Step 7:
+
+Add chemotherapy drugs to the order set, 5. Modications to
+
+including brand selection, dosage details, chemotherapy
+
+and drug capping as per protocol.
+
+order sets require
+
+Step 8: Save the order set and verify that it appears entry of
+
+correctly in the chemotherapy order set list.
+
+justication.
+
+Step 9: Open the existing chemotherapy order set, 6. Modied
+
+modify drug details or selections, and verify chemotherapy
+
+that the system prompts for justication using order sets are
+
+a drop-down list.
+
+saved successfully
+
+Step 10: Select a reason for modication, save the changes, and conrm that the justication is
+
+with justication details recorded.
+
+recorded in the audit log/version history.
+
+COP.1 : The system manages consultation services in OPD and IPD
+
+COP.1.g : The system has the capability to generate Computerized Provider Order Entry (CPOE) for radiological examinations.
+
+Test Case : Verify CPOE functionality for radiological examinations including Oncology Radiation Therapy Enhancements
+
+Pre-requisite for test
+1. The radiology module must be enabled in the system.
+2. The catalogue of radiology tests must be congured and available.
+3. User must have valid credentials with medical practitioner access rights.
+
+Test Validation Manual
+
+7
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+4. Radiology scheduling and slot availability must be set up in the system.
+5. Oncology radiation therapy module (Annexure B) must be enabled.
+
+Test Validation
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Step 2:
+Step 3: Step 4:
+Step 5: Step 6:
+
+Navigate to the patient record module and 1. Medical
+
+select a registered dummy patient.
+
+practitioners can
+
+Open the radiology test catalogue and select place radiology test
+
+the required radiological test(s) along with the orders
+
+appropriate clinical indication.
+
+electronically using
+
+the CPOE system.
+
+Review the available schedules and slot
+
+timings for the selected radiology test.
+
+2. Radiology
+
+catalogue is
+
+Conrm patient preparation requirements, accessible and
+
+including fasting instructions, shifting time, tests can be
+
+and any special guidelines.
+
+selected with clear
+
+Place the radiology order and verify that it is clinical indications.
+
+successfully entered into the system.
+
+3. Available schedules
+
+Navigate to the Oncology radiation therapy and slot timings are
+
+module and Verify that the system allows displayed and
+
+a d d i n g o n c o l o g y - r e l a t e d a d d i t i o n a l selectable for
+
+information for the selected test.
+
+radiology tests.
+
+Step 7: Record radiation therapy treatment details by 4. Patient preparation
+
+selecting the required procedure type.
+
+instructions are
+
+Step 8: Choose the imaging modality such as CT, CT+MRI, or CT+PET.
+
+recorded and linked to the order.
+
+Step 9: Perform pretreatment verication and conrm 5. Radiology orders
+
+that the system captures the verication are successfully
+
+details accurately.
+
+saved and visible in
+
+the patient's
+
+Step 10: View and mark the treatment checklist as medical record.
+
+dened by the healthcare facility.
+
+6. Radiation therapy
+
+Step 11: Save the order and verify that it is accurately treatment details
+
+recorded in the patient's medical record. are captured
+
+including
+
+procedure type,
+
+imaging modality,
+
+and pretreatment
+
+verication.
+
+7. Oncology-specic treatment checklists can be viewed and marked.
+
+8. Completed oncology orders are saved and integrated into the patient's record.
+
+Select Yes/No
+
+8
+
+Test Cases for Cancer Care and Oncology
+®
+
+COP.10 : The system supports patient services in remote settings.
+
+COP.10.b : The system supports effective home care services/ palliative care.
+
+Test Case : Verify management of effective home care and palliative care services including oncology enhancements.
+
+Pre-requisite for test
+
+Test Validation
+
+1. The user must have valid login credentials with access rights to home care and palliative care modules.
+2. Patient records, including adult, paediatric, and cancer survivorship program participants, must exist in the system.
+3. Home care service workows, scheduling, and billing modules must be congured.
+4. Oncology-specic home care modules, including patient proling, adverse event tracking, remote monitoring, medication adherence, and teleconsultation capabilities, must be enabled.
+5. Secure communication channels and document sharing mechanisms must be congured.
+6. Diet, mental health, and advanced remote diagnostics modules must be active for home care management.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Step 2:
+Step 3: Step 4: Step 5: Step 6: Step 7: Step 8:
+
+Navigate to the Home Care Services module. 1. The user is able to
+
+Create a new home care service booking by
+
+log in and access
+
+entering/selecting patient details, service
+
+home care and
+
+type, and preferred schedule; save the
+
+palliative care
+
+booking.
+
+modules
+
+successfully.
+
+Open the Home Care Dashboard and verify
+
+the booking appears with "Scheduled" 2. Home care
+
+status.if applicable
+
+services can be
+
+scheduled,
+
+Select the appointment and update the status
+
+assigned, and
+
+to In-Progress, then to Completed; ensure
+
+monitored
+
+both updates reect correctly.
+
+efciently.
+
+Navigate to the Billing section, verify auto- 3. Patient proling
+
+generated charges, add/edit charges if
+
+and care details
+
+required, and generate the invoice.
+
+are accurately
+
+Conrm the invoice appears in the patient's captured and
+
+billing history.
+
+retrievable.
+
+Verify that the system automatically sends a 4. Adverse events
+
+feedback form to the patient after service and remote
+
+completion.
+
+monitoring data
+
+Submit the feedback and conrm it is recorded in the patient record and analytics
+
+are recorded and tracked effectively.
+
+dashboard.
+
+Select Yes/No
+
+9
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+5. Medication adherence and teleconsultation records are captured and monitored.
+6. Billing for home care services is generated and maintained correctly.
+7. Secure communication and document sharing are functional and reliable.
+8. Oncology-specic modules capture diet, mental health, and advanced diagnostic data accurately.
+9. Palliative care assessments and survivorship details are recorded as per dened guidelines.
+10. All home care and palliative care data are stored securely, auditable, and accessible for authorized personnel.
+
+COP.12 : The system provides a Clinical Decision Support System.
+
+COP.12.a : The Systems supports the Clinical Decision Support System (CDSS).
+
+Test Case : Verify Clinical Decision Support System (CDSS) Functionality including Oncology Enhancements
+
+Pre-requisite for test
+1. The CDSS module must be enabled and congured in the system.
+
+Test Validation Manual
+
+10
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+
+Test Validation
+
+2. Access rights must be assigned to clinicians and authorized users.
+3. Patient medical records including diagnosis, staging, pathology reports, and molecular reports must be available.
+4. Medication database with dosage calculation rules (BSA, AUC, BMI, Height, Weight, Creatinine, Age, GFR) must be congured.
+5. Integration with external CDSS systems, if applicable, must be active.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Step 2.
+Step 3.
+
+Log in to the system with clinician credentials. 1. CDSS provides
+
+Navigate to the Clinical Decision Support System module.
+Select a patient record and review available diagnosis, staging, and pathology data.
+
+evidence-based recommendations for diagnosis and treatment planning.
+
+Step 4.
+
+Trigger CDSS for diagnostic assistance and validate that evidence-based recommendations and guidelines are displayed.
+
+2. System generates alerts for contraindications, drug interactions,
+
+Step 5. Prescribe a medication and validate CDSS- and prescription
+
+generated alerts for contraindications, drug errors.
+
+interactions, and dosage errors.
+
+3. CDSS suggests
+
+Step 6. Initiate a treatment plan and verify CDSS appropriate
+
+suggestions for protocols based on patient treatment
+
+diagnosis and staging.
+
+protocols based
+
+For the Oncology requirement
+
+on diagnosis,
+
+staging, and
+
+Step 8. Review treatment protocol recommendations
+
+pathology reports.
+
+generated based on pathology reports,
+
+molecular ndings, and host characteristics. 4. Oncology-specic
+
+treatment
+
+Step 9. Va l i d a t e t h a t t h e s y s t e m t r i g g e r s a n
+
+recommendations
+
+automated alert when diagnosis, staging, or
+
+are generated
+
+pathology data is incomplete or inconsistent.
+
+considering
+
+Step 10. Enter patient demographic and clinical molecular
+
+parameters (BSA, BMI, Age, Weight, Height, pathology and
+
+Creatinine, GFR).
+
+host
+
+Step 11. Verify that the CDSS calculates and suggests characteristics.
+
+appropriate drug dosage according to 5. Automated alerts
+
+dened clinical rules.
+
+are triggered when
+
+Step 12. Save and conrm that the recommendations and alerts are stored in the patient's medical record.
+
+required data is incomplete or incongruent.
+
+6. Dosage
+
+suggestions are
+
+accurately
+
+calculated based
+
+Select Yes/No
+
+11
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+on clinical parameters (BSA, AUC, BMI, Height, Weight, Creatinine, Age, GFR).
+7. All CDSS recommendations and alerts are recorded in the patient's electronic medical record.
+
+COP.13 : The system has the capability to create care plans.
+COP.13.a : The system has the capability to create customized care plans based on current standards of practice
+
+Test Case : Verify the creation of customized care plans for disease-specic and oncology patients
+
+Pre-requisite for test
+1. The user must have valid login credentials with access rights to care plan creation and management.
+2. Disease-specic clinical guidelines (e.g., asthma, diabetes, COPD, oncology) should be precongured in the system.
+3. O n c o l o g y- s p e c i c p r o t o c o l s ( e . g . , N C G guidelines, clinician-dened protocols) must be available in the system.
+4. Radiotherapy and chemotherapy modules should be enabled in the system.
+5. Patient records with relevant demographic and clinical details must be available in the system.
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome
+
+Step 1: Step 2. Step 3. Step 4. Step 5.
+
+Log in to the system with valid user 1. The system allows
+
+credentials.
+
+successful login
+
+Navigate to the Care Plan Management module.
+Select a patient record from the patient list.
+
+and access to the Care Plan Management module.
+
+Initiate the creation of a new customized care 2. The user is able to
+
+plan.
+
+initiate and create
+
+Select a disease-specic template (e.g., a new customized
+
+asthma, diabetes, COPD) or oncology- care plan for a
+
+specic protocol (e.g., NCG guideline, selected patient.
+
+clinician-dened protocol).
+
+Note/Deviation Select Yes/No
+
+12
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 6. Congure care plan elements including 3. Disease-specic
+
+assessment and evaluation, goal setting, care plans are
+
+interventions, monitoring and adjustments, generated as per
+
+documentation, and communication.
+
+congured
+
+For the Oncology requirement
+
+guidelines and
+
+include
+
+Step 7. For oncology patients, congure additional
+
+assessment,
+
+elements including comorbidity
+
+interventions,
+
+management, cancer-specic care, pain
+
+monitoring, and
+
+management, follow-up plans, survivorship
+
+documentation.
+
+plans, or palliative care as required.
+
+4. Oncology care
+
+Step 8. Access the chemotherapy module to dene
+
+plans are
+
+or modify chemotherapy sequences, cycle
+
+successfully
+
+intervals, treatment types, reasons for
+
+created, tailored to
+
+changes, outcomes, and user remarks.
+
+organ, disease
+
+Step 9. Access the radiotherapy module to congure group, stage, and
+
+requisition details such as session counts, tumour site, and
+
+cycle intervals, protocols, site of incidence, include
+
+region of interest, procedure dates, and comorbidity
+
+diagnostic ndings (e.g., PET-CT/CT).
+
+management,
+
+Step 10. Save and nalize the customized care plan.
+
+cancer care, pain
+
+Step 11. Review the complete audit trail to ensure all
+
+management, and follow-up or
+
+actions are logged as per facility
+
+survivorship plans.
+
+requirements.
+
+5. The system
+
+Step 12. Reopen the saved care plan to verify the
+
+enables
+
+ability to view, update, or modify details.
+
+conguration and
+
+modication of
+
+chemotherapy
+
+plans, including
+
+treatment
+
+sequences,
+
+reasons for
+
+changes, and
+
+outcomes.
+
+6. The system enables conguration of radiotherapy requisition details in alignment with institutional protocols.
+
+7. All care plan activities are logged and viewable in the audit trail.
+
+13
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+8. The system allows users to view, update, and modify care plans after creation without data loss or errors.
+
+Select Yes/No
+
+MOM.3: The system supports the safe administration of medications
+
+MOM.3.b: The system has the capability of maintaining an electronic medication administration record ( eMAR)
+Test Case : Verify the maintenance of electronic medication administration record (eMAR) with oncology enhancements
+
+Pre-requisite for test
+
+Test Validation
+
+1. The user must have valid login credentials with access rights to medication administration modules.
+2. Patient records with prescribed medications must exist in the system.
+3. Medication templates must be pre-congured in the system, including dosage, route, date/time, and administering personnel details.
+4. Oncology-specic enhancements (chemotherapy and radiotherapy orders, dilution details, premedication, and post-chemotherapy medications) must be enabled.
+5. Dened drop-down lists for medication status (completed, canceled, modied with reasons) should be available in the system.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Log in to the system with valid user 1. The system allows
+
+credentials.
+
+successful login
+
+Step 2. Step 3. Step 4.
+
+Navigate to the eMAR module.
+
+and access to the
+
+eMAR module.
+
+Select a patient record from the patient list.
+
+2. The user is able to
+
+Record a new medication administration
+
+record medication
+
+using the prescribed template, entering
+
+administration
+
+dosage, route of administration, date and
+
+using the
+
+time, and administering personnel details.
+
+predened
+
+Step 5. Record a medication administered based on template,
+
+a verbal order and capture the verication including dosage,
+
+details for high-risk medication.
+
+route, date, time,
+
+For the Oncology requirement Step 6. For oncology patients, enter details of
+
+and administering personnel details.
+
+parenteral drug dilution, diluent, volume, and
+
+infusion rate.
+
+Select Yes/No
+
+14
+
+Test Cases for NCAanBcHerDCigairtaelaHnedaOlthncSotalongdyard for CMS
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 7. Record premedication details along with 3. The system
+
+post-chemotherapy medication details such records and
+
+as duration, frequency, and name.
+
+distinguishes
+
+Step 8.
+
+Access chemotherapy orders for the patient and review them date-wise, verifying the status as completed, canceled, or modied, along with the reason selected from the dropdown list.
+
+verbal order-based medication entries with verication for high-risk medications.
+
+Step 9. Capture planned and actual chemotherapy 4. Oncology-specic
+
+session details, including date, time, and type
+
+details such as
+
+(e.g., adjuvant).
+
+dilution, diluent,
+
+volume, rate,
+
+Step 10. Capture planned and actual radiotherapy
+
+premedication,
+
+session details, including date, time, and
+
+and post-
+
+type.
+
+chemotherapy
+
+Step 11. Save the medication administration record.
+
+medications are
+
+Step 12. Reopen the eMAR to validate that all recorded details are accurately stored, viewable, and
+
+successfully recorded.
+
+auditable.
+
+5. Date-wise
+
+chemotherapy
+
+orders are
+
+displayed with
+
+accurate statuses
+
+(completed,
+
+canceled,
+
+modied) and
+
+associated
+
+reasons from the
+
+dened drop-
+
+down list.
+
+6. Planned and actual chemotherapy and radiotherapy session details (date, time, type) are successfully captured.
+
+7. All medication administration entries are stored in the eMAR and are viewable, editable, and auditable as per facility requirements.
+
+15
+
+Test Cases for Cancer Care and Oncology
+®
+
+IMS.1: The system supports healthcare data and interoperability standards for patient,clinical, administrative information to ensure continuity of care, including ABDM
+
+IMS.1.e : The system shall support ICD 10/11 or SNOMED CT covering clinic terminologies for diagnosis, morbidity, and mortality data accurately.
+Test Case : Verify system support for ICD 10/11, SNOMED CT, ICD-O/ICD-O3, and CTCAE v5.0 coding functionality
+
+Pre-requisite for test
+
+Test Validation
+
+1. The user must have valid login credentials with access rights to diagnosis and coding modules.
+2. ICD 10/11, SNOMED CT, ICD-O/ICD-O3, and CTCAE v5.0 code sets must be congured and available in the system.
+3. The system must be updated to support upload, upgrade, deprecation, and version management of medical coding standards.
+4. Patient records must exist in the system for assigning diagnosis and treament-related codes.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Log in to the system with valid user 1. The system allows
+
+credentials.
+
+successful login
+
+Step 2. Navigate to the diagnosis and coding module.
+
+and access to the coding module.
+
+Step 3. Step 4.
+
+Search for a diagnosis using clinical
+
+2. Relevant ICD
+
+terminology and verify system
+
+10/11 or SNOMED
+
+recommendations for relevant ICD 10/11
+
+CT codes are
+
+and SNOMED CT codes.
+
+recommended
+
+based on clinical
+
+Select and assign the appropriate ICD 10/11
+
+terminology
+
+or SNOMED CT code to the patient record.
+
+search.
+
+Step 5.
+
+Verify that the system maintains the coding 3. The user is able to
+
+version and supports retrieval of historical
+
+assign appropriate
+
+versions.
+
+codes to patient
+
+Step 6. Upload or upgrade a new version of ICD or records.
+
+SNOMED CT codes into the system.
+
+4. The system
+
+Step 7. Validate that deprecated codes are clearly maintains and
+
+marked and retained for historical accuracy.
+
+displays coding
+
+For oncology requirements
+Step 8. For oncology cases, record ICD-O/ICD-O3 codes to capture morphology and grade of the disease.
+
+versions, with the ability to upload, upgrade, and deprecate codes while retaining
+
+Step 9. Capture CTCAE v5.0 codes for recording historical data.
+
+treatment-related toxicities, including grade 5. Deprecated codes
+
+and category.
+
+are clearly
+
+Step 10. Save and review the coded patient record to identied and not
+
+ensure accurate storage and retrieval of all used for new
+
+assigned codes.
+
+entries, but remain
+
+visible for past
+
+records.
+
+Select Yes/No
+
+16
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+6. Oncology-specic codes (ICD-O/ICDO3) for morphology and grade are successfully recorded.
+7. CTCAE v5.0 codes are captured accurately for treatment-related toxicities with grade and category.
+8. The coded patient record is stored, retrievable, and auditable as per clinical and institutional requirements.
+
+IMS.2: The system has the capability to support NABH dened key performance indicators and analytical dashboards.
+
+IMS.2.a : The system electronically computes and publishes Key Performance Indicators (KPIs) per NABH accreditation standards for hospitals and healthcare organizations
+Test Case : Verify computation and publication of NABH-compliant KPIs including oncology-specic data.
+
+Pre-requisite for test
+
+Test Validation
+
+1. The user must have valid login credentials with access rights to the KPI computation module.
+2. Relevant patient, administrative, and hospital operational data must be available in the system.
+3. NABH accreditation standards and KPI denitions must be congured in the system (Annexure 8 / Annexure F for oncology-specic KPIs).
+4. KPI export formats (JSON, CSV, XML, XLS, PDF) must be pre-congured and accessible.
+5. Oncology module must be enabled for capturing cancer registry-related data.
+
+Manual
+
+Steps to produce
+
+Expected Outcome
+
+Step 1. Step 2. Step 3.
+
+Log in to the system with valid credentials. 1. The user is able to
+
+Navigate to the KPI computation module.
+Select the desired reporting period by entering start and end dates.
+
+log in and access the KPI computation module
+
+successfully.
+
+Note/Deviation Select Yes/No
+
+17
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 4. Step 5.
+Step 6. Step 7.
+Step 8.
+Step 9.
+
+Initiate the KPI computation process.
+
+2. The system allows
+
+Verify that the system accurately computes
+
+selection of
+
+KPIs based on NABH accreditation
+
+custom reporting
+
+standards.
+
+periods and
+
+computes KPIs
+
+Access computed KPI results and validate the
+
+accordingly.
+
+accuracy against sample or reference data.
+
+3. KPIs are computed
+
+Export the KPI data in multiple formats
+
+accurately based
+
+(JSON, CSV, XML, XLS, PDF) and verify
+
+on NABH
+
+successful export.
+
+accreditation
+
+For oncology-specic KPIs, capture and standards.
+
+verify required information for cancer 4. Computed KPI
+
+registries.
+
+results match
+
+Validate that oncology KPIs are correctly reference or
+
+formatted and exportable as per dened expected data
+
+NABH standards.
+
+values.
+
+Step 10. Review published KPIs to ensure they are 5. KPI data can be
+
+accessible to authorized end-users for exported
+
+analysis.
+
+successfully in all
+
+congured formats
+
+(JSON, CSV, XML,
+
+XLS, PDF).
+
+6. Oncology-specic KPIs for cancer registries are captured, computed, and exported correctly.
+
+7. Published KPIs are accessible to authorized users and suitable for further analysis.
+
+8. The system maintains data integrity and traceability for all KPI computations and exports.
+
+MDC.1: The system creates a Multi-Disciplinary Tumor Board workow.
+MDC.1.a: The system enables patient selection, tumor board ID assignment, MDTB review scheduling, and automated clinician notications.
+Test Case : Verify that the system allows a treating medical practitioner to select a patient, assign a tumor board ID, schedule a meeting, add practitioners, and send notications.
+
+18
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+1. Healthcare provider is logged in to the system using valid login credentials.
+2. Dummy patient records are available in the system with complete demographic and clinical details.
+3. C o n g u r a b l e c l i n i c a l c r i t e r i a ( e . g . , conrmed/possible diagnosis, TNM stage, organ system) are predened in the system.
+4. Clinicians required for the MDTB are registered in the system with valid contact details and calendar integration enabled.
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Step 2. Step 3. Step 4. Step 5.
+
+Navigate to the section related to MDTB 1. Medical
+
+module.
+
+practitioner can
+
+Search and select a dummy patient.
+
+successfully select
+
+patient for MDTB.
+
+Create a new Tumor Board Case for the
+
+dummy patient.
+
+2. System is able to
+
+generate a unique
+
+Verify that the system assigns a unique Tumor Tumor Board ID
+
+Board ID linked to the patient's unique ID.
+
+and correctly link
+
+Enter clinical criteria for MDTB scheduling with the patient's
+
+(diagnosis, TNM stage, organ system).
+
+unique ID.
+
+Step 6. Set the date and time for the tumor board 3. MDTB meeting is
+
+meeting.
+
+scheduled with the
+
+Step 7. Select the required medical practitioners (e.g., oncologist, radiologist, pathologist).
+
+given clinical criteria.
+
+Step 8. Save and nalize the MDTB meeting.
+
+4. Notications are
+
+sent to all selected
+
+Step 9. Check that appointment notications are sent stackholders.
+
+to all selected practitioners.
+
+5. Medical
+
+Step 10. Verify that each selected practitioner's Practitioners
+
+calendar is blocked for the scheduled time.
+
+calendars show the
+
+scheduled meeting
+
+blocked.
+
+Select Yes/No
+
+MDC.1: The system creates a Multi-Disciplinary Tumor Board workow.
+
+MDC.1.b: The system displays the list of patients scheduled for MDTB meetings, allowing the medical practitioner to select and view patient-specic details on a single screen.
+
+Test Case : Verify that the system can generate centralized patient list and integrated data view for tumor board meetings.
+
+Pre-requisite for test
+1. Healthcare provider is logged in to the system using valid login credentials.
+2. Dummy patients are scheduled for MDTB meetings with conrmed dates and times.
+
+Test Validation Manual
+
+19
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+3. Clinical data, including case notes, lab results, procedure details, radiology/pathology images, and supporting documents, are available in EMR, PACS, LIS, and RIS.
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome
+
+Step 1. Step 2. Step 3. Step 4. Step 5.
+Step 6.
+
+Navigate to the section related to MDTB 1. The system
+
+module and open the patient schedule view.
+
+successfully
+
+Verify the list of patients scheduled for upcoming MDTB meetings is displayed.
+Apply lters such as date, specialty, or disease category to rene the patient list.
+
+displays the complete list of patients scheduled for MDTB meetings.
+
+Select a dummy patient from the displayed 2. Filters by date,
+
+list.
+
+specialty, or
+
+View the patient-specic details
+
+disease category
+
+consolidated on a single screen, including
+
+rene the patient
+
+case notes, lab results, procedure details,
+
+list accurately.
+
+radiology/ pathology images, and supporting documents.
+
+3. Selection of a patient opens a
+
+Check and conrm that the accurate data is consolidated view
+
+seamlessly pulled from EMR, PACS, LIS, and of patient-specic
+
+RIS without errors or delays.
+
+details on a single
+
+screen.
+
+4. Clinical data from EMR, PACS, LIS, and RIS are displayed seamlessly and comprehensively.
+
+Note/Deviation Select Yes/No
+
+MDC.1: The system creates a Multi-Disciplinary Tumor Board workow.
+
+MDC.1.c : The system records the attendance and details of medical practitioners who attend the MDTB meeting, and documents them as per the department.
+
+Test Case : Verify that the system allows authorized users to view assigned medical practitioners for MDTB meetings, record attendance details (name, designation, specialty, and role), and send automated calendar reminders to participants.
+
+Pre-requisite for test
+
+Test Validation
+
+1. Healthcare provider is logged in to the system using valid login credentials.
+2. The MDTB meeting is already scheduled with assigned medical practitioners.
+3. Medical practitioners' proles are available in the system, including name, designation, specialty, and department.
+4. Calendar reminders for MDTB meetings are enabled in the system.
+
+Manual
+
+20
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1: Step 2: Step 3: Step 4:
+Step 5:
+
+Login to the system using autorized user to 1. The system allows
+
+access MDTB meeting schedule.
+
+access to the
+
+Navigate to the "MDTB Meetings" module in scheduled MDTB
+
+the system.
+
+meeting details to
+
+the authorized
+
+Select an upcoming MDTB meeting from the users.
+
+list.
+
+2. The list of assigned
+
+Verify that the list of assigned medical medical
+
+practitioners for the selected meeting is practitioners for
+
+displayed.
+
+MDTB meeting is
+
+During/after the meeting, navigate to the displayed
+
+"Attendance" section.
+
+accurately.
+
+Step 6: Record attendance by marking practitioners 3. Attendance is
+
+as present or absent.
+
+successfully
+
+Step 7: Verify that the system captures details of attending practitioners and the presenter including:
+
+recorded for practitioners who participated in the meeting.
+
+Name
+
+4. Practitioner details,
+
+Designation
+
+including name,
+
+Specialty
+
+designation, specialty, and
+
+Role in proceedings
+
+department, are correctly
+
+Step 8: Verify that attendance records are saved and documented.
+
+retrievable.
+
+5. Attendance records
+
+Step 9: C h e c k w h e t h e r a u t o m a t e d c a l e n d a r are saved and
+
+reminders are sent to assigned practitioners categorized by
+
+before the scheduled meeting.
+
+department as per
+
+Step 10: Conrm that reminders include meeting details (date, time, agenda) and are delivered on time.
+
+MDT documentation standards.
+
+Select Yes/No
+
+MDC.1: The system creates a Multi-Disciplinary Tumor Board workow.
+
+MDC.1.d: The system has the capability to document a summary of the tumor board discussion related to the diagnoses and treatment recommendations.
+
+Test Case : Verify Documentation of MDTB Discussion summary on diagnoses and treatment recommendations
+
+Pre-requisite for test
+
+Test Validation
+
+1. Healthcare provider or administrative staff is logged into the system using valid login credentials.
+2. An MDTB meeting is scheduled and conducted with medical practitioners' participation.
+3. Individual inputs related to diagnosis, treatment recommendations, and follow-ups are recorded in the system.
+
+Manual
+
+21
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+4. The MDTB summary template (annexure D) is congured and available in the system.
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Step 2.
+Step 3.
+Step 4. Step 5. Step 6.
+
+Navigate to the MDTB module and open the 1. The system allows
+
+completed meeting record.
+
+access to the
+
+Enter individual inputs provided by practitioners related to diagnosis, treatment
+
+completed MDTB meeting record.
+
+recommendations, and follow-ups.
+
+2. Individual inputs
+
+Generate the summary of the MDTB discussion using the standardized template provided in annexure D.
+Review the summary to ensure it consolidates multidisciplinary inputs in a structured format.
+
+related to diagnosis, treatment recommendations, and follow-ups are successfully
+
+Save and nalize the MDTB summary record. entered.
+
+Verify that the summary is linked to the 3. The system
+
+patient's medical record for future reference.
+
+generates a
+
+summary of the
+
+MDTB discussion
+
+using the
+
+standardized
+
+template.
+
+4. The summary consolidates multidisciplinary inputs in a clear and structured format.
+
+5. The nalized MDTB summary is saved without errors.
+
+Select Yes/No
+
+MDC.2 : The system can capture details related to research and trials.
+
+MDC.2.a: The system has the provision to capture consent, label patients enrolled under research trials, and view the list of research trials conducted.
+
+Test Case : Verify capture of consent, patient enrollment, and viewing of research trials
+
+Pre-requisite for test
+1. Healthcare provider or administrative staff is logged in to the system using valid login credentials.
+2. Patient records are available in the system with complete demographic and clinical details.
+
+Test Validation Manual
+
+22
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+3. Research trials are congured in the system with trial name and trial ID.
+4. The consent template (annexure ­ sample consent template) is available in the system..
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Step 2. Step 3. Step 4. Step 5. Step 6.
+Step 7. Step 8. Step 9.
+
+Navigate to the research trial module.
+
+1. The system allows
+
+Select a patient from the patient list to access to the
+
+evaluate for a research trial.
+
+research trial
+
+module.
+
+Capture screening details by marking
+
+"Screened for trial ­ Yes/No" in the system. 2. Screening status of
+
+the patient for the
+
+Record eligibility status by marking "Eligible trial is recorded
+
+for trial ­ Yes/No."
+
+successfully.
+
+Capture consent status by marking "Consent 3. Eligibility details
+
+given ­ Yes/No."
+
+are captured
+
+If consent is given, upload the signed consent accurately.
+
+form using the reference of annexure 4. Consent status is
+
+template.
+
+documented, and
+
+Enter the trial details, including Trial Name the consent form is
+
+and Trial ID.
+
+uploaded (if
+
+Save the patient enrollment details in the applicable).
+
+system.
+
+5. Trial Name and
+
+Navigate to the research trial list view and verify the list of patients enrolled in ongoing
+
+Trial ID are recorded correctly.
+
+and past trials.
+
+6. The patient is
+
+labeled as enrolled
+
+under the research
+
+trial.
+
+7. The list of patients enrolled in ongoing and past research trials is displayed accurately.
+
+Select Yes/No
+
+MDC.2. : The system can capture details related to research and trials.
+
+MDC.2.b: The system supports the end-to-end management of clinical and research trials, including randomization and enrollment, visit tracking, investigational product management, adverse event monitoring, and close-out and archival.
+
+Test Case : Verify end-to-end functionality of Clinical and Research Trial Management module.
+
+Pre-requisite for test
+1. Authorized medical practitioner must have access to the Clinical Trial Management module.
+2. Trial protocol, patient master data, and consent records must be available in the system.
+
+Test Validation Manual
+
+23
+
+Test Cases for Cancer Care and Oncology
+®
+
+Pre-requisite for test
+3. Investigational product (drug/device) inventory must be congured and available in the system.
+4. Role-based access control must be enabled for users managing clinical and research trials.
+
+Test Validation Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Navigate to the section related to Clinical Trial 1. The system
+
+Management module and initiate a new trial successfully
+
+setup.
+
+enables creation
+
+Step 2. Congure trial protocol details, including study objectives, phases, and ethics committee approval references.
+
+and conguration of clinical or research trials.
+
+Step 3. Step 4. Step 5. Step 6.
+
+Execute randomization logic by assigning 2. Participant
+
+enrolled participants to appropriate trial arms randomization and
+
+and verify system logs for participant enrollment are
+
+allocation.
+
+accurately recorded
+
+with traceable logs.
+
+Schedule and congure study-specic visits
+
+and procedures, ensuring visit timelines and 3. Study visits are
+
+adherence tracking are properly dened.
+
+scheduled, tracked,
+
+and updated based
+
+Record and track visit completion for each on adherence and
+
+participant, verifying that the system updates completion.
+
+visit status accordingly.
+
+4. Investigational
+
+Access the Investigational Product
+
+product
+
+Management section and record receipt,
+
+management
+
+batch numbers, and dispensing details for
+
+captures complete
+
+investigational products.
+
+batch, dispensing,
+
+Step 7. Verify that the system maintains
+
+and accountability
+
+accountability records and dispensing logs details.
+
+linked to participant identiers.
+
+5. Adverse events are
+
+Step 8. Document adverse events in the Adverse documented,
+
+Event Monitoring section, classifying them by classied, and
+
+type, severity, and causality.
+
+linked correctly to
+
+Step 9. Conrm that each recorded adverse event is correctly linked to the relevant trial protocol and participant record.
+
+respective protocols and participants.
+
+Step 10. Proceed to Close-Out & Archival and close 6. The trial closure
+
+the trial with a nal status update.
+
+and archival
+
+processes
+
+Step 11. Verify that all associated documents, complete
+
+including approvals, monitoring reports, and successfully with all
+
+event logs, are archived systematically.
+
+related records
+
+Step 12. Check that archived records are retrievable securely stored.
+
+and accessible only to authorized roles for 7. Archived data is
+
+audit or regulatory review.
+
+retrievable and
+
+accessible only to
+
+authorized users,
+
+ensuring regulatory
+
+compliance and
+
+data integrity.
+
+Select Yes/No
+
+24
+
+Test Cases for Cancer Care and Oncology
+®
+
+MDC.3 : The system captures details related to bone marrow transplantation.
+
+MDC.3.a : The system has the provision to enter donor and recipient details in dened templates for bone marrow transplant.
+Test Case : Verify Entry of Donor and Recipient Details for Bone Marrow Transplant Using Dened Templates
+
+Pre-requisite for test
+
+Test Validation
+
+1. Healthcare provider or administrative staff is logged in to the system using valid login credentials.
+2. Dened templates for both autologous and allogeneic transplants are congured in the system.
+3. Patient and donor records are available in the system with complete demographic and clinical details.
+4. Consent form and transplant committee approval templates (annexure) are available in the system.
+
+Manual
+
+Steps to produce
+
+Expected Outcome Note/Deviation
+
+Step 1. Step 2. Step 3.
+Step 4.
+Step 5. Step 6.
+
+Navigate to the bone marrow transplant 1. The system allows
+
+module.
+
+access to the
+
+Select the type of transplant (Autologous or Allogeneic).
+
+bone marrow transplant module.
+
+For an Autologous transplant, enter the following details in the dened template: indication, disease status, pre-transplant work-up, stem cell mobilization agents, conditioning therapy with dates, date of stem cell infusion, stem cell dose, date of neutrophil engraftment, date of platelet
+
+2. The dened templates for both autologous and allogeneic transplants are displayed correctly.
+
+engraftment, and any signicant
+
+3. Donor and
+
+complications.
+
+recipient details
+
+For an Allogeneic transplant, enter the following details in the dened template: indication, disease status, pre-transplant work-up, type of donor, donor work-up
+
+are successfully entered as per the selected transplant type.
+
+details, conditioning therapy with dates, date 4. Supporting
+
+of stem cell infusion, stem cell dose, date of documents,
+
+neutrophil engraftment, date of platelet including consent
+
+engraftment, GVHD prophylaxis, acute GVHD forms and
+
+details, chronic GVHD, treatment of GVHD, committee
+
+and any signicant complications.
+
+approvals, are
+
+Upload supporting documents such as the consent form, psychiatric evaluation, and doctor's recommendation, if applicable.
+
+uploaded and linked to the record.
+
+Process and record transplant committee approval for the procedure.
+
+Select Yes/No
+
+25
+
+Test Cases for Cancer Care and Oncology
+®
+
+Steps to produce
+
+Expected Outcome
+
+Step 7. Step 8.
+
+Save the donor and recipient details in the 5. The system
+
+system.
+
+processes and
+
+Share the relevant reports with authorized agencies through the system's reporting feature.
+
+records internal approvals for the transplantation procedure.
+
+6. Donor and recipient details are saved without errors in the system.
+
+7. Reports are shared accurately with authorized agencies as per dened access rights.
+
+Note/Deviation
+
+26
+
+

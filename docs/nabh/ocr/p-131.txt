@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Patient
+Response
+Did the staff inform you about the appointment (time & date) and Yes/No
+estimated time duration of the MRI?
+Did the doctor get your permission (consent) for the MRI?
+Did the staff verify your name/ hospital registration number with the Yes/No
+file or MRI request slip?
+7 Did the staff ask you about any history of allergies? (for Contrast Yes/ No/ Not
+Enhanced MRI) Applicable
+. . . . Yes/ No/ Not
+Did the staff/doctor explain the side-effects of doing a contrast MRI?
+Applicable
+Did the doctor advise blood tests, which are required before the | Yes/ No/ Not
+contrast-enhanced MRI? (S. Creatinine & S. Urea) Applicable
+10 Have you observed the staff performing hand wash/hand rub during Yes/No
+the procedure?
+Did the staff ask you about past surgery history with any metal
+11 devices like implants or pacemakers placed inside your body (in Yes/No
+situ)?
+Did the staff inform you about removing all metallic wearable items
+12 like jewelry, coins, pen, watch, safety pins, belts etc. before doing Yes/ No
+the MRI?
+13 Did the staff screen you with a metal detector device before entering
+the MRI room? Yes/ No
+14 Yes/ No
+Did you notice the caution signage in the MRI room?
+15 Did the staff ask you to change to hospital clothes in the changing Yes/No
+room?
+Did you have privacy in the changing room?

@@ -1,0 +1,55 @@
+=
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+" Monitoring on
+4
+2
+modalities (for example, X- Qa
+Ray/USG/CT/MRI). If a report =
+has more than one error in it, the @
+total number of errors should be =
+counted. For example, 10 tests Q
+were performed, one report was x
+generated for these 10 tests and oO
+if the results of two tests are »
+revised, the value of the Ss
+numerator shall be two and a
+denominator shall be 10. m
+=
+Further, the organization z
+could consider capturing data &
+pertaining to reporting errors a
+that were identified and rectified @O
+before the dispatch of the 3
+reports. This would enable the ©
+organization to improve its
+process.
+Although the indicator is collated
+on a monthly basis, immediate
+correction is to be initiated when
+such instances happen.
+Sampling: No
+This shall be captured in the
+laboratory and radiology.
+This shall be captured by doing an
+audit on a monthly basis. The audit
+should be done by an individual
+Number of staff outside of the department being
+Percentage of etnias Even the Staff is not adhering to any | Considering the challenges
+9 safety one of the organization's/ statutory :
+adherence to precautions safety requirements, it shall be of data capture for this
+safety Ropout considered as non- PSQ3a ; indicator through the system,
+3 PSQ3a_| precautions X100 age Monthly Endocrinology> > Remarks section there should be a provision
+las these lines missing “For the a
+by staff . calculation, if a patient has more than iter entering the manual/
+working in one hypoglycemic event during the electronically collected (app/
+diagnostics. stay and the targeted glucose level is | online forms) data.
+achieved in all the events, then
+Number of he/she is included in the numerator
+staff audited count.
+Sampling: Yes
+Sampling methodology: Stratified z
+random >
+wo
+=x
+‘2

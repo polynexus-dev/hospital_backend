@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall maintain a record of dietary options, catering to individual needs,
+preferences, and allergies, including specialized dietary requirements for patients.
+Interpretation The system shall allow assessment by the dietician and the record of the
+prescribed therapeutic diets. The kitchen team shall have access to these records
+for ensuring availability of the prescribed diet for the respective in-patients.
+(eeyiicaieen! The system maintains a record of the therapeutic diet given to inpatients.
+The system shall maintain a record of dietary options, catering to individual needs,
+preferences, and allergies, including specialized dietary requirements for patients.
+MT lta The system shall allow assessment by the dietician and the record of the
+prescribed therapeutic diets. The kitchen team shall have access to these records
+for ensuring availability of the prescribed diet for the respective in-patients.
+Standard
+The systemtracks and monitors all infection prevention and control
+COP.8. a 5
+related activities and sentinel events.
+Objective Elements
+Commitment a. The system captures, monitors, manages and reports, different types of infection
+related incidents.
+The system shall monitor and report various types of infection-related incidents
+i.e., Healthcare Associated Infections (HAIs). At a minimum these shall include-
+a. CAUTI
+b. VAP
+c. CLABSI
+d. SSI
+Interpretation Documentation of these incidents should include reporting time, staff who
+reported, type of infection prevention measures taken to address the infection etc.
+The system shall enable infection control nurse/ designated staff to complete the
+HAI checklists, track results of test samples, and provide charting tools to monitor
+the progression of infections. The system should also enable documentation
+pertaining to prophylactic medications administered, improvements observed, and
+overall progress made.
+|| Core || Commitment || Achievement || Excellence

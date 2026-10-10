@@ -1,0 +1,54 @@
+Zz
+Ss. Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+" Monitoring o
+a
+=
+The system shall calculate the Si
+total number of occupied a
+beds in each location, each 7)
+shift each day. This data shall os
+be used to calculate the =
+Number of average for a particular z=
+occupied category (ward beds/ ICU °
+beds ventilated/ICU non-ventilated) Ss
+for each shift and day. The Le
+final step of the calculation m
+involves capturing the average E
+of all the categories of beds o
+for all shifts. <
+3
+Waiting)timelis . The system shall calculate 3
+the length of Sum total time In the case of appointment the sum of the total waiting a
+time which one (in minutes) for patients, the time shallbegin time of all Outpatient
+must wait in consultation with the scheduled appointment consultations.
+order for a time and end when the
+specific action to concerned consultant (not the
+occur after that junior doctor/resident) begins .
+action is Total Number the assessment. In cases where | The denominator shall
+requested or of outpatients the patient has been seen ahead | include the total number of
+mandated. of the appointment time, the out-patient days until
+Waiting time for waiting time shall be taken as midnight of the last day of the
+outpatient zero minutes. calendar month.
+consultation is
+Waiting time the time from Sampling: No
+- which the patient .
+22 PSQ 3c tale ciels new GoM oO Minutes Monthly
+concerned
+outpatient
+department (it
+may or may not
+be the same
+time as
+registration) till
+the time that the
+concerned
+consultant (not
+the junior
+doctor/resident)
+begins the
+assessment. >)
+>
+wo
+=x
+4

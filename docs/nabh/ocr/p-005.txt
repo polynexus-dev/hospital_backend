@@ -1,0 +1,21 @@
+CONTENTS
+
+About NABH 1
+Introduction 2
+Deep Diving into HIS and EMR 3
+How to read the Standard? 5
+What is a Standard? 5
+What is an Objective Element? 5)
+What is an Interpretation? 6
+Summary of Standards 7
+Maturity Level Schemes 8
+Certification Process 9
+Chapter 1 Access, Assessment and Continuity of Care (AAC) 10
+Chapter 2 Care of Patients (COP) 36
+Chapter 3 Management of Medication (MOM) 60
+Chapter 4 Digital Application Controls (DAC) 69
+Chapter 5 Digital Operations Management (DOM) 74
+Chapter 6 Finance and Procurement Management (FPM) 82
+Chapter 7 Human Resource Management (HRM) 93
+Chapter 8 Information Management System (IMS) 100
+References 109

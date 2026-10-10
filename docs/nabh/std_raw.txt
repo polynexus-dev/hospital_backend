@@ -1,0 +1,3854 @@
+CONTENTS
+1 2 3 5 5 5 6 7 8 9 10 36 60 69 74 82 93 100 109
+
+110 122 128 131 132 133 137 141 143 171
+
+NABH Standards for HIS and EMR Systems
+®
+1
+
+NABH Standards for HIS and EMR Systems
+®
+2
+
+NABH Standards for HIS and EMR Systems
+®
+3
+
+NABH Standards for HIS and EMR Systems
+®
+digitalization
+4
+
+NABH Standards for HIS and EMR Systems
+®
+5
+
+NABH Standards for HIS and EMR Systems
+®
+6
+
+NABH Standards for HIS and EMR Systems
+®
+8
+
+NABH Standards for HIS and EMR Systems
+®
+9
+
+NABH Standards for HIS and EMR Systems
+®
+10
+
+NABH Standards for HIS and EMR Systems
+®
+The system manages patient registration and referral processes.
+11
+
+NABH Standards for HIS and EMR Systems
+®
+12
+
+NABH Standards for HIS and EMR Systems
+®
+13
+
+NABH Standards for HIS and EMR Systems
+®
+14
+
+NABH Standards for HIS and EMR Systems
+®
+The system supports patient appointments and the medical practitioner schedules.
+15
+
+NABH Standards for HIS and EMR Systems
+®
+16
+
+NABH Standards for HIS and EMR Systems
+®
+17
+
+NABH Standards for HIS and EMR Systems
+®
+18
+
+NABH Standards for HIS and EMR Systems
+®
+The system handles radiology test orders and samples.
+19
+
+NABH Standards for HIS and EMR Systems
+®
+20
+
+NABH Standards for HIS and EMR Systems
+®
+21
+
+NABH Standards for HIS and EMR Systems
+®
+22
+
+NABH Standards for HIS and EMR Systems
+®
+The system supports patient admissions.
+23
+
+NABH Standards for HIS and EMR Systems
+®
+24
+
+NABH Standards for HIS and EMR Systems
+®
+25
+
+NABH Standards for HIS and EMR Systems
+®
+26
+
+NABH Standards for HIS and EMR Systems
+®
+The system supports patient admissions.
+27
+
+NABH Standards for HIS and EMR Systems
+®
+28
+
+NABH Standards for HIS and EMR Systems
+®
+29
+
+NABH Standards for HIS and EMR Systems
+®
+30
+
+NABH Standards for HIS and EMR Systems
+®
+The system manages patient discharge and transfer processes.
+31
+
+NABH Standards for HIS and EMR Systems
+®
+32
+
+NABH Standards for HIS and EMR Systems
+®
+The system has the capability to disseminate information to patients.
+33
+
+NABH Standards for HIS and EMR Systems
+®
+The system manages patient feedback, experience and complaints.
+34
+
+NABH Standards for HIS and EMR Systems
+®
+36
+
+NABH Standards for HIS and EMR Systems
+®
+37
+
+NABH Standards for HIS and EMR Systems
+®
+38
+
+NABH Standards for HIS and EMR Systems
+®
+39
+
+NABH Standards for HIS and EMR Systems
+®
+40
+
+NABH Standards for HIS and EMR Systems
+®
+41
+
+NABH Standards for HIS and EMR Systems
+®
+42
+
+NABH Standards for HIS and EMR Systems
+®
+43
+
+NABH Standards for HIS and EMR Systems
+®
+44
+
+NABH Standards for HIS and EMR Systems
+®
+45
+
+NABH Standards for HIS and EMR Systems
+®
+46
+
+NABH Standards for HIS and EMR Systems
+®
+47
+
+NABH Standards for HIS and EMR Systems
+®
+The system supports Intensive care services.
+48
+
+NABH Standards for HIS and EMR Systems
+®
+49
+
+NABH Standards for HIS and EMR Systems
+®
+50
+
+NABH Standards for HIS and EMR Systems
+®
+51
+
+NABH Standards for HIS and EMR Systemss
+®
+52
+
+NABH Standards for HIS and EMR Systems
+®
+53
+
+NABH Standards for HIS and EMR Systems
+®
+54
+
+NABH Standards for HIS and EMR Systems
+®
+55
+
+NABH Standards for HIS and EMR Systems
+®
+The system supports the risk assessment of patients.
+56
+
+NABH Standards for HIS and EMR Systems
+®
+57
+
+NABH Standards for HIS and EMR Systems
+®
+58
+
+NABH Standards for HIS and EMR Systems
+®
+59
+
+NABH Standards for HIS and EMR Systems
+®
+60
+
+NABH Standards for HIS and EMR Systems
+®
+61
+
+NABH Standards for HIS and EMR Systems
+®
+62
+
+NABH Standards for HIS and EMR Systems
+®
+63
+
+NABH Standards for HIS and EMR Systems
+®
+64
+
+NABH Standards for HIS and EMR Systems
+®
+65
+
+NABH Standards for HIS and EMR Systems
+®
+66
+
+NABH Standards for HIS and EMR Systems
+®
+67
+
+NABH Standards for HIS and EMR Systems
+®
+68
+
+NABH Standards for HIS and EMR Systems
+®
+69
+
+NABH Standards for HIS and EMR Systems
+®
+70
+
+NABH Standards for HIS and EMR Systems
+®
+71
+
+NABH Standards for HIS and EMR Systems
+®
+72
+
+NABH Standards for HIS and EMR Systems
+®
+73
+
+NABH Standards for HIS and EMR Systems
+®
+74
+
+NABH Standards for HIS and EMR Systems
+®
+75
+
+NABH Standards for HIS and EMR Systems
+®
+76
+
+NABH Standards for HIS and EMR Systems
+®
+77
+
+NABH Standards for HIS and EMR Systems
+®
+78
+
+NABH Standards for HIS and EMR Systems
+®
+79
+
+NABH Standards for HIS and EMR Systems
+®
+80
+
+NABH Standards for HIS and EMR Systems
+®
+81
+
+NABH Standards for HIS and EMR Systems
+®
+82
+
+NABH Standards for HIS and EMR Systems
+®
+The system provides the ability to manage the supply chain processes.
+83
+
+NABH Standards for HIS and EMR Systems
+®
+84
+
+NABH Standards for HIS and EMR Systems
+®
+85
+
+NABH Standards for HIS and EMR Systems
+®
+86
+
+NABH Standards for HIS and EMR Systems
+®
+87
+
+NABH Standards for HIS and EMR Systems
+®
+88
+
+NABH Standards for HIS and EMR Systems
+®
+89
+
+NABH Standards for HIS and EMR Systems
+®
+90
+
+NABH Standards for HIS and EMR Systems
+®
+91
+
+NABH Standards for HIS and EMR Systems
+®
+92
+
+NABH Standards for HIS and EMR Systems
+®
+93
+
+NABH Standards for HIS and EMR Systems
+®
+95
+
+NABH Standards for HIS and EMR Systems
+®
+96
+
+NABH Standards for HIS and EMR Systems
+®
+.
+97
+
+NABH Standards for HIS and EMR Systems
+®
+98
+
+NABH Standards for HIS and EMR Systems
+®
+99
+
+NABH Standards for HIS and EMR Systems
+®
+100
+
+NABH Standards for HIS and EMR Systems
+®
+101
+
+NABH Standards for HIS and EMR Systems
+®
+102
+
+NABH Standards for HIS and EMR Systems
+®
+103
+
+NABH Standards for HIS and EMR Systems
+®
+104
+
+NABH Standards for HIS and EMR Systems
+®
+105
+
+NABH Standards for HIS and EMR Systems
+®
+106
+
+NABH Standards for HIS and EMR Systems
+®
+108
+
+NABH Standards for HIS and EMR Systems
+®
+110
+
+NABH Standards for HIS and EMR Systems
+®
+111
+
+NABH Standards for HIS and EMR Systems
+®
+112
+
+NABH Standards for HIS and EMR Systems
+®
+113
+
+NABH Standards for HIS and EMR Systems
+®
+114
+
+NABH Standards for HIS and EMR Systems
+®
+115
+
+NABH Standards for HIS and EMR Systems
+®
+116
+
+NABH Standards for HIS and EMR Systems
+®
+117
+
+NABH Standards for HIS and EMR Systems
+®
+118
+
+NABH Standards for HIS and EMR Systems
+®
+119
+
+NABH Standards for HIS and EMR Systems
+®
+120
+
+NABH Standards for HIS and EMR Systems
+®
+121
+
+NABH Standards for HIS and EMR Systems
+®
+122
+
+NABH Standards for HIS and EMR Systems
+®
+123
+
+NABH Standards for HIS and EMR Systems
+®
+124
+
+NABH Standards for HIS and EMR Systems
+®
+125
+
+NABH Standards for HIS and EMR Systems
+®
+126
+
+NABH Standards for HIS and EMR Systems
+®
+127
+
+NABH Standards for HIS and EMR Systems
+®
+Patient-Reported Outcome Measures (PROMs).
+128
+
+NABH Standards for HIS and EMR Systems
+®
+129
+
+NABH Standards for HIS and EMR Systems
+®
+130
+
+NABH Standards for HIS and EMR Systems
+®
+Reference : For Example , h ps://www.intmedsafe.net/wp-content/uploads/2018/04/5.-High-AlertMedica ons-2018.pdf
+131
+
+NABH Standards for HIS and EMR Systems
+®
+132
+
+NABH Standards for HIS and EMR Systems
+®
+133
+
+NABH Standards for HIS and EMR Systems
+®
+134
+
+NABH Standards for HIS and EMR Systems
+®
+135
+
+NABH Standards for HIS and EMR Systems
+®
+136
+
+NABH Standards for HIS and EMR Systems
+®
+137
+
+NABH Standards for HIS and EMR Systems
+®
+138
+
+NABH Standards for HIS and EMR Systems
+®
+139
+
+NABH Standards for HIS and EMR Systems
+®
+140
+
+NABH Standards for HIS and EMR Systems
+®
+141
+
+NABH Standards for HIS and EMR Systems
+®
+1452
+
+NABH Standards for HIS and EMR Systems
+®
+143
+
+S. Standard Indicator
+No.
+
+Key Performance Indicators (KPI) The Key performance indicators expected to be monitored by the healthcare organization
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+1 PSQ 3a
+
+Time for initial assessment of indoor patients
+
+The time shall begin from the time that the patient has arrived at the bed of the ward until the time that the initial assessment has been completed and documented by a doctor.
+
+Sum of time taken for the assessment (in minutes)
+
+Total number of admissions
+
+Minutes
+
+2 PSQ 3a
+
+Number of reporting errors/1000 investigations
+
+Number of reporting errors
+
+X1000 /1000 tests
+
+Number of tests performed
+
+Monthly Monthly
+
+This shall be captured either through the HIS or through an audit. In case of an audit, the sample size shall be as specied in the sample size calculation table. Daycare patients are not included.
+Sampling: Yes Sampling methodology: Stratied random
+For data captured through HIS-
+Sampling: No The system should track the number of records for which the initial assessment time could not be captured due to incomplete data.
+
+The system generates a time stamp for the start time (time of the arrival of patient at the bed of the ward) and the end time (completion and documentation of initial assessment by doctor). The initial assessment is deemed to be completed when the data pertaining to chief complaint, history, examination ndings, and provisional/ nal diagnosis is captured. Any edits done subsequently to any of these elds shall not result in the alteration of the time stamp of the endpoint of the initial assessment.
+The denominator shall include all admissions except daycare.
+
+This includes reporting errors picked up after dispatch. This shall be captured in the laboratory and radiology. Reporting errors include transcription errors. For better analysis, the organization could capture the data separately for different laboratory departments (For example, Biochemistry/ Microbiology/Pathology) and imaging modalities (for example, X- Ray/USG/CT/MRI).
+
+The numerator shall include any amendment or revision carried out after the report has been signed, and approved by the authorized signatory and the system has released the same.
+The denominator shall include the total number of tests performed until midnight of the last day of the calendar month.
+
+NABH Standards for HIS and EMR Systems
+®
+144
+
+S. Standard Indicator
+No.
+
+Denition
+
+Percentage of
+
+adherence to
+
+safety
+
+3
+
+PSQ 3a precautions
+
+by staff
+
+working in
+
+diagnostics.
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Number of staff adhering to safety precautions
+
+X100
+
+Percent age
+
+Number of staff audited
+
+Monthly
+
+modalities (for example, XRay/USG/CT/MRI). If a report has more than one error in it, the total number of errors should be counted. For example, 10 tests were performed, one report was generated for these 10 tests and if the results of two tests are revised, the value of the numerator shall be two and denominator shall be 10.
+Further, the organization could consider capturing data pertaining to reporting errors that were identied and rectied before the dispatch of the reports. This would enable the organization to improve its process.
+Although the indicator is collated on a monthly basis, immediate correction is to be initiated when such instances happen.
+Sampling: No
+
+This shall be captured in the laboratory and radiology. This shall be captured by doing an audit on a monthly basis. The audit should be done by an individual outside of the department being audited. Even if the staff is not adhering to any one of the organization's/ statutory safety requirements, it shall be considered as non- PSQ3a Endocrinology>> Remarks section has these lines missing "For the calculation, if a patient has more than one hypoglycemic event during the stay and the targeted glucose level is achieved in all the events, then he/she is included in the numerator count."
+Sampling: Yes Sampling methodology: Stratied random
+
+Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+145
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+A medication
+
+error is any preventable event that may cause or lead to
+
+Total number of medication errors
+
+4
+
+PSQ 3a
+
+Incidence of medication
+
+inappropriate medication use
+
+errors
+
+or patient harm
+
+while the
+
+X100 Percent age
+
+medication is in the control of the healthcare professional,
+
+Total number of opportunities
+
+patient, or
+
+consumer. (Ref:
+
+NCC- MERP).
+
+Adverse Drug
+
+reaction is a
+
+response to a
+
+drug which is
+
+Number of
+
+noxious and
+
+adverse
+
+unintended,
+
+drug
+
+Percentage of and which
+
+reactions
+
+in- patients
+
+occurs at doses
+
+5
+
+PSQ 3a developing
+
+normally used
+
+adverse drug
+
+in man for
+
+reaction(s).
+
+prophylaxis,
+
+diagnosis, or
+
+therapy of
+
+disease or for
+
+Number of
+
+the modication inpatients
+
+of physiologic
+
+function.
+
+X100 Percent age
+
+Unplanned
+
+return to the OT
+
+6
+
+PSQ 3a
+
+Percentage of unplanned return to OT
+
+is dened as any secondary procedure
+
+Number of unplanned returns to OT
+
+Percent X100
+age
+
+required for a
+
+Monthly
+
+The methodology for capture shall be as stated in NABH's document on medication errors. The indicator shall be captured for admitted patients.
+Sampling: Yes Sampling methodology: Stratied random
+
+It is preferred that the data is captured through the system for all the sub-components of medication errors. Wherever there is a limitation in capturing the information through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Monthly Monthly
+
+The organization needs to have a mechanism in place to ensure that all adverse drug reactions are captured and reported.
+
+The organization can use or download PvPI software (Vigi Fow) to document and analyze adverse drug reactions. The numerator shall be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+
+Sampling: No
+
+The denominator shall include the total number of inpatients until midnight of the last day of the calendar month.
+
+The data shall be captured with a delay of 30 days. This ensures that the organization has adequate time to capture complications that require an unplanned return to the OT.
+
+The system shall count the total number of unplanned surgeries done within 30 days. Wherever there is a limitation in capturing the information through the
+
+NABH Standards for HIS and EMR Systems
+®
+146
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+complication resulting directly from the index operation during the same admission. For example, postoperative bleeding, debridement, secondary suturing, embolectomy, evaluation under anesthesia etc.
+
+Number of patients who underwent surgeries in the OT
+
+For example, the data which is collated in early January (assuming that the December data is being reported) would include surgeries done in the month of November. This also includes unplanned reexploration. This shall not include surgeries under LA. However, if any such patient requires an unplanned return to the OT, the same shall be captured in the incident form.
+Sampling: No
+
+system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+The system shall count the total number of patients who underwent surgeries in the OT.
+
+Percentage of
+
+surgeries
+
+where the
+
+organization's
+
+procedure to
+
+prevent
+
+adverse
+
+events like the
+
+7
+
+PSQ 3a wrong site,
+
+wrong patient,
+
+and wrong
+
+surgery have
+
+been
+
+adhered to.
+
+Number of surgeries where the WHO safe surgery checklist was followed
+
+X100 Percent age
+
+Number of surgeries that were audited
+
+Any adverse
+
+reaction to the
+
+transfusion of
+
+Percentage of blood or blood Number of
+
+8
+
+PSQ 3a transfusion
+
+components
+
+transfusion
+
+reactions
+
+shall be
+
+reactions
+
+considered as
+
+transfusion
+
+reaction. It may
+
+Percent X100
+age
+
+Monthly Monthly
+
+This should be done by a prospective audit. The audit shall be done when the surgery is being performed. A person(s) working in the OT complex could be entrusted with this responsibility. It is preferable that the identity of the person auditing is anonymized from the operating team.
+Sampling: Yes Sampling methodology: Stratied random (distributed across various days and operating surgeons).
+
+Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+The number of units includes whole blood and components. The denominator is the number of units transfused and not the number of units issued from the blood bank.
+Sampling: No
+
+The numerator shall be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+
+NABH Standards for HIS and EMR Systems
+®
+147
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+range from a mild allergic reaction (including chills/rigors) to a lifethreatening complication like TRALI and Graft Versus Host Disease.
+
+Number of units transfused
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+The denominator shall include the total number of units transfused until midnight of the last day of the calendar month.
+
+Standardized
+
+9
+
+PSQ 3a Mortality Ratio
+
+for ICU
+
+Return to ICU
+
+10
+
+PSQ 3a within 48
+
+hours
+
+Actual deaths in ICU
+Predicted deaths in ICU
+
+Ratio
+
+Number of returns to ICU within 48 hours
+
+Number of discharges/tran sfers from the ICU
+
+X100
+
+Percent age
+
+Monthly Monthly
+
+Predicted death shall be calculated from models such as APACHE, SOFA, SAPS, MPM etc.
+Sampling: No
+
+The system shall calculate the total number of deaths in all its ICUs until midnight of the last day of the calendar month.
+The denominator shall be captured through the system. Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data
+
+This shall include data from all ICUs within the organization, excluding HDUs.
+Sampling: No
+
+The system shall calculate the total number of returns in all ICUs within 48 hours until midnight of the last day of the calendar month.
+The system shall calculate the total number of discharges/transfers from all the ICUs until midnight of the last day of the calendar month.
+
+NABH Standards for HIS and EMR Systems
+®
+148
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Return to the
+
+emergency
+
+department
+
+within 72
+
+11
+
+PSQ 3a hours with
+
+similar
+
+presenting
+
+complaints
+
+Number of returns to emergency within 72 hours with similar presenting complaints
+
+X100 Percent age
+
+Number of patients who have come to the emergency
+
+Monthly
+
+To capture this indicator, it may be a good practice to capture during the initial assessment itself if the patient had come within 72 hours for similar complaints.
+Sampling: No
+
+The system shall calculate the total number of returns to an emergency within 72 hours with similar presenting complaints until midnight of the last day of the calendar month.
+The system shall calculate the total number of patients who have come to the emergency until midnight of the last day of the calendar month.
+
+Number of
+
+patients who
+
+A pressure ulcer is a localized injury to the skin
+
+develop new/ worsening of pressure ulcer
+
+and/or
+
+Incidence of
+
+underlying tissue
+
+hospital-
+
+usually over a
+
+associated
+
+12
+
+PSQ 3a pressure
+
+bony
+
+prominence, as
+
+/1000 X1000 Percent
+
+ulcers
+
+a result of
+
+age
+
+after
+
+pressure, or
+
+Total number
+
+admission
+
+pressure in
+
+of inpatient
+
+combination with days
+
+shear and/or
+
+friction.
+
+Number of
+
+Catheter-
+
+urinary
+
+13
+
+PSQ 3b
+
+associated Urinary tract
+
+As per the latest catheter-
+
+CDC/NHSN
+
+associated
+
+denition
+
+infection rate
+
+UTIs in a
+
+month
+
+X1000
+
+/1000 urinary catheter - days
+
+Monthly Monthly
+
+The organization shall use The European and US National Pressure Ulcer Advisory Panels (EPUAP and NPUAP) staging system to look for worsening pressure ulcers.
+Sampling: No
+
+The numerator can be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+The denominator shall include the total number of in-patient days until midnight of the last day of the calendar month. To calculate the number of in-patient days only patients admitted in the wards and ICUs shall be included. Day care patients including patients undergoing dialysis, and emergency shall not be a part of this count.
+
+Sampling: No
+
+The numerator can be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+
+NABH Standards for HIS and EMR Systems
+®
+149
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Number of urinary catheter days in that month
+
+Number of
+
+"Ventilator-
+
+Associated
+
+Ventilator-
+
+Pneumonia" in
+
+14
+
+associated PSQ 3b
+
+As per the latest a month CDC/NHSN
+
+Pneumonia
+
+/1000 X1000 ventilato
+
+denition rate
+
+r- days
+
+Number of
+
+ventilator days
+
+in that month
+
+Number of
+
+central line-
+
+associated
+
+bloodstream
+
+Central line-
+
+As per the latest infections in a
+
+/1000
+
+associated
+
+15
+
+PSQ 3b
+
+CDC/NHSN
+
+month
+
+central X1000
+
+bloodstream
+
+line
+
+denition
+
+infection rate
+
+Number of
+
+days
+
+central line
+
+days in that
+
+month
+
+Number of surgical site infections in a given month
+
+As per the latest
+
+16
+
+PSQ 3a Surgical site CDC/NHSN
+
+infection rate
+
+denition
+
+Number of
+
+/100 X100 procedu
+res
+
+surgeries
+
+performed in
+
+that month
+
+Monthly Monthly Monthly
+
+There should be endeavors to capture the denominator data through the system.
+
+Sampling: No Sampling: No
+
+The numerator can be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+There should be endeavors to capture the denominator data through the system.
+The numerator can be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+There should be endeavors to capture the denominator data through the system.
+
+Keeping in mind the denition of SSI, the numbers would have to be updated on a continual basis until such time that the monitoring period is over. For example, in January, the data for December would be reported. The denominator would be the number of surgeries performed in December, and that would not change. With respect to the numerator, there would be some data but it would not be complete data. Hence, whatever value the organization gets at
+
+The numerator shall be captured through an incident reporting module/software (stand-alone or integrated with HIS/EMR system).
+The system shall calculate the total number of surgeries performed until midnight on the last day of the calendar month.
+
+NABH Standards for HIS and EMR Systems
+®
+150
+
+S. Standard Indicator
+No.
+
+Denition
+
+Compliance
+
+17
+
+to hand PSQ 3b
+
+hygiene
+
+practices
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+this stage would at best be a preliminary value. The organization will continue to monitor the patients and by the end of January, will have complete data with respect to procedures which have a 30day surveillance period.
+At this point in time, based on the data that the organization has collated the numerator may change and hence, the SSI rate. However, this again would not be the nal data. The organization will continue to monitor procedures that have a 90-day surveillance period, and if there are new SSIs, it would get added to the numerator and thus the rate would change. The surveillance period for surgeries which are done in December and have a 90-day surveillance period would end on March 30th (give or take a few days). It is only at this point in time that the organization can have the nal SSI rate for December.
+Sampling: No
+
+HIS/EMR system Guide
+
+Total number of actions performed
+
+Total number of hand hygiene opportunities
+
+PercentX100
+age
+
+Monthly
+
+Observation involves directly watching and recording the hand hygiene behavior of healthcare workers and the physical environment. A good reference is the WHO hand hygiene compliance monitoring tool. Please refer: http://www.who.int/gpsc/5may/to ols/en/
+
+Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+151
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Percentage of
+
+cases who
+
+receive
+
+appropriate
+
+18
+
+PSQ 3b prophylactic
+
+antibiotics
+
+within the
+
+specied time
+
+frame
+
+Number of patients who did receive appropriate prophylactic antibiotic(s)
+
+X100 Percent age
+
+Number of patients who underwent surgeries
+
+Re-scheduling of
+
+surgeries
+
+includes Percentage of
+
+Number of
+
+19
+
+PSQ 3c rescheduling cancellation and cases re-
+
+postponement of surgeries
+
+scheduled
+
+(beyond 4
+
+hours) of the
+
+surgery.
+
+X100 Percent age
+
+Monthly Monthly
+
+http://www.who.int/entity/gpsc/5 may/Observa tion_Form.doc?ua=1
+Sampling: Yes Sampling methodology: Stratied random. However, the organization should try to ensure that all staff relevant categories of staff are covered at least once in a quarter.
+
+The appropriate prophylactic antibiotic should be according to hospital policy. The numerator shall include patients who received the appropriate drug (and dose) within the appropriate time. A patient who was not given prophylactic antibiotic because it was not indicated (for example clean surgery) shall be included in the numerator. A patient who is given a prophylactic antibiotic even though it was not indicated, shall be considered as having received it inappropriately.
+
+The system shall calculate the number of patients who did receive appropriate prophylactic antibiotic(s)until midnight of the last day of the calendar month.
+The system shall calculate the total number of patients who underwent surgeries until midnight of the last day of the calendar month.
+
+Sampling: No
+
+Any case included in the OT list (including tentative/provisional) but rescheduled/canceled shall be included in the numerator. The start time for calculation of any delay shall be the rst booked time for that particular case.
+Sampling: No
+
+The system shall calculate the number of patients whose surgery was canceled or delayed beyond 4 hours from the planned time as per OT list.
+
+NABH Standards for HIS and EMR Systems
+®
+152
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Number of surgeries planned
+
+Time taken is to Sum of time
+
+be calculated
+
+taken (in
+
+Turnaround
+
+from the time the minutes)
+
+time
+
+request is
+
+20
+
+PSQ 3c
+
+for the issue of blood and blood components
+
+received in the blood bank till the blood is crossmatched/reserve
+
+Total number of blood and blood components
+
+d and available cross-
+
+for transfusion.
+
+matched/reser
+
+ved
+
+Nurse-patient
+
+21
+
+PSQ 3c ratio for ICUs
+
+and wards
+
+Number of nursing staff
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+Minutes
+
+Monthly
+
+This will include blood outsourced from other Blood Banks, for those organizations not having inhouse Blood Bank.
+Sampling: No
+
+HIS/EMR system Guide
+The system shall calculate the total number of patients for whom the surgeries were planned until midnight of the last day of the calendar month. However, for the purpose of calculation, the system shall not include any planned surgeries of the subsequent month.
+The system shall calculate the sum of time taken for the issue of all blood and blood components.
+The denominator shall include the total number of blood and blood components crossmatched/reserved until midnight of the last day of the calendar month.
+
+Ratio
+
+Continuous
+
+The HCOs should calculate the stafng patterns separately for ICUs and the wards. The in-charge/supervisor of the area shall not be included for calculating the number of staff. It is preferable that in the case of ICU, the organization captures the ratio for ventilated and nonventilated patients separately. To be calculated for each shift separately.
+Sampling: No
+
+The system shall calculate the number of nursing staff in each location, each shift, each day. This data shall be used to calculate the average for a particular category (ward beds/ ICU ventilated/ICU non-ventilated) for each shift and day. The nal step of the calculation involves capturing the average of all the categories of beds for all shifts.
+
+NABH Standards for HIS and EMR Systems
+®
+153
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Number of occupied beds
+
+Waiting time is
+
+the length of time which one must wait in order for a
+
+Sum total time (in minutes) for consultation
+
+specic action to
+
+occur after that
+
+action is
+
+Total Number
+
+requested or
+
+of outpatients
+
+mandated.
+
+Waiting time for
+
+outpatient
+
+consultation is
+
+the time from
+
+Waiting time which the patient
+
+22
+
+PSQ 3c for outpatient has come to the
+
+consultation concerned
+
+outpatient
+
+department (it
+
+may or may not
+
+be the same
+
+time as
+
+registration) till
+
+the time that the
+
+concerned
+
+consultant (not
+
+the junior
+
+doctor/resident)
+
+begins the
+
+assessment.
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Minutes
+
+Monthly
+
+The system shall calculate the total number of occupied beds in each location, each shift each day. This data shall be used to calculate the average for a particular category (ward beds/ ICU ventilated/ICU non-ventilated) for each shift and day. The nal step of the calculation involves capturing the average of all the categories of beds for all shifts.
+
+In the case of appointment patients, the time shall begin with the scheduled appointment time and end when the concerned consultant (not the junior doctor/resident) begins the assessment. In cases where the patient has been seen ahead of the appointment time, the waiting time shall be taken as zero minutes.
+
+The system shall calculate the sum of the total waiting time of all Outpatient consultations.
+The denominator shall include the total number of out-patient days until midnight of the last day of the calendar month.
+
+Sampling: No
+
+NABH Standards for HIS and EMR Systems
+®
+154
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Waiting time for diagnostics is
+
+Sum total time (in minutes)
+
+the time from
+
+which the patient
+
+has come to the Number of out-
+
+Waiting time diagnostic
+
+patients
+
+23
+
+PSQ 3c for
+
+service (the
+
+reported in
+
+diagnostics
+
+requisition form Diagnostics
+
+has been
+
+presented to the
+
+counter) until the
+
+time that the test
+
+is initiated.
+
+Minute
+
+The discharge
+
+process is
+
+Sum of time
+
+deemed to have taken for
+
+started when the discharge (in
+
+consultant
+
+24
+
+PSQ 3c Time taken for formally
+
+discharge
+
+approves
+
+minutes)
+
+discharge and
+
+Number of
+
+ends with the
+
+patients
+
+patient leaving
+
+discharged
+
+the clinical unit
+
+Minute
+
+Informed
+
+consent is a type Number of
+
+Percentage of of consent in
+
+medical
+
+medical
+
+which the health records having
+
+records
+
+care provider
+
+incomplete
+
+25
+
+PSQ 3c
+
+having incomplete
+
+has a duty to inform his/her
+
+and/ or improper
+
+and/or
+
+patient about the consent
+
+Percent X100
+age
+
+improper
+
+procedure, its
+
+consent
+
+potential risk and
+
+benets,
+
+alternative
+
+procedures with
+
+their risk and
+
+Monthly Monthly Monthly
+
+Waiting time for diagnostics is applicable only for outpatients and for laboratory and imaging.
+In the case of appointment patients, the time shall begin with the scheduled appointment time and end when the diagnostic procedure begins. In cases where the patient's diagnostic test commences ahead of the appointment time, the waiting time shall be taken as zero minutes.
+
+The system shall calculate the sum of total waiting time for patients for laboratory and imaging services.
+The denominator shall include the total number of out-patients who reported in laboratory and imaging until midnight of the last day of the calendar month.
+
+Sampling: No
+
+In case patients request additional time to leave the clinical unit that shall not be added. The discharge is deemed to have been completed when the formalities for the same have been completed. Day care patients are not included.
+Sampling: No
+
+The system shall calculate the sum of the time taken for all the discharges.
+The denominator shall include the total number of patients discharged until midnight of the last day of the calendar month.
+
+If any of the essential elements/requirements of consent is missing, it shall be considered incomplete.
+If any consent obtained is invalid/void (consent obtained from the wrong person/consent obtained by the wrong person, etc.), it is considered improper.
+Sampling: No
+
+Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+155
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+benets so as to enable the patient to make an informed decision of his/her health care
+
+Number of discharges and deaths
+
+A stock-out is an
+
+event that occurs
+
+when an item
+
+Number of
+
+Number of
+
+listed as an
+
+26
+
+stock-outs of
+
+PSQ 3c
+
+emergency
+
+stock-outs of
+
+emergency
+
+emergency
+
+medication by
+
+medications
+
+drugs
+
+the organization
+
+is not available in
+
+the organization.
+
+A mock drill is a
+
+simulation
+
+exercise of
+
+preparedness for
+
+any type of event.
+
+It could be an
+
+Number of
+
+event or disaster. Total number of
+
+variations
+
+27
+
+PSQ 3d
+
+This is basically a variations in a
+
+observed in
+
+dry run or
+
+mock drill
+
+mock drills
+
+preparedness
+
+drill.
+
+For example, Fire
+
+-mock drill,
+
+disaster drill,
+
+Code Blue Drill.
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+The denominator shall include the total number of patients discharged until midnight of the last day of the calendar month.
+
+Number Number
+
+Monthly Monthly
+
+To capture this, the organization should maintain a register in the pharmacy and stores (and also, if necessary, in the wards) wherein all such events are captured. The organization shall capture the number of instances. In one instance, it is possible that there was a stock-out of more than one emergency drug. For example, if on the 7th there was an instance of stock out of two emergency drugs and on 24th there was an instance of stock out of one emergency drug, the value of the indicator would be two.
+
+The system shall calculate the number of stock outs of emergency medications. In case the system does not capture this value, there should be a provision for entering the manually collected data
+
+Sampling: No
+
+To capture the variation, it is suggested that every organization develop a checklist to capture the events during a mock drill. This shall also include tabletop exercises.
+
+Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Sampling: No
+
+NABH Standards for HIS and EMR Systems
+®
+156
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+The US
+
+Department of
+
+Veteran Affairs Number of
+
+National Centre patient falls
+
+for Patient Safety
+
+denes fall as
+
+"Loss of upright
+
+position that results in landing on the oor ground or an
+
+Total number of inpatient days
+
+object or furniture
+
+or a sudden,
+
+uncontrolled,
+
+unintentional,
+
+28
+
+PSQ 3d Incidence of non-purposeful,
+
+patient falls
+
+downward
+
+/1000 patient X1000 days
+
+displacement of
+
+the body to the
+
+oor/ground or
+
+hitting another
+
+object like a chair
+
+or stair."
+
+It is an event that results in a person coming to rest inadvertently on the ground or oor or other lower level.
+
+A near miss is an
+
+unplanned event that did not result in injury, illness, or damage ­ but
+
+Number of near misses reported
+
+had the potential
+
+29
+
+Percentage of to do so. PSQ 3d
+
+near misses
+
+X100 Percent-
+age
+
+Errors that did
+
+Number of
+
+not result in
+
+incidents
+
+patient harm, but reported
+
+could have, can
+
+be categorized as
+
+near misses.
+
+Monthly Monthly
+
+Falls may be:
+· at different levels ­ i.e., from one level to ground level, for example from beds, wheelchairs or downstairs
+· on the same level as a result of slipping, tripping, or stumbling, or from a collision, pushing, or shoving, by or with another person
+· below ground level, i.e. into a hole or other opening in the surface
+All types of falls are to be included whether they result from physiological reasons (fainting) or environmental reasons. Assisted falls (when another person attempts to minimize the impact of the fall by assisting the patient's descent to the oor) should be included. (NDNQI, 2005).
+
+The numerator shall be captured through an incident reporting module/software (stand-alone or integrated with HIS).
+The denominator shall include the total number of in-patient days until midnight of the last day of the calendar month. To calculate the number of in-patient days only patients admitted in the wards and ICUs shall be included. Daycare patients including patients undergoing dialysis, and emergency shall not be a part of this count
+
+Sampling: No
+
+A key to any near miss report is the "lesson learned". Near miss reporters can describe what they observed at the beginning of the event, and the factors that prevented loss from occurring.
+Sampling: No
+
+The number of near misses can be captured through an incident reporting module/software (standalone or integrated with HIS/EMR system).
+The number of incidents reported can be captured through an incident reporting module/software (standalone or integrated with HIS/EMR system).
+
+NABH Standards for HIS and EMR Systems
+®
+157
+
+S. Standard Indicator
+No.
+
+Rate of
+
+30
+
+PSQ 3d needlestick
+
+injuries
+
+Appropriate
+
+handovers
+
+31
+
+PSQ 3d
+
+during shift
+
+change
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Needlestick injury is a penetrating stab wound from a needle (or other sharp objects) that may result in exposure to blood or other body uids. Needlestick injuries are wounds caused by needles that accidentally puncture the skin.
+
+Number of needlestick injuries
+Average occupied beds
+
+X1000
+
+Rate
+
+(Canadian Centre for Occupational Health and Safety)
+
+Monthly on a cumulative
+basis
+
+The denominator is the average of the sum of the daily gures for the number of beds occupied by patients. The rate will be monitored on a monthly basis but reported cumulatively i.e. in the form of year to date. For example, in January it would be January data but in February it would be January + February data, in July it would be data from January to July, and so on so that by the end of the year the annual rate is obtained.
+
+The number of needle stick injuries shall be captured through an incident reporting module/software (stand alone or integrated with HIS/EMR system).
+The system shall calculate the average occupied beds.
+
+Sampling: No
+
+Total number of handovers done appropriately
+
+Total number of handover opportunities
+
+PercentX100
+age
+
+Monthly
+
+Handover is an important communication tool used by healthcare workers. The data can be collated together but it has to be captured separately for doctors and nurses. Handover documentation by each shift can be used as a guide to capturing the information. The handover information shared shall consist of the patient's current condition, recent changes in condition, ongoing treatment, and possible changes or complications. If the organization is using a standardized handover template (for example SBAR), for the handover to be deemed appropriate, all the components need to be lled. Though the organization shall use all or none
+
+The system shall calculate the total number of handovers done appropriately. Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+The system shall calculate the total number of handover opportunities based on the staff ROTA.
+
+NABH Standards for HIS and EMR Systems
+®
+158
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of Unit data collation/ Remarks
+Monitoring
+
+HIS/EMR system Guide
+
+Rational use of
+
+medicines
+
+Percentage of
+
+requires that patients receive medications appropriate to their clinical
+
+Total number of safe and rational prescriptions
+
+32
+
+PSQ 3d safe and
+
+rational
+
+needs, in doses that meet their
+
+X100 Percent age
+
+prescriptions own individual
+
+Total number of
+
+requirements, for prescriptions
+
+an adequate
+
+audited
+
+period of time,
+
+and at the lowest
+
+cost to them and
+
+their community.
+
+Monthly
+
+principle to report the numerator, organizations are encouraged to analyze the components and identify specic opportunities for improvement.
+
+Sampling: No
+
+This includes only prescriptions for out-patients. This indicator shall be captured through the prescription audit. The methodology for audit shall be as stated in NABH's document on prescription audit.
+Sampling: Yes Sampling methodology: Stratied random
+
+There should be endeavors to capture data through the system. Wherever there is a limitation in capturing the information through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+159
+
+Department Specic key performance Indicators
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Cardiology
+
+Number of patients
+
+discharged with a
+
+diagnosis of CHF with
+
+Percentage of
+
+reduced EF and
+
+Beta-blocker Proportion of patients prescribed a beta
+
+prescription
+
+with Congestive Heart blocker at discharge
+
+Failure for whom it is
+
+1
+
+with a
+
+indicated beta blocker
+
+PSQ 3a diagnosis of
+
+prescription at the time
+
+CHF with
+
+of discharge
+
+reduced EF
+
+X100
+
+Number of patients discharged with a diagnosis of CHF
+
+Percentage of
+
+patients with
+
+myocardial
+
+infarction for
+
+2
+
+PSQ 3a
+
+whom Door to
+
+balloon time of
+
+90 minutes is
+
+achieved
+
+Number of acute myocardial infarction (AMI) patients undergoing primary angioplasty for whom Door to balloon time of 90 minutes is achieved
+
+X100
+
+Total number of AMI patients undergoing primary angioplasty
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Percentage Percentage
+
+Monthly Monthly
+
+Mandatory if specialty is in the scope and this is applicable only for admitted patients. The data has to be captured from the discharge summary.
+The 2022 AHA/ ACC/
+HFSA Guidance for the Management of Heart Failure.
+1. ACE/ ARB 2. Beta Blocker 3. Mineralocorticoid
+(MRA) receptor antagonist. 4. SGLT Inhibitor Step Ladder therapy guidelines
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Mandatory if specialty is in the scope. The start time shall be when the patient is diagnosed with AMI (STEMI at rst ECG after arrival at the hospital) and the clinician decides to perform primary angioplasty as the rst choice of treatment. The end time shall be the time of the rst device activation. Reference: AHA Cardiac outcome assessment program (COAP)
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+160
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Endocrinology
+
+Percentage of Hospitalized patients with
+
+The denitions provided by the American diabetes association (ADA) from time to time shall be used to dene
+
+Number of patients with hypoglycemic events where the target glucose level was achieved posttreatment.
+
+3
+
+PSQ 3a hypoglycemia hypoglycemia.
+
+X100
+
+who achieved
+
+targeted blood The blood glucose
+
+glucose level. level is detected by
+
+POCT as well as
+
+continuous glucose
+
+Number of patients with
+
+monitoring.
+
+Hypoglycemic events
+
+Obstetrics
+
+A Perineal tear
+
+Number of cases where
+
+(Perineal laceration) is a spontaneous perineal
+
+Spontaneous
+
+a tear in the tissue (skin tear occurs
+
+4
+
+PSQ 3a Perineal Tear
+
+X100
+
+and muscle) around
+
+Rate
+
+the patient's vagina and
+
+perineum
+
+Total number of Vaginal
+
+deliveries
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Percentage
+Rate (per hundred vaginal deliveries)
+
+Monthly Monthly
+
+Mandatory if the specialty is in the scope.
+As per the current ADA denition, the blood glucose level below 54 mg/dl requires immediate action. Hence for the purpose of this indicator only admitted patients experiencing an episode of blood glucose level below 54 mg/dl shall be included. The target glucose level is resolution of hypoglycemia namely glucose level greater than or equal to 70 mg/dl.
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+For the calculation, if a patient has more than one hMypaondgalytcoerymiifctheevent dsupreincgiatlhtyeis tianythaend thsceotpareg.eAtlel dfogulrucose ledveeglrieseascohfiepveerdinienaal ll thteeaer vsehnotusl,dthbeen hinec/sluhdeeisd.included in the numerator count. An episiotomy may help to prevent a severe perineum tear during childbirth.
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+161
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Ophthalmology
+
+Postoperative endophthalmitis is an inammatory condition of the eye, presumed to
+
+Number of cases of postoperative endophthalmitis
+
+Postoperative be due to an infectious
+
+5
+
+PSQ 3a Endophthalmit process from bacteria,
+
+X100
+
+is rate
+
+fungi, or, on rare
+
+occasions, parasites that enter the eye during the
+
+Total no of Ophthalmic surgeries
+
+perioperative period
+
+Gastroenterology
+
+Minimal Sedation
+
+(Anxiolysis) - A drug-
+
+induced state during
+
+which patients respond No. of patients sedated
+
+normally to verbal
+
+for the colonoscopy
+
+commands. Although cognitive function and
+
+procedure
+
+coordination may be
+
+Percentage of patients
+
+impaired, ventilatory and cardiovascular functions are
+
+Total number of patients
+
+6
+
+undergoing PSQ 3a
+
+unaffected.
+
+Colonoscopy
+
+undergoing Colonoscopy
+
+Moderate sedation
+
+who are
+
+(Analgesia) - Indicates
+
+X100
+
+sedated
+
+a drug-induced
+
+depression of
+
+consciousness during
+
+which patients respond
+
+purposefully to verbal
+
+commands, either
+
+alone or accompanied
+
+by light tactile
+
+stimulation.
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Rate (per hundred ophthalmic surgeries
+
+Monthly
+
+Mandatory if the specialty is in the scope
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data
+
+Percentage
+
+Monthly
+
+Optional
+Implementing sedation in GI Endoscopy will be considered good practice, However, the indicator pertains to Colonoscopy only as advised by the American Association of Gastroenterology.
+This includes all patients including out-patient and daycare.
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+162
+
+S. Standard Indicator
+No.
+
+Denition
+
+No interventions are required to maintain a patent airway, and spontaneous ventilation is adequate. Cardiovascular function is usually maintained.
+Deep sedation/ Analgesia - A druginduced depression of consciousness during which patients cannot be easily aroused but respond purposefully after repeated or painful stimulation. The ability to independently maintain ventilatory function may be impaired. Patients may require assistance in maintaining a patent airway and spontaneous ventilation is inadequate. Cardiovascular function is usually maintained.
+General Anaesthesia A drug induced loss of consciousness during which patients are not arousable, even by painful stimulation. The ability to independently maintain ventilatory function is often impaired. Patients often require assistance in maintaining a patent airway, and positive pressure ventilation may be required because of depressed spontaneous ventilation or drug induced depression or neuromuscular function. Cardiovascular function may be impaired.
+
+Formula Gastroenterology
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+NABH Standards for HIS and EMR Systems
+®
+163
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Surgery
+
+Number of cases where
+
+bile duct injuries
+
+Bile Duct injury
+
+occurred during
+
+rate requiring Bile duct injury during a laparoscopic
+
+operative
+
+Laparoscopic
+
+cholecystectomy and
+
+intervention
+
+Cholecystectomy is an required subsequent
+
+7
+
+PSQ 3a
+
+during
+
+unintentional injury to operative intervention to X100
+
+the biliary tree that Laparoscopic
+
+repair the injury
+
+occurs during the
+
+Cholecystecto
+
+operation.
+
+my
+
+Laparoscopic
+
+cholecystectomies
+
+performed
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Rate
+
+Monthly
+
+Optional. The injury may be detected intra-operative or in the postoperative period. All injuries requiring operative intervention shall be included for calculation of the indicator irrespective of the severity.
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Biochemistry
+
+Number of POCT tests
+
+which resulted in a
+
+clinical intervention
+
+If it is possible to
+
+where indicated.
+
+Optional
+
+retrieve data from
+
+8
+
+PSQ 3a
+
+Percentage of POCT results which led to a clinical
+
+Point of care testing is dened as laboratory testing conducted close to the site of patient care typically by non-lab personnel e.g. nurses,
+
+Number of POCT tests where clinical intervention was deemed necessary.
+
+X100 Percentage
+
+Monthly
+
+The organization should have a mechanism to ensure that all POCT results are documented. Based on these results, it is preferable that the organization
+
+HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the
+
+intervention. e.g. blood gases,
+
+identies results
+
+system, there should
+
+electrolytes, troponin,
+
+which require clinical be a provision for
+
+and blood glucose.
+
+intervention and
+
+entering the manual/
+
+documents the same. electronically
+
+collected (app/
+
+online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+164
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Rehabilitation Medicine
+
+Optional. This is
+
+If it is possible to
+
+applicable only to
+
+retrieve data from
+
+The sum of the
+
+admitted patients undergoing neurorehabilitation (For example Stroke, Trauma, Spinal injuries, postneurosurgery etc.).
+
+HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this
+
+functional gain achieved before the discharge in
+
+indicator through the The organization shall system, there should use the Functional
+
+Functional
+
+Functional gain implies patients undergoing
+
+Rate (per
+
+Independence
+
+be a provision for entering the manual/
+
+improvement in
+
+neurorehabilitation.
+
+9
+
+PSQ 3a gain following
+
+physical quality and
+
+rehabilitation
+
+hundred X100
+neurorehabilit
+
+Monthly
+
+Measure (FIM) scale. This assesses physical and
+
+electronically collected (app/
+
+activity.
+
+ation patients)
+
+online forms) data.
+
+cognitive disability.
+
+Ranges from 18 to
+
+Total number of patients
+
+126. Higher scores
+
+undergoing
+
+indicate more
+
+neurorehabilitation
+
+freedom for patients.
+
+Further, this is a measure of disability for a variety of populations and is not specic to any diagnosis.
+
+Sepsis Management
+
+Number of sepsis
+
+Mandatory if specialty If it is possible to (ICU) is in the scope retrieve data from
+
+10
+
+PSQ 3a
+
+Percentage of sepsis patients who receive care as per the Hour-1 sepsis bundle.
+
+Sepsis is a lifethreatening organ dysfunction caused by a dysregulated host response to infection
+
+patients who receive care as per the Hour-1 sepsis bundle.
+Total number of sepsis cases
+
+X100 Percentage
+
+Monthly
+
+The start time of the timeframe of one hour is when the patient reaches ER or ICU. In case the patient is shifted to the ICU from the ER, the start time is when the patient arrives at the
+
+HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should
+
+ER.
+
+be a provision for
+
+NABH Standards for HIS and EMR Systems
+®
+165
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Sepsis Management
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+The components of the Hour-1 bundle include measuring lactate obtaining blood culture before administering antibiotics, administering broadspectrum antibiotics, beginning rapid administration of appropriate uid, and applying vasopressors where appropriate. For the patient to be included in the numerator all the 5 components have to be met. Only if the organization does not have capabilities to measure the lactate level the same could be excluded. However, in all such instances the diagnosis of sepsis should be clinically proven.
+
+entering the manual/ electronically collected (app/ online forms) data.
+
+Respiratory Medicine/Pulmonary Medicine
+
+Mandatory if specialty If it is possible to
+
+Percentage of
+
+Number of COPD
+
+is in the scope.
+
+retrieve data from
+
+11
+
+PSQ 3a
+
+COPD patients receiving COPD Action plan at the time of
+
+An action is a simple guide that helps patients to take care of patients their COPD.
+
+patients provided with a COPD action plan at the time of discharge
+Number of COPD
+
+X100
+
+Percentage
+
+Monthly
+
+As recommended by GOLD standards.
+Some of the components of the action plan could
+
+HIS/EMR, the data shall be captured through the system. However, Considering the
+
+discharge
+
+patients discharged.
+
+include medications, challenges of data
+
+advice regarding
+
+capture for this
+
+NABH Standards for HIS and EMR Systems
+®
+166
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula
+
+Unit
+
+Respiratory Medicine/Pulmonary Medicine
+
+Frequency of data
+collation/ Monitoring
+
+Remarks
+
+HIS/EMR system Guide
+
+smoking cessation and vaccination where appropriate.
+
+indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Neurology
+
+If it is possible to
+
+retrieve data from
+
+HIS/EMR, the data
+
+Percentage of
+
+Number of Stroke
+
+shall be captured
+
+stroke patients
+
+patients in whom the
+
+Mandatory if the specialty is in the
+
+through the system. However,
+
+in whom the Door-to-needle time is Door to needle time of
+
+scope. The start time Considering the
+
+12
+
+PSQ 3a
+
+Door-toNeedle Time
+
+the time it takes for the 60 minutes is achieved. stroke patient to
+
+X100
+
+Percentage
+
+Monthly
+
+shall be when the patient arrives at the emergency and the
+
+challenges of data capture for this
+
+(DTN) of 60 minutes is
+
+receive thrombolytic.
+
+Number of stroke
+
+end time is initiation of thrombolytic
+
+indicator through the system, there should
+
+patients who receive
+
+therapy.
+
+be a provision for
+
+achieved.
+
+thrombolytic therapy.
+
+entering the manual/
+
+electronically
+
+collected (app/
+
+online forms) data.
+
+Paediatrics
+
+If it is possible to
+
+retrieve data from
+
+Percentage of bronchiolitis
+
+In patients with bronchiolitis steroids, bronchodilators, and
+
+Number of patients treated inappropriately.
+
+Mandatory if specialty HIS/EMR, the data
+
+is in the scope
+
+shall be captured
+
+American Academy of through the system.
+
+patients
+
+13
+
+PSQ 3a
+
+antimicrobials are not
+
+X100 Percentage
+
+Monthly
+
+Pediatrics.
+
+However,
+
+treated
+
+recommended and
+
+This would be
+
+Considering the
+
+inappropriately hence would constitute Total number of patients
+
+applicable mostly to challenges of data
+
+inappropriate
+
+with bronchiolitis
+
+children less than 24 capture for this
+
+treatment.
+
+months.
+
+indicator through the
+
+system, there should
+
+be a provision for
+
+NABH Standards for HIS and EMR Systems
+®
+167
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Paediatrics
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Entering the manual/ electronically collected (app/ online forms) data.
+
+Oncology
+
+If it is possible to
+
+retrieve data from
+
+A tumor board is a
+
+Number of new
+
+his/emr, the data
+
+Percentage of multidisciplinary team oncology patients who
+
+shall be captured
+
+oncology
+
+including a group of
+
+had treatment initiated
+
+through the system.
+
+patients who specialists and other
+
+following
+
+However,
+
+14
+
+PSQ 3a
+
+had treatment initiated following
+
+medical professionals who meet on a regular basis.
+
+multidisciplinary meeting (tumour board)
+
+X100
+
+Percentage
+
+Monthly
+
+Mandatory if specialty is in the scope
+
+considering the challenges of data capture for this indicator through the
+
+Multidisciplinar y meeting (Tumour board
+
+The objective is to collectively choose the most effective course of treatment for a patient
+
+Number of new oncology cases (all disciplines) treated in the month
+
+system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Nuclear medicine
+
+If it is possible to
+
+In general, the most
+
+retrieve data from
+
+common adverse
+
+Total number of patients
+
+his/emr, the data
+
+reactions to
+
+who developed adverse
+
+shall be captured
+
+Percentage of adverse
+
+radiopharmaceuticals are the following: nausea, dyspnea,
+
+reaction(s) to radiopharmaceutical
+
+through the system. However, considering the
+
+15
+
+PSQ 3a reaction to
+
+bronchospasm,
+
+X100 Percentage
+
+Monthly
+
+Mandatory if specialty challenges of data
+
+radio-
+
+decrease in blood
+
+is in the scope
+
+capture for this
+
+pharmaceutical pressure, itching,f
+
+Total number of patients
+
+indicator through the
+
+ushing, hives, chills, receiving the
+
+system, there should
+
+be a provision for
+
+cough, bradycardia,
+
+radiopharmaceutical
+
+entering the manual/
+
+muscle cramps, and
+
+electronically
+
+dizziness.
+
+collected (app/
+
+online forms) data.
+
+NABH Standards for HIS and EMR Systems
+®
+168
+
+S. Standard Indicator
+No.
+
+Denition
+
+Formula Radiology
+
+Number of Contrast
+
+Percentage of Contrast extravasation extravasation
+
+Intravenous
+
+is a problem that
+
+16
+
+PSQ 3a Contrast
+
+occurs when contrast dye leaks into the
+
+Media
+
+tissue around the vein
+
+Extravasation where the IV is placed. Number of patients
+
+receiving contrast
+
+X100
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Percentage
+
+Monthly
+
+Mandatory if CT and/or MRI is in the scope.
+All patients undergoing intravenous contrast administration during CT or MRI are included in the calculation of this indicator
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data.
+
+Emergency Medicine
+
+Triage is a process of
+
+prioritizing patients
+
+based on the severity
+
+of their condition so as to treat as many as possible when
+
+Sum of time taken (in minutes) for triage
+
+Time taken for resources are
+
+17
+
+PSQ 3a triage
+
+insufcient for all to be treated immediately.
+
+The sorting of patients
+
+according to criteria
+
+which ensures that the Total number of patients
+
+most seriously ill or injured patient is treated before patients
+
+coming to the emergency
+
+with less serious
+
+problems.
+
+Minutes
+
+Monthly
+
+Mandatory
+The start time is when the patient arrives at the emergency and the end time is when the triage is completed.
+
+The system generates a time stamp for the start time (time of the arrival of patient at the emergency) and the end time (completion of triage).
+The denominator shall include all patients coming to the emergency.
+
+NABH Standards for HIS and EMR Systems
+®
+169
+
+S. Standard Indicator
+No.
+
+Denition
+
+Percentage of
+
+patients
+
+undergoing
+
+dialysis who
+
+18
+
+PSQ 3a
+
+are able to
+
+achieve target
+
+hemoglobin
+
+levels
+
+Formula Nephrology
+
+Frequency of
+
+data
+
+Unit
+
+Remarks
+
+collation/
+
+Monitoring
+
+HIS/EMR system Guide
+
+Number of patients undergoing dialysis who are able to achieve target hemoglobin levels
+
+X100
+
+Percentage
+
+Total number of patients undergoing dialysis
+
+Monthly
+
+Mandatory if dialysis is in the scope. The target hemoglobin level in patients undergoing dialysis shall be between 1112 gm/dl.
+
+If it is possible to retrieve data from HIS/EMR, the data shall be captured through the system. However, Considering the challenges of data capture for this indicator through the system, there should be a provision for entering the manual/ electronically collected (app/ online forms) data
+
+NABH Standards for HIS and EMR Systems
+®
+
+Sample size calculation (Monthly)
+
+Screening Population# 50 100 150 200 500
+1000 2000 5000 10000 20000
+
+Sample Size* 44 79 108 132 217 278 322 357 370 377
+
+#Screening population is the 'base' from which the samples would be selected. The 'base' shall be the average of the previous three months. For example, in the case of time for initial assessment of patients, this would be the average number of patients admitted per month in the preceding three months. Assuming that the average is 200, this would constitute the screening population and the organization would have to sample 132 patients over the entire month.
+*For the recommended sample size, all the samples should be taken on a continuous basis.
+
+170
+
+NABH Standards for HIS and EMR Systems
+®
+171
+
+Annexure-9 Key Performance Indicators (KPI) for 1st Edition Digital Health Standards for Hospitals
+Key Performance Indicators (KPI)
+
+S. Indicator
+No.
+
+Inclusion Indicator Brief
+Criteria
+
+Exclusion Criteria
+
+Formula
+
+Frequency
+
+Corresponding
+
+Unit
+
+of data
+
+Category
+
+Remarks
+
+Digital OE
+
+collation/
+
+All emergency
+
+visits, dialysis
+
+visits,
+
+chemotherapy
+
+{Number of OPD
+
+visits,
+
+consultations
+
+vaccination
+
+booked digitally
+
+The healthcare
+
+visits, wound-
+
+(either
+
+organization
+
+dressing or
+
+OPD
+
+telephonically,
+
+Digital
+
+uses a digital
+
+antibiotic
+
+1
+
+consultation
+
+through website Percentage Monthly
+
+Appointment system for
+
+therapy visits,
+
+s
+
+or app) / Total
+
+patient
+
+diagnostic
+
+number of OPD
+
+appointments
+
+visits, i.e., all
+
+consultations
+
+those
+
+including walk-
+
+consultations
+
+ins} * 100
+
+that do not
+
+require direct
+
+clinician
+
+consultation
+
+AAC 3.a The healthcare organization uses a digital system for patients' appointment.
+
+Commitment
+
+Healthcare organization should be using a HIMS/EMR system or any other digital system to book digital appointments
+
+ABHA 2
+Creation
+
+The healthcare organization uses ABDM compliant HIMS to create ABHA account for their patients.
+
+New ABHA accounts created by healthcare organization
+
+Existing patient ABHA account
+
+Number of ABHA created by the healthcare organization
+
+Number
+
+Monthly
+
+AAC 2.c The healthcare organization uses a digital system that has the capability to capture ABHA of the patient and link it to the unique patient identier
+
+Achievement
+
+Healthcare organization should be using any ABDM compliant system to capture ABHA of the patient
+
+NABH Standards for HIS and EMR Systems
+®
+172
+
+All emergency
+
+visits, dialysis
+
+visits,
+
+chemotherapy
+
+visits,
+
+Healthcare
+
+vaccination
+
+(Number of
+
+organization
+
+visits, wound-
+
+digital OPD
+
+provides
+
+dressing or
+
+OPD
+
+prescriptions /
+
+Digital
+
+clinicians with a
+
+antibiotic
+
+3
+
+consultation
+
+Total number of Percentage Monthly
+
+Prescription digital system to
+
+therapy visits,
+
+s
+
+OPD
+
+create
+
+diagnostic
+
+consultations) *
+
+prescriptions for
+
+visits, i.e., all
+
+100
+
+OPD
+
+those
+
+consultations
+
+that do not
+
+require direct
+
+doctor
+
+consultation
+
+COP 3.a The healthcare organization uses a digital system for clinician to create OPD prescriptions and consultation notes.
+
+Commitment
+
+Healthcare organization should be using a HIMS / EMR system to create OPD prescriptions
+
+Healthcare
+
+organization
+
+uses a digital
+
+Digital
+
+system for
+
+4 Nursing
+
+nurses to
+
+IPD
+
+NA
+
+Notes
+
+capture patient
+
+history and
+
+create nursing
+
+notes
+
+(Number of digital nursing notes / Total number of nursing notes prepared for patients) * 100
+
+Percentage Monthly
+
+COP 2.b The healthcare organization uses a digital system for nurses to create IPD nursing notes.
+
+Commitment
+
+Healthcare organization should be using a HIMS / EMR system for nursing notes
+
+Healthcare
+
+organization
+
+uses a digital
+
+IPD Digital
+
+5
+
+system to
+
+Feedback
+
+capture IPD
+
+patient
+
+feedback
+
+Feedbacks collected by way of SMS, kiosk, IVRS, etc
+
+Feedbacks collected on paper or verbal feedbacks are excluded
+
+(Number of unique discharges that are accompanied by at least one digital feedback / Total number of unique discharges) * 100
+
+Percentage
+
+Monthly
+
+AAC 8.a The healthcare organization uses a digital system to collect patient and/or family member's feedback.
+
+Commitment
+
+Healthcare organization should be using HIMS / EMR system to capture patient feedback
+
+NABH Standards for HIS and EMR Systems
+®
+173
+
+Healthcare
+
+organization
+
+uses a digital
+
+system to
+
+capture patient
+
+feedback for all Patients
+
+OPD Digital
+
+6
+
+the OPD
+
+digital
+
+Feedback
+
+patients that
+
+feedback
+
+avail the
+
+consultation
+
+facilities of the
+
+healthcare
+
+organization
+
+All emergency visits, dialysis visits, chemotherapy visits, vaccination visits, wounddressing or antibiotic therapy visits, diagnostic visits, i.e., all those consultations that do not require direct doctor consultation
+
+(Number of unique consultations that are accompanied by at least one digital feedback / Total number of unique consultations) * 100
+
+Percentage
+
+Monthly
+
+AAC 8.a The healthcare organization uses a digital system to collect patient and/or family member's feedback.
+
+Commitment
+
+Healthcare organization should be using digital patient feedback system
+
+Healthcare
+
+Discharge
+
+organization
+
+Bills created
+
+Digital IPD uses a digital
+
+7
+
+on digital
+
+NA
+
+Billing
+
+system to
+
+system for
+
+create bills for
+
+IPD
+
+IPD patients
+
+(Number of discharge bills created digitally / Total number of discharges) * 100
+
+Percentage
+
+Monthly
+
+FPM 3.e The healthcare organization uses a digital standardized billing template.
+
+Core
+
+Healthcare organization should be using HIMS or any digital billing system to generate patient bills
+
+Healthcare
+
+organization
+
+Digital
+
+uses a digital
+
+8 Discharge system to
+
+Summaries create digital
+
+discharge
+
+summaries
+
+Digital
+
+discharge
+
+summaries
+
+include
+
+summaries
+
+captured on
+
+digital
+
+NA
+
+system and
+
+do not
+
+include the
+
+summaries
+
+created on
+
+paper
+
+(Number of discharge summaries created digitally / Total number of unique patient discharges) * 100
+
+Percentage
+
+Monthly
+
+AAC 7.a The healthcare organization uses a digital system through which the primary clinician can request and update their patient's discharge information.
+
+Achievement
+
+Healthcare organization should be using a HIMS / EMR system to create patient discharge summary
+
+NABH Standards for HIS and EMR Systems
+®
+174
+
+System 9
+uptime
+
+Average system uptime for critical healthcare systems/applica tions shall be 99% including scheduled maintenance
+
+Critical healthcare systems
+
+Non-critical systems and hardware
+
+(Total system uptime in hours (for core healthcare application) / Total time) * 100
+
+Percentage Monthly
+
+DOM 2.c The healthcare organization uses a digital system to monitor the performance of different healthcare applications.
+
+Achievement
+
+Healthcare organization must be using system monitoring applications to track application uptime and performance
+
+A cyber-attack
+
+is an
+
+unauthorized
+
+system/network
+
+access by a
+
+third party that
+
+aims at
+
+destroying or
+
+stealing
+
+Applicable to
+
+Access and condential
+
+10
+
+all digital
+
+NA
+
+Security
+
+information
+
+systems
+
+from the victim's
+
+system. Such
+
+unauthorized
+
+access attempts
+
+must be
+
+blocked, and
+
+logs must be
+
+maintained for
+
+reporting
+
+Number of cyber or security attacks detected by Intrusion detection system, antivirus, or rewall
+
+Number
+
+Monthly
+
+DIS 2.c The healthcare organization uses a rewall that monitors incoming and outgoing network trafc.
+
+Commitment
+
+Healthcare organizations can use network logs and other security systems to access any suspicious activity and incidents.
+
+11 IT support
+
+Hospital provides support to manage IT related incidences
+
+Applicable to Non-IT related
+all digital incidences
+systems
+
+Percentage of IT support tickets resolved within agreed SLA
+
+Percentage Monthly
+
+DOM 3.c The healthcare organization uses a digital system to record and track IT security incidents, issues, changes, and problems.
+
+Achievement
+
+Healthcare organizations using ITSM platform can generate reports specically related to SLA compliance.
+
+

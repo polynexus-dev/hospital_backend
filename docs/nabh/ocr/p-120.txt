@@ -1,0 +1,55 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+patient care coordination and enable more efficient
+healthcare workflows. FHIR is a set of rules and
+specifications for exchanging electronic health care data/
+information electronically. FHIR provides a means for
+representing and sharing information among clinicians and
+organizations in a standard way regardless of the ways
+local EHRs represent or store the data. FHIR combines the
+best features of previous standards into a common
+specification, while being flexible enough to meet the
+needs of a wide variety of use cases within the health
+care ecosystem. FHIR focuses on implementation and uses
+the latest web technologies to aid rapid adoption.
+
+24 | FHIR profiles A Fast Healthcare Interoperability Resources (FHIR) profile
+is a set of rules that define how different healthcare
+systems process resources. FHIR profiles are built on top of
+the base FHIR specification and can include requirements
+and constraints on a resource. They can describe the
+features a system supports for a resource, or the
+information it handles or produces for a specific use case.
+
+25 | Goods Goods refer to tangible items or commodities used for
+various purposes.
+
+26 | HAI Hospital-Acquired Infections (HAIs), also known as
+nosocomial infections, are infections that patients acquire
+while receiving treatment for other conditions within a
+healthcare setting. These infections are usually not present
+at the time of admission and typically occur within 48 hours
+in the hospital or 3 days after discharge.
+
+HAls can be caused by bacteria, fungi, and viruses. The
+most common types of HAls include urinary tract infections
+(UTIs), surgical site infections, gastroenteritis, meningitis,
+and pneumonia.
+
+27 | Health Exchange Platform (HEX) | The National Health Claims Exchange (NHCE) is a digital
+platform under the Ayushman Bharat Digital Mission
+(ABDM) in India that serves as a central repository
+for health insurance claims. It aims to digitize and
+streamline the process of health insurance claims by
+creating a paperless and secure environment for all
+stakeholders involved in the claims process, including
+insurers, hospitals, and beneficiaries. The NHCE will help in
+improving transparency, reducing fraud, and increasing
+efficiency in the healthcare sector. The HCX serves as a
+protocol for exchanging claims-related information among
+various actors, including payers, providers, beneficiaries,
+regulators, and observers.
+
+28 | Healthcare organization In this document, healthcare organization refers to the
+organizations providing care delivery, like hospitals.

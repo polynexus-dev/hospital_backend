@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Core b. The system has the capability to label a case as a medico-legal case (MLC).
+The system shall be able to label a case as a medico-legal case. For example,
+adding a checkbox that allows for streamlined identification of such cases. The
+system may provide a digital checklist for collecting and recording pertinent
+Interpretation information within the system. The system may allow comprehensive
+documentation of the case and the accurate storage of relevant data, with a
+complete audit trail.
+rXelil(-iiiaeme The system has the capability to label a case as a medico-legal case (MLC).
+The system shall be able to label a case as a medico-legal case. For example,
+adding a checkbox that allows for streamlined identification of such cases. The
+system may provide a digital checklist for collecting and recording pertinent
+Interpretation information within the system. The system may allow comprehensive
+documentation of the case and the accurate storage of relevant data, with a
+complete audit trail.
+Category ,
+Excellence Head HIS Type Functional
+The system supports the monitoring and transmission of patient information from
+Excellence c.
+the ambulance to the emergency department.
+The system shall communicate patient information from the ambulance to the
+emergency department of the healthcare organization. To comply with this
+requirement, the ambulance needs to be equipped to record and monitor patients'
+Interpretation vital signs, subsequently transmitting the same to the emergency department.
+To ensure integration with smart ambulances, healthcare organization's systems
+should be able to support real-time communication, biomedical sensing,
+telemedicine, and GPS enablement.
+(orTiicigeames The system has the capability to capture emergency codes and staff response.
+|| Core || Commitment || Achievement || Excellence

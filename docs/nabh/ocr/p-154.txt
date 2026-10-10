@@ -1,0 +1,57 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =x
+" Monitoring o
+4
+2
+Ss
+Number of The system shall calculate Si
+Return to the returns to the total number of returns to a
+emergency emergency To capture this indicator, it may | an emergency within 72 O
+department within 72 hours be a good practice to capture hours with similar presenting s
+within 72 with similar during the initial assessment complaints until midnight of =
+1 PSQ 3a hours with presenting Percent itself if the patient had come the last day of the calendar |
+similar complaints x100 age Monthly within 72 hours for similar month. °
+presenting complaints. z
+complaints Number of Ss ling: Ni The system shall calculate m
+patients who ampiing: No the total number of patients =
+have come to who have come to the a
+the emergency emergency until midnight of (7)
+<=
+the last day of the calendar a
+month. ©
+3
+Number of °
+Jum!
+patients who The numerator can be :
+develop new/ captured through an incident
+Apressure ulcer} worsening of reporting module/software
+is a localized pressure ulcer (stand-alone or integrated
+injury to the skin with HIS/EMR system).
+Incidencelof and/or The organization shall use The
+hospital- underlying tissue European and __US National The denominator shall
+ane él usually over a 4000 Pressure Ulcer Advisory Panels include the total number of
+bony (EPUAP and NPUAP) staging in-patient days until midnight
+12 . 4
+FSQ 3a ae prominence, as X1000_ Percent Monthly system to look for worsening of the last day of the calendar
+after a result of Gy pressure ulcers. month. To calculate the
+comission pressure, or Total number number of in-patient days
+pressure in of inpatient Sampling: No only patients admitted in the
+combination with | days wards and ICUs shall be
+shear and/or included. Day care patients
+friction. including patients
+undergoing dialysis, and
+emergency shall not be a
+part of this count.
+Number of
+5 The numerator can be
+Catheter- As per the latest urinary A 000 captured through an incident
+13 | Psaab | associated = | COc/NHSN catheter- x1o00 | Ufinary Month Sorting module/softw
+Urinary tract definiti associated catheter ¥ Sampling: No ‘ean ie mo} t inte fed
+infection rate ennition UTIs ina - days (stand-alone or integrate
+month with HIS/EMR system).
+z
+>
+wo
+=x
+4

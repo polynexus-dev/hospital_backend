@@ -1,0 +1,44 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall be able to log critical security incidents and events, enabling
+. systematic issue resolution, audit trails, compliance with security standards, and
+
+Interpretation . ; re .
+post-incident analysis. This aids in improving the overall robustness of the system
+over time.
+
+aan reas ie
+
+Geum bh. The system has capability to roll-back changes by a designated IT officer,
+whenever needed.
+
+The system shall be able to roll-back any changes made e.g., upload of patches,
+upgrades, and transactions.
+
+Interpretation This roll-back functionality ensures that the system can be correctly restored to the
+previous working state in case of any errors / failures with the new changes rolled
+out in the system, and the staff/ departments can continue working on the previous
+working state with no loss of system data.
+
+Standard
+
+The system manages access controls to provide secure access to the
+users.
+
+Objective Elements
+
+Core a. The system follows a defined password policy for user authentication.
+
+The system shall have password policy functionality, allowing administrators to define
+and enforce specific rules for user passwords. These policies may include
+requirements such as minimum length, complexity, and expiration intervals,
+password renewal timeframe, ensuring a high level of security and compliance with
+industry standards.
+
+Wiener: The system must ensure that the password policy meets minimum requirements for
+
+example:
+e Atleast 8 characters (alpha-numeric, 1 special character)
+e Changes in passwords at least every 90 days
+e Avoidance of commonly used passwords (e.g., Password123)
+|| Core || Commitment || Achievement || Excellence
