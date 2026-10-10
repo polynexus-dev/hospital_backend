@@ -40,10 +40,13 @@ In **Window A**:
 
 ```
 mkdir C:\hms-test
-tar -xzf E:\Aniket\next\Hospital\Hospital\Backend\dist\bundle-1.0.0.tar.gz -C C:\hms-test --strip-components=1
+cd E:\Aniket\next\Hospital\Hospital\Backend\dist
+tar -xzf bundle-1.0.0.tar.gz -C C:\hms-test --strip-components=1
 cd C:\hms-test
 dir
 ```
+
+> Type or paste each command as **one line**. If a command ever looks split over two lines, join it before pressing Enter.
 
 You should see `images.tar`, `install.ps1`, `docker-compose.yml`, `RUNBOOK.md` and a few other files.
 
