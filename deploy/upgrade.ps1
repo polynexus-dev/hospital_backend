@@ -38,7 +38,7 @@ Write-Host "Backup: $InstallDir\backups\hms-$OldVersion-$stamp.dump"
 Say "Loading images for $NewVersion"
 docker load -i (Join-Path $Bundle "images.tar"); if ($LASTEXITCODE -ne 0) { Die "docker load failed." }
 if ((Resolve-Path $Bundle).Path -ne (Resolve-Path $InstallDir).Path) {
-    foreach ($f in "docker-compose.yml", "env.template", "install.sh", "install.ps1", "upgrade.sh", "upgrade.ps1", "RUNBOOK.md", "README.md", "VERSION") {
+    foreach ($f in "docker-compose.yml", "env.template", "install.sh", "install.ps1", "upgrade.sh", "upgrade.ps1", "configure-domain.sh", "configure-domain.ps1", "backup.sh", "RUNBOOK.md", "README.md", "VERSION") {
         if (Test-Path (Join-Path $Bundle $f)) { Copy-Item (Join-Path $Bundle $f) $InstallDir -Force }
     }
 }

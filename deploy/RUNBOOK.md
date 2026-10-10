@@ -10,6 +10,7 @@ internet (Linux or Windows), renew a licence, and fix licence problems.
 | Polynexus (each customer) | [3. Issue a licence](#3-issue-a-licence-polynexus) |
 | Hospital IT | [4. Install on a new server](#4-install-on-a-new-server-hospital-it) |
 | Both | [5. Renew](#5-renew-a-licence), [6. Upgrade](#6-upgrade-to-a-new-version), [7. Troubleshoot](#7-troubleshooting) |
+| Hospital IT | [8. Domain and HTTPS](#8-domain-and-https), [9. Backups and restore](#9-backups-and-restore) |
 
 ---
 
@@ -162,3 +163,66 @@ docker compose logs web | grep -i licen
 | A service unhealthy | | `docker compose ps`, then `docker compose logs <service>` |
 
 Never delete the `pgdata` volume or `.env` to "reset" a licence problem — licence problems never require touching data.
+
+## 8. Domain and HTTPS
+
+To reach the system at a name such as `hms.hospital.com` instead of an IP:
+
+1. **DNS first.** Point the name at the server:
+   - *Inside the hospital only (recommended):* a record in the hospital's internal DNS (Windows Server DNS or the router) → the server's LAN IP, e.g. `192.168.1.50`.
+   - *Also from the internet:* a public DNS record → the hospital's public IP, and the router forwarding ports 80 and 443 to the server. Prefer a VPN to exposing a hospital system to the internet.
+2. **Run the domain script** from the install folder:
+
+   | Linux | Windows (PowerShell as administrator) |
+   |---|---|
+   | `sudo ./configure-domain.sh` | `powershell -ExecutionPolicy Bypass -File .\configure-domain.ps1` |
+
+   It asks for the domain and how to do HTTPS:
+   - **1 — the hospital's own certificate:** give the paths of the certificate (PEM, including the intermediate chain) and its private key. nginx checks the pair before it's used; a wrong file changes nothing. A Windows `.pfx` must be converted to PEM first.
+   - **2 — Let's Encrypt:** free and **renews automatically** (checked twice a day). Needs the public DNS record, port 80 open from the internet, and `HTTP_PORT=80`.
+   - **3 — no certificate for now:** plain HTTP, internal network only.
+
+   It updates `.env` (allowed hosts, HTTPS redirect) and restarts. Staff then open `https://hms.hospital.com/`.
+
+Use the standard ports 80 and 443 for a domain. If the installer moved to 8080 because port 80 was busy (often IIS), free port 80, set `HTTP_PORT=80` and `HTTPS_PORT=443` in `.env`, and run `docker compose up -d`.
+
+When the hospital's own certificate is replaced, run the script again — or overwrite `certs/tls.crt` and `certs/tls.key`; nginx notices within an hour, no restart needed.
+
+## 9. Backups and restore
+
+The `backup` service runs every night at **02:00** (server time) and writes to the `backups` folder:
+
+| File | What |
+|---|---|
+| `hms-db-<date>.dump` | The whole database (checked readable before it's kept) |
+| `hms-files-<date>.tar.gz` | Uploaded documents and signatures |
+| `license-<date>.lic` | The licence |
+| `LAST-BACKUP.txt` | Result of the last run: `OK` or `FAILED` |
+
+Files older than 30 days are deleted. Settings in `.env`: `BACKUP_TIME`, `BACKUP_KEEP_DAYS`, and **`BACKUP_DIR`**.
+
+**Keep backups off the server.** A backup on the same disk is lost with it (disk failure, ransomware). Set `BACKUP_DIR` to a NAS or external drive — e.g. `BACKUP_DIR=/mnt/nas/hms-backups` (Linux) or `BACKUP_DIR=D:/hms-backups` (Windows) — then `docker compose up -d backup`. Also keep a copy of `.env` somewhere safe and separate: backups can't be read without its keys.
+
+**Check it:** open `backups/LAST-BACKUP.txt` weekly. **Back up right now** (e.g. before maintenance):
+```
+docker compose exec backup sh /backup.sh now
+```
+
+**Restore** a dump (this replaces the current data — stop the app first):
+```
+docker compose stop web worker beat
+docker compose cp backups/hms-db-<date>.dump postgres:/tmp/restore.dump
+docker compose exec postgres pg_restore -U hms -d hms --clean --if-exists /tmp/restore.dump
+docker compose up -d
+```
+Restore uploaded files:
+```
+docker compose run --rm --no-deps --entrypoint sh -v hms_media:/restore backup -c "tar -xzf /backups/hms-files-<date>.tar.gz -C /restore"
+```
+
+**Practise a restore** once after installation, into a scratch database, so you know the backups work:
+```
+docker compose cp backups/hms-db-<date>.dump postgres:/tmp/r.dump
+docker compose exec postgres sh -c "createdb -U hms restore_test && pg_restore -U hms -d restore_test --no-owner /tmp/r.dump; psql -U hms -d restore_test -c 'select name from core_hospital'; dropdb -U hms restore_test"
+```
+It should list your hospital's name.

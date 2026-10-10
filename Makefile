@@ -17,7 +17,7 @@ BACKEND_IMAGE  := $(REGISTRY)/hms-backend:$(VERSION)
 FRONTEND_IMAGE := $(REGISTRY)/hms-frontend:$(VERSION)
 BASE_IMAGES    := postgres:16-alpine redis:7-alpine
 BUNDLE_DIR     := dist/bundle-$(VERSION)
-DEPLOY_FILES   := docker-compose.yml env.template install.sh install.ps1 upgrade.sh upgrade.ps1 RUNBOOK.md README.md
+DEPLOY_FILES   := docker-compose.yml env.template install.sh install.ps1 upgrade.sh upgrade.ps1 configure-domain.sh configure-domain.ps1 backup.sh RUNBOOK.md README.md
 
 .PHONY: build build-backend build-frontend test test-backend test-frontend bundle clean
 
@@ -44,7 +44,7 @@ bundle: build
 	docker save -o $(BUNDLE_DIR)/images.tar $(BACKEND_IMAGE) $(FRONTEND_IMAGE) $(BASE_IMAGES)
 	cd deploy && cp $(DEPLOY_FILES) ../$(BUNDLE_DIR)/
 	echo "$(VERSION)" > $(BUNDLE_DIR)/VERSION
-	chmod +x $(BUNDLE_DIR)/install.sh $(BUNDLE_DIR)/upgrade.sh
+	chmod +x $(BUNDLE_DIR)/install.sh $(BUNDLE_DIR)/upgrade.sh $(BUNDLE_DIR)/configure-domain.sh
 	tar -C dist -czf dist/bundle-$(VERSION).tar.gz bundle-$(VERSION)
 	@echo "Bundle: dist/bundle-$(VERSION).tar.gz ($$(du -h dist/bundle-$(VERSION).tar.gz | cut -f1))"
 

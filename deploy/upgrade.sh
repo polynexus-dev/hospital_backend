@@ -33,7 +33,7 @@ echo "Backup: $TARGET/backups/hms-$OLD_VERSION-$STAMP.dump"
 # --- 2. New images and deploy files --------------------------------------------
 say "Loading images for $NEW_VERSION"
 docker load -i "$BUNDLE/images.tar"
-for f in docker-compose.yml env.template install.sh install.ps1 upgrade.sh upgrade.ps1 RUNBOOK.md README.md VERSION; do
+for f in docker-compose.yml env.template install.sh install.ps1 upgrade.sh upgrade.ps1 configure-domain.sh configure-domain.ps1 backup.sh RUNBOOK.md README.md VERSION; do
   [ -f "$BUNDLE/$f" ] && [ "$BUNDLE" != "$TARGET" ] && cp "$BUNDLE/$f" "$TARGET/$f"
 done
 sed -i "s/^HMS_VERSION=.*/HMS_VERSION=$NEW_VERSION/" .env

@@ -7,7 +7,9 @@
 | 3. Install | First run of the installer | Hospital IT | Client's server |
 | 4. Licence | Issue the licence file | You | Your PC |
 | 5. Activate | Second run of the installer | Hospital IT | Client's server |
-| 6. Later | Updates and renewals | Both | |
+| 6. Domain | Put it on hms.hospital.com with HTTPS | Hospital IT | Client's server |
+| 7. Backups | Send nightly backups off the server | Hospital IT | Client's server |
+| 8. Later | Updates and renewals | Both | |
 
 **You never copy code to the client.** Everything is built on your PC and only the finished bundle goes to the hospital. The bundle holds the compiled program (no source code) and the installers. The client's server needs only **Docker** — no Python, Node or source code — and can run **Linux** or **Windows**.
 
@@ -131,7 +133,58 @@ The installer finds the licence, prepares the database, asks for the **administr
 
 The hospital signs in, and checks **Settings → License** shows the purchased features, users and expiry.
 
-## Part 6: Updates and renewals
+## Part 6: Domain and HTTPS
+
+So staff open `https://hms.hospital.com` instead of an IP address.
+
+1. **DNS:** the hospital's IT points the name at the server. For use inside the hospital (recommended), add it to the internal DNS (Windows Server DNS or the router) with the server's LAN IP. For access from outside, add a public DNS record and forward ports 80 and 443 to the server — a VPN is safer than exposing a hospital system to the internet.
+2. **Run the domain script** in the install folder:
+
+```
+# Linux server
+sudo ./configure-domain.sh
+```
+
+```
+# Windows server - PowerShell (administrator)
+powershell -ExecutionPolicy Bypass -File .\configure-domain.ps1
+```
+
+It asks for the domain, then how to do HTTPS:
+
+| Choice | When to use it |
+|---|---|
+| 1. Hospital's own certificate | The hospital has a certificate (e.g. `*.hospital.com`). Give the PEM certificate and key files; they are checked before use. |
+| 2. Let's Encrypt | Free, renews itself automatically. The server must be reachable from the internet on port 80. |
+| 3. No certificate | Plain HTTP, internal network only, until a certificate is available. |
+
+It updates the settings and restarts. Use ports 80 and 443 for a domain: if the installer moved to 8080 because port 80 was busy, free port 80 first (see RUNBOOK section 8).
+
+## Part 7: Backups
+
+Every night at 02:00 the system backs up the whole database and uploaded documents into the `backups` folder, keeps 30 days, and writes the result to `backups/LAST-BACKUP.txt`.
+
+**Backups must leave the server**, or a disk failure loses them too. Hospital IT sets `BACKUP_DIR` in `.env` to a NAS or external drive and restarts the backup service:
+
+```
+# .env in the install folder (one of these)
+BACKUP_DIR=/mnt/nas/hms-backups
+BACKUP_DIR=D:/hms-backups
+```
+
+```
+# Linux or Windows server, in the install folder
+docker compose up -d backup
+docker compose exec backup sh /backup.sh now
+```
+
+The second line makes a backup immediately, to confirm it works. Then:
+
+- **Weekly:** open `LAST-BACKUP.txt` and check it says `OK`.
+- **Once after installing:** practise a restore (RUNBOOK section 9).
+- **Keep a copy of `.env` separately and safely:** backups can't be read without its keys.
+
+## Part 8: Updates and renewals
 
 **New version of the software:**
 
