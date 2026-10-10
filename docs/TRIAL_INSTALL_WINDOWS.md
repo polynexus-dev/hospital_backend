@@ -25,15 +25,15 @@ In **Window A**:
 
 ```
 # Window A - PowerShell (administrator)
-cd C:\hms-test
-docker compose down -v
 cd C:\
+docker rm -f $(docker ps -aq --filter label=com.docker.compose.project=hms)
+docker volume rm $(docker volume ls -q --filter label=com.docker.compose.project=hms)
 Remove-Item -Recurse -Force C:\hms-test
 ```
 
-If the first two lines say there is no such folder or configuration file, that's fine: carry on with the last line.
+If a line says *"requires at least 1 argument"* or *"Cannot find path"*, there was nothing left to remove: that's fine. If it says the folder *"is being used by another process"*, close any other window that is inside `C:\hms-test` (for example a Command Prompt) and run the last line again.
 
-> `down -v` deletes the test database. Only ever do this on a test install, never on a hospital's server.
+> These lines delete the test containers and the test database. Only ever do this on a test install, never on a hospital's server.
 
 ## Part 2: Unpack the bundle
 
@@ -41,7 +41,7 @@ In **Window A**:
 
 ```
 # Window A - PowerShell (administrator)
-mkdir C:\hms-test
+mkdir -Force C:\hms-test
 cd E:\Aniket\next\Hospital\Hospital\Backend\dist
 tar -xzf bundle-1.0.0.tar.gz -C C:\hms-test --strip-components=1
 cd C:\hms-test
