@@ -57,7 +57,8 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         request = self.context.get("request")
         username = str(attrs.get(self.username_field, "")).strip()
-        candidate = User.objects.filter(**{f"{self.username_field}__iexact": username}).first() if username else None
+        lookup = {f"{self.username_field}__iexact": username}  # a named dict: Cython can't compile **{...} inline
+        candidate = User.objects.filter(**lookup).first() if username else None
 
         # NABH DOM.4.c — refuse *before* checking the password, so a locked
         # or blocked account can't be used as a password oracle.

@@ -25,7 +25,8 @@ from rest_framework.views import APIView
 
 def _daily_counts(qs, field, days):
     since = timezone.localdate() - timedelta(days=days)
-    rows = qs.filter(**{f"{field}__date__gte": since}).annotate(d=TruncDate(field)).values("d").annotate(n=Count("id"))
+    lookup = {f"{field}__date__gte": since}  # a named dict: Cython can't compile **{...} inline
+    rows = qs.filter(**lookup).annotate(d=TruncDate(field)).values("d").annotate(n=Count("id"))
     return {r["d"]: r["n"] for r in rows}
 
 

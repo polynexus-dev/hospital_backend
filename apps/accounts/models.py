@@ -214,9 +214,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         if self.is_saas_admin:
             self.is_staff = True
+            if not self.saas_role:
+                self.saas_role = self.SaaSRole.OWNER
             update_fields = kwargs.get("update_fields")
-            if update_fields is not None and "is_staff" not in update_fields:
-                kwargs["update_fields"] = list(update_fields) + ["is_staff"]
+            if update_fields is not None:
+                new_update_fields = set(update_fields)
+                new_update_fields.add("is_staff")
+                new_update_fields.add("saas_role")
+                kwargs["update_fields"] = list(new_update_fields)
         super().save(*args, **kwargs)
 
     def get_full_name(self):
@@ -259,14 +264,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         Owner read and write every *other* hospital's data on the platform
         by sending an X-Hospital-Id header — verified empirically, not
         theoretical."""
+        if self.is_superuser:
+            return True
         if self.is_saas_admin:
             return self.has_saas_capability("hospital_access")
-        return bool(self.is_superuser and not self.hospital_id)
+        return False
 
     def has_saas_capability(self, capability: str) -> bool:
-        if self.is_superuser and not self.hospital_id:
+        if self.is_superuser:
             return True
-        capabilities = self.SAAS_ROLE_CAPABILITIES.get(self.saas_role, set())
+        role = self.saas_role or (self.SaaSRole.OWNER if self.is_saas_admin else "")
+        capabilities = self.SAAS_ROLE_CAPABILITIES.get(role, set())
         if capability == "tenant_view":
             return "tenant_view" in capabilities or "tenant_manage" in capabilities
         if capability == "analytics_view":

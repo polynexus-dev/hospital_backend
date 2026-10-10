@@ -36,7 +36,8 @@ class TenantScopedViewSetMixin:
         if not (self.assignment_scope_field and role is not None and getattr(role, "data_scope", None) == "assigned_only"):
             return hospital_queryset
 
-        scoped_queryset = hospital_queryset.filter(**{self.assignment_scope_field: user})
+        assigned = {self.assignment_scope_field: user}  # a named dict: Cython can't compile **{...} inline
+        scoped_queryset = hospital_queryset.filter(**assigned)
         reason = self.request.headers.get(EMERGENCY_REASON_HEADER, "").strip()
         if self.action == "retrieve" and reason:
             pk = self.kwargs.get(self.lookup_url_kwarg or self.lookup_field)

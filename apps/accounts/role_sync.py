@@ -43,7 +43,8 @@ def sync_role(role, cache=None):
     if new:
         role.group.permissions.add(*new)
     synced = sorted(handled | set(by_model))
-    if synced != sorted(role.template_synced_models or []):
+    previous = role.template_synced_models or []
+    if synced != sorted(previous):
         type(role).objects.filter(pk=role.pk).update(template_synced_models=synced)
         role.template_synced_models = synced
     return len(new)

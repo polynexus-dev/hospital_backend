@@ -33,9 +33,10 @@ def send_appointment_reminders():
         window_start = local_now + timedelta(hours=offset_hours)
         window_end = window_start + timedelta(minutes=15)
 
+        not_yet_sent = {f"{field}__isnull": True}  # a named dict: Cython can't compile **{...} inline
         due = Appointment.objects.filter(
             status__in=OPEN_STATUSES,
-            **{f"{field}__isnull": True},
+            **not_yet_sent,
             slot__date=window_start.date(),
             slot__start_time__gte=window_start.time(),
             slot__start_time__lt=window_end.time(),
