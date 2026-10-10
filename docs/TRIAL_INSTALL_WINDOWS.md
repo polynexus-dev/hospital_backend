@@ -138,11 +138,11 @@ This time it finds the licence by itself (no path question):
 
 It ends with **Done. Open http://localhost/**.
 
-> If it fails at the end with a message about port 80 being in use, another program (often IIS) has that port. Open `C:\hms-test\.env` in Notepad, change `HTTP_PORT=80` to `HTTP_PORT=8080`, save, run `docker compose up -d` in Window A, and use `http://localhost:8080/` in Part 7.
+> If port 80 is already used on this PC (often by IIS), the installer says so and picks another port, such as 8080. Use the address it prints at the end, for example `http://localhost:8080/`.
 
 ## Part 7: Test in the browser
 
-1. Open **http://localhost/** and sign in with the email and password from Part 6.
+1. Open the address the installer printed (**http://localhost/**, or **http://localhost:8080/** if it switched ports) and sign in with the email and password from Part 6.
 2. Go to **Settings**, then scroll to the **License** card. Check:
    - Status **Active**
    - Licensed features: **HMS core, ERP, AI assist**
