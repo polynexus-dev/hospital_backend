@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 _ACTION_PERM_VERB = {
     "create": "add",
@@ -10,8 +10,14 @@ _ACTION_PERM_VERB = {
 
 class RoleBasedModelPermissions(BasePermission):
     """Enforces the requesting user's Role -> Django Group permissions
-    (see apps.accounts.permission_templates) on the four REST verbs that
-    map directly onto Django's add/change/delete model permissions."""
+    (see apps.accounts.permission_templates) on a ViewSet's model:
+    create/update/destroy need add/change/delete, and reads — list,
+    retrieve and any other GET action — need view. Every template starts
+    with view on the reference data all screens read
+    (permission_templates.BASELINE_VIEW_MODELS).
+
+    The hospital's SaaS permission ceiling binds everyone; below it,
+    hospital admin roles pass, as they always have."""
 
     def has_permission(self, request, view):
         user = request.user
@@ -21,13 +27,16 @@ class RoleBasedModelPermissions(BasePermission):
         if user.is_superuser:
             return True
 
-        role = getattr(user, "role", None)
-        if role and getattr(role, "template", None) in ("owner", "admin", "hospital_administrator"):
-            return True
+        from apps.accounts.permission_catalog import blocked_for, is_hospital_admin
 
-        perm_verb = _ACTION_PERM_VERB.get(getattr(view, "action", None))
+        action = getattr(view, "action", None)
+        perm_verb = _ACTION_PERM_VERB.get(action)
         if perm_verb is None:
-            return True
+            if action is None or request.method not in SAFE_METHODS:
+                return True  # not a ViewSet, or a custom write action (ActionPermissionRequired's job)
+            perm_verb = "view"
+        if perm_verb == "view" and getattr(user, "can_cross_tenant", False):
+            return True  # platform ops read across tenants; they hold no hospital role
 
         queryset = getattr(view, "queryset", None)
         if queryset is None:
@@ -35,6 +44,10 @@ class RoleBasedModelPermissions(BasePermission):
 
         model_cls = queryset.model
         permission = f"{model_cls._meta.app_label}.{perm_verb}_{model_cls._meta.model_name}"
+        if permission in blocked_for(user):
+            return False
+        if is_hospital_admin(user):
+            return True
         return user.has_perm(permission)
 
 

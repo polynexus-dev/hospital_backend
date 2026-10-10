@@ -120,10 +120,21 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
+    assignable = serializers.SerializerMethodField()
+
     class Meta:
         model = Role
-        fields = ["id", "hospital", "department", "name", "description", "created_at", "permissions"]
-        read_only_fields = ["hospital"]
+        fields = ["id", "hospital", "department", "name", "description", "template", "created_at", "permissions", "assignable"]
+        read_only_fields = ["hospital", "template"]
+
+    def get_assignable(self, obj):
+        """Whether the requesting user may give this role to someone."""
+        from .permission_catalog import role_assignment_error
+
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return role_assignment_error(request.user, obj) is None
 
     def get_permissions(self, obj):
         if not obj.group_id:
@@ -239,7 +250,12 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.role.domain if obj.role_id else None
 
     def get_hospital_enabled_modules(self, obj):
-        return obj.hospital.enabled_modules if obj.hospital_id else []
+        if not obj.hospital_id:
+            return []
+        from apps.core.modules import effective_modules
+
+        allowed = effective_modules(obj.hospital)
+        return obj.hospital.enabled_modules if allowed is None else allowed
 
     def get_available_hospitals(self, obj):
         """Platform ops (obj.can_cross_tenant) get every active hospital on

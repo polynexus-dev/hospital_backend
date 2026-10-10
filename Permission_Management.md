@@ -10,6 +10,23 @@ The permission system is built on top of Django's native Group and Permission mo
 2. **Role Creation**: When a `Role` is created with a specific template (e.g., `template="doctor"`), the system creates a backing Django `Group`. It then automatically fetches all the permissions defined by the template and adds them to the group (`sync_role`).
 3. **User Assignment**: When a user is assigned a role, they are added to that role's Django `Group`, instantly granting them all the permissions attached to that group.
 
+## Who Can Grant What
+
+Access flows down three tiers, and nobody can hand out more than they have
+(`apps/accounts/permission_catalog.py`):
+
+1. **SaaS admin → hospital.** `Hospital.permission_ceiling` is the list of permissions the hospital may use, within its enabled modules (`null` = no limit). Set it from the SaaS console (**🔐 Permissions** on a tenant) or `GET/PUT /api/v1/saas-admin/hospitals/{id}/permissions/` (needs the `tenant_manage` capability).
+2. **Hospital admin → roles and users.** Owner / admin / hospital_administrator roles hold everything under the ceiling and can grant any of it: Admin → Roles & RBAC → **Edit permissions**, or `GET/PUT /api/v1/roles/{id}/permissions/`. One-off extras for a single person: `GET/PUT /api/v1/users/{id}/permissions/`.
+3. **Anyone else** with `accounts.change_role` / `accounts.change_user` can grant only permissions they hold themselves; permissions outside their reach are left untouched on save.
+
+The ceiling is enforced on every request by `apps.accounts.backends.HospitalPermissionBackend` and `RoleBasedModelPermissions` (reads included), so lowering it takes effect immediately and raising it restores what roles had. Every change is recorded as a `permissions_changed` security event.
+
+**Reads need `view`.** List, retrieve and any GET action on a ViewSet require `view_<model>`. Every template starts with view on shared reference data (`BASELINE_VIEW_MODELS` in `permission_templates.py`: departments, staff, roles, doctors, slots, lab/medicine/imaging catalogues), and a user with no role gets just those. Patient and appointment records are *not* in the baseline. Hospital admin roles and platform ops read freely, within the ceiling.
+
+**Assigning roles.** `PATCH /users/{id}/ {"role": …}` succeeds only if the assigner could grant every permission in that role. Only hospital admins may assign admin roles or change an admin's account, and a role from another hospital is refused. `GET /roles/` returns `assignable` per role for the UI.
+
+PUT body for all three: `{"permissions": ["patients.view_patient", "patients.add_patient", ...]}`.
+
 ## Postman Collection Usage
 
 A Postman collection named `Permission_Management.postman_collection.json` has been generated for you to test this flow end-to-end. Import the JSON file into Postman and execute the requests in order.

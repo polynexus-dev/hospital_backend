@@ -14,9 +14,11 @@ from apps.core.permissions import CanManageSaaSBilling, CanManageSaaSSupport, Ca
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from . import services
-from .models import SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 from .pdf import render_invoice_pdf
 from .serializers import (
+    GenerateLicenseSerializer,
+    OnPremiseLicenseSerializer,
     SaaSHospitalSerializer,
     SaaSSupportTicketSerializer,
     SupportTicketSerializer,
@@ -180,7 +182,7 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "slug", "city", "state"]
 
     def get_permissions(self):
-        if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status"}:
+        if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status", "generate_license"} or (self.action == "permissions" and self.request.method != "GET"):
             return [IsAuthenticated(), CanManageSaaSTenants()]
         return [IsAuthenticated(), CanViewSaaSTenants()]
 
@@ -205,6 +207,70 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
         hospital.save(update_fields=["enabled_modules"])
         return Response(SaaSHospitalSerializer(hospital).data)
 
+    @action(detail=True, methods=["get", "put"])
+    def permissions(self, request, pk=None):
+        """The hospital's permission ceiling — what its admin may use and
+        hand out, within its enabled modules. PUT {"permissions": [...]}
+        restricts it; {"permissions": null} lifts the restriction."""
+        from apps.accounts.permission_catalog import catalog, catalog_codes, hospital_bounds
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        hospital = self.get_object()
+        in_modules = hospital_bounds(hospital, ignore_ceiling=True)[0]
+        if request.method == "PUT":
+            submitted = request.data.get("permissions")
+            if submitted is not None:
+                if not isinstance(submitted, list) or not all(isinstance(c, str) for c in submitted):
+                    return Response({"permissions": ["Send a list of \"app.codename\" strings, or null for no restriction."]}, status=status.HTTP_400_BAD_REQUEST)
+                unknown = set(submitted) - catalog_codes()
+                if unknown:
+                    return Response({"permissions": [f"Unknown permission: {c}" for c in sorted(unknown)[:10]]}, status=status.HTTP_400_BAD_REQUEST)
+                # Keep codes from currently disabled modules: switching a
+                # module back on shouldn't silently widen or narrow access.
+                kept = set(hospital.permission_ceiling or []) - in_modules if hospital.permission_ceiling is not None else set()
+                submitted = sorted((set(submitted) & in_modules) | kept)
+            hospital.permission_ceiling = submitted
+            hospital.save(update_fields=["permission_ceiling"])
+            gov.log_security_event(
+                SecurityEvent.EventType.PERMISSIONS_CHANGED, request=request, user=request.user, hospital_id=hospital.pk,
+                details={"target": "hospital_ceiling", "restricted": submitted is not None, "count": len(submitted or [])},
+            )
+        allowed = hospital_bounds(hospital)[0]
+        return Response({
+            "catalog": catalog(in_modules),
+            "restricted": hospital.permission_ceiling is not None,
+            "selected": sorted(allowed),
+        })
+
+    @action(detail=True, methods=["post"], url_path="generate-license")
+    def generate_license(self, request, pk=None):
+        """Sign an on-premise license for this hospital. Returns the .lic
+        file, or the license record with {"response": "json"}."""
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+        from apps.licensing.issuing import SigningKeyMissing, issue_license
+
+        hospital = self.get_object()
+        params = GenerateLicenseSerializer(data=request.data)
+        params.is_valid(raise_exception=True)
+        d = params.validated_data
+        try:
+            record = issue_license(
+                hospital, issued_by=request.user, duration_days=d["duration_days"], enabled_modules=d["modules"],
+                machine_fingerprint=d["machine_fingerprint"], max_active_users=d["max_users"], max_beds=d["max_beds"],
+                grace_period_days=d["grace_period_days"], tier=d["tier"],
+            )
+        except SigningKeyMissing as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        gov.log_security_event(
+            SecurityEvent.EventType.SAAS_ACCESS_CHANGED, request=request, user=request.user, hospital_id=hospital.pk,
+            details={"action": "license_issued", "license_id": record.license_id, "expires_at": record.expires_at.isoformat()},
+        )
+        if request.data.get("response") == "json":
+            return Response(OnPremiseLicenseSerializer(record).data, status=status.HTTP_201_CREATED)
+        return license_file_response(record)
+
     @action(detail=True, methods=["post"], url_path="toggle-status")
     def toggle_status(self, request, pk=None):
         if not request.user.has_saas_capability("tenant_manage"):
@@ -213,3 +279,47 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
         hospital.is_active = not hospital.is_active
         hospital.save(update_fields=["is_active"])
         return Response(SaaSHospitalSerializer(hospital).data)
+
+
+def license_file_response(record):
+    response = HttpResponse(record.license_file + "\n", content_type="application/octet-stream")
+    response["Content-Disposition"] = f'attachment; filename="{record.license_id}.lic"'
+    return response
+
+
+class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
+    """Issued on-premise licenses: history, re-download, revoke."""
+
+    serializer_class = OnPremiseLicenseSerializer
+    permission_classes = [IsAuthenticated, CanViewSaaSTenants]
+    queryset = OnPremiseLicense.objects.select_related("hospital", "issued_by")
+    filterset_fields = ["hospital"]
+
+    def get_permissions(self):
+        if self.action == "revoke":
+            return [IsAuthenticated(), CanManageSaaSTenants()]
+        return super().get_permissions()
+
+    @action(detail=True, methods=["get"])
+    def download(self, request, pk=None):
+        record = self.get_object()
+        if record.revoked_at:
+            return Response({"detail": "This license has been revoked."}, status=status.HTTP_410_GONE)
+        return license_file_response(record)
+
+    @action(detail=True, methods=["post"])
+    def revoke(self, request, pk=None):
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        record = self.get_object()
+        if not record.revoked_at:
+            record.revoked_at = timezone.now()
+            record.revoked_by = request.user
+            record.revoke_reason = str(request.data.get("reason", ""))[:255]
+            record.save(update_fields=["revoked_at", "revoked_by", "revoke_reason"])
+            gov.log_security_event(
+                SecurityEvent.EventType.SAAS_ACCESS_CHANGED, request=request, user=request.user, hospital_id=record.hospital_id,
+                details={"action": "license_revoked", "license_id": record.license_id, "reason": record.revoke_reason},
+            )
+        return Response(OnPremiseLicenseSerializer(record).data)

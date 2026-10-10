@@ -14,3 +14,8 @@ from django.core.asgi import get_asgi_application
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
 application = get_asgi_application()
+
+# On-premise: refuse to start on a server the license wasn't issued for.
+from apps.licensing.service import check_machine_binding  # noqa: E402
+
+check_machine_binding()

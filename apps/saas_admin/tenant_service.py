@@ -90,6 +90,9 @@ def onboard_hospital_tenant(data: dict) -> dict:
 
     # 4. Create Hospital Entity
     hospital = Hospital.objects.create(
+        # On-premise setup passes the id its license was issued for.
+        **({"id": data["id"]} if data.get("id") else {}),
+        is_on_premise=bool(data.get("is_on_premise")),
         name=name,
         slug=slug,
         city=city,

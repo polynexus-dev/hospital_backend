@@ -19,6 +19,28 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-env")
 
+# "saas": multi-tenant platform (apps.saas_admin subscriptions).
+# "on_premise": one hospital on its own server, governed by a signed license
+# file (apps.licensing). On-premise images fix this at build time
+# (config/build_info.py) so it can't be switched back by an env var.
+from config.build_info import FORCED_DEPLOYMENT_MODE  # noqa: E402
+
+DEPLOYMENT_MODE = FORCED_DEPLOYMENT_MODE or env.str("DEPLOYMENT_MODE", default="saas")
+if DEPLOYMENT_MODE not in ("saas", "on_premise"):
+    raise ValueError(f'DEPLOYMENT_MODE must be "saas" or "on_premise", not {DEPLOYMENT_MODE!r}.')
+# On-premise: where the installed license lives (a mounted volume in Docker),
+# and an optional mount of the host's /etc and /sys so the machine
+# fingerprint identifies the server rather than the container.
+LICENSE_FILE_PATH = env.str("LICENSE_FILE_PATH", default=str(BASE_DIR / "license" / "hospital.lic"))
+LICENSE_HOST_ROOT = env.str("LICENSE_HOST_ROOT", default="")
+LICENSE_CACHE_SECONDS = env.int("LICENSE_CACHE_SECONDS", default=600)
+LICENSE_SUPPORT_EMAIL = env.str("LICENSE_SUPPORT_EMAIL", default="support@polynexus.in")
+LICENSE_SUPPORT_PHONE = env.str("LICENSE_SUPPORT_PHONE", default="")
+# SaaS: the Ed25519 private key that signs on-premise licenses (PEM text, or
+# a path to it). Keep it in the platform's secret store; never ship it.
+LICENSE_SIGNING_KEY = env.str("LICENSE_SIGNING_KEY", default="")
+LICENSE_SIGNING_KEY_PATH = env.str("LICENSE_SIGNING_KEY_PATH", default="")
+
 # Field-level encryption (Part A #2) — see apps.core.encryption /
 # apps.core.fields. FIELD_ENCRYPTION_KEY must be a urlsafe-base64 32-byte
 # Fernet key (`Fernet.generate_key()`); FIELD_HASH_KEY is an independent
@@ -128,6 +150,7 @@ LOCAL_APPS = [
     "apps.oncology",
     "apps.schemes",
     "apps.cathlab",
+    "apps.licensing",
 ]
 
 
@@ -149,6 +172,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.TenantMiddleware",
+    # On-premise only: read-only mode when the license isn't usable.
+    "apps.licensing.middleware.LicenseMiddleware",
     # Refuse API calls to modules the hospital hasn't licensed (after tenant resolution).
     "apps.core.modules.ModuleAccessMiddleware",
     "apps.core.middleware.AuditMiddleware",
@@ -220,6 +245,8 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 
 AUTH_USER_MODEL = "accounts.User"
+# ModelBackend bounded by each hospital's SaaS permission ceiling.
+AUTHENTICATION_BACKENDS = ["apps.accounts.backends.HospitalPermissionBackend"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

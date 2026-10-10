@@ -91,6 +91,11 @@ class Hospital(TimeStampedModel):
         blank=True,
         help_text="Modules enabled for this hospital SaaS subscription.",
     )
+    permission_ceiling = models.JSONField(
+        null=True, blank=True,
+        help_text='"app.codename" permissions the SaaS admin allows this hospital, within its enabled modules; '
+                  "null = everything in those modules. See apps.accounts.permission_catalog.",
+    )
     google_review_url = models.URLField(blank=True, help_text="Where NPS promoters get routed (§10).")
     helpline_phone = models.CharField(max_length=30, blank=True, help_text="Shown on the login page and patient portal, e.g. 1800-123-4567")
     owner_mis_whatsapp_number = models.CharField(max_length=20, blank=True, help_text="Where the daily WhatsApp MIS is sent (§12).")

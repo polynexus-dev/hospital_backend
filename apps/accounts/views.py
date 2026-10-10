@@ -13,6 +13,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from .models import Role, User
+from .permission_catalog import ADMIN_TEMPLATES, apply_grant, role_assignment_error, catalog, codes_of, grantable_by, hospital_bounds, permission_objects
 from apps.governance import services as gov
 from apps.governance.models import SecurityEvent
 
@@ -97,11 +98,29 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             details={"action": action, "target_user_id": target.pk, "target_email": target.email, "saas_role": target.saas_role},
         )
 
+    def _check_license_user_cap(self, hospital):
+        """On-premise: the license's max_active_users."""
+        from rest_framework.exceptions import ValidationError
+
+        from apps.licensing.service import CapacityExceeded, check_capacity
+
+        try:
+            check_capacity("users", User.objects.filter(hospital=hospital, is_active=True).count())
+        except CapacityExceeded as exc:
+            raise ValidationError({"detail": str(exc)})
+
+    def _check_role_assignment(self, role, target=None):
+        error = role_assignment_error(self.request.user, role, target)
+        if error:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(error)
+
     def perform_create(self, serializer):
         denied = self._require_saas_owner_for_platform_identity(self.request)
         if denied:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied(denied.data["detail"])
+        self._check_role_assignment(serializer.validated_data.get("role"))
         hospital = getattr(self.request.user, "hospital", None)
         if hospital:
             from apps.saas_admin.models import TenantSubscription
@@ -111,6 +130,8 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 current_count = User.objects.filter(hospital=hospital, is_active=True).count()
                 if current_count >= sub.max_staff_users:
                     raise ValidationError({"detail": f"Hospital has reached its subscription staff limit of {sub.max_staff_users} users."})
+            if serializer.validated_data.get("is_active", True):
+                self._check_license_user_cap(hospital)
         if str(self.request.data.get("saas_role", "")):
             created_user = serializer.save(hospital=None, is_saas_admin=True)
         else:
@@ -123,6 +144,11 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied(denied.data["detail"])
+        new_role = serializer.validated_data.get("role")
+        changing_role = "role" in serializer.validated_data and new_role != serializer.instance.role
+        self._check_role_assignment(new_role if changing_role else None, serializer.instance)
+        if serializer.validated_data.get("is_active") and not serializer.instance.is_active and serializer.instance.hospital_id:
+            self._check_license_user_cap(serializer.instance.hospital)
         if str(self.request.data.get("saas_role", "")):
             updated_user = serializer.save(hospital=None, is_saas_admin=True)
         else:
@@ -135,6 +161,7 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied(denied.data["detail"])
+        self._check_role_assignment(None, instance)
         if instance.saas_role:
             self._log_saas_access_change(self.request, instance, "deleted")
         instance.delete()
@@ -142,6 +169,22 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @action(detail=True, methods=["get", "put"])
+    def permissions(self, request, pk=None):
+        """Permissions granted to this user directly, on top of their role's
+        (returned as `inherited`, read-only here — edit the role for those)."""
+        target = self.get_object()
+        if not target.hospital_id:
+            return Response({"detail": "Platform accounts have no hospital permissions."}, status=status.HTTP_400_BAD_REQUEST)
+        from django.contrib.auth.models import Permission
+
+        locked = "Hospital admins already have full access within the hospital's plan." if target.role_id and target.role.template in ADMIN_TEMPLATES else ""
+        return _permission_matrix(
+            request, target.hospital, target.user_permissions, "accounts.change_user",
+            target={"target_user_id": target.pk, "target_email": target.email},
+            inherited=codes_of(Permission.objects.filter(group__user=target)), locked_reason=locked,
+        )
 
     @action(detail=False, methods=["post"], url_path="switch-hospital", permission_classes=[IsAuthenticated])
     def switch_hospital(self, request):
@@ -389,6 +432,53 @@ class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if user.can_cross_tenant:
             return Role.objects.all()
         return Role.objects.filter(hospital_id=user.hospital_id)
+
+    @action(detail=True, methods=["get", "put"])
+    def permissions(self, request, pk=None):
+        """The permission matrix for this role; PUT {"permissions": [...]}
+        replaces what the caller is able to grant (see permission_catalog)."""
+        role = self.get_object()
+        locked = "Hospital admin roles are managed by their template; the hospital's plan (set by the platform) is what limits them." if role.template in ADMIN_TEMPLATES else ""
+        return _permission_matrix(
+            request, role.hospital, role.group.permissions, "accounts.change_role",
+            target={"role_id": role.pk, "role": role.name}, locked_reason=locked,
+        )
+
+
+def _permission_matrix(request, hospital, granted, change_perm, *, target, inherited=frozenset(), locked_reason=""):
+    """GET/PUT shared by the role and user permission editors. `granted` is
+    the related manager holding the editable permissions."""
+    allowed = hospital_bounds(hospital)[0]
+    can_edit = request.user.has_perm(change_perm) and not locked_reason
+    grantable = grantable_by(request.user, hospital) if can_edit else set()
+    current = codes_of(granted)
+
+    if request.method == "PUT":
+        if not can_edit:
+            return Response({"detail": locked_reason or "You do not have permission to change permissions."}, status=status.HTTP_403_FORBIDDEN)
+        submitted = request.data.get("permissions")
+        if not isinstance(submitted, list) or not all(isinstance(c, str) for c in submitted):
+            return Response({"permissions": ["Send a list of \"app.codename\" strings."]}, status=status.HTTP_400_BAD_REQUEST)
+        new = apply_grant(current, submitted, grantable)
+        added, removed = new - current, current - new
+        if added:
+            granted.add(*permission_objects(added))
+        if removed:
+            granted.remove(*permission_objects(removed))
+        if added or removed:
+            gov.log_security_event(
+                SecurityEvent.EventType.PERMISSIONS_CHANGED, request=request, user=request.user, hospital_id=hospital.pk,
+                details={**target, "added": sorted(added), "removed": sorted(removed)},
+            )
+        current = new
+
+    return Response({
+        "catalog": catalog(allowed),
+        "selected": sorted(current & allowed),
+        "inherited": sorted(set(inherited) & allowed),
+        "grantable": sorted(grantable),
+        "locked_reason": locked_reason,
+    })
 
 
 class ExpiredPasswordChangeView(APIView):

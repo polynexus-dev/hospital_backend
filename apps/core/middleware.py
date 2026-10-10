@@ -74,6 +74,13 @@ class TenantMiddleware:
             from .models import Hospital
             tenant_from_subdomain = Hospital.objects.filter(slug=subdomain, is_active=True).first()
 
+        if tenant_from_subdomain is None:
+            from apps.licensing.service import is_on_premise
+
+            if is_on_premise():  # a single-hospital installation: no subdomains, one tenant
+                from .models import Hospital
+                tenant_from_subdomain = Hospital.objects.filter(is_active=True).order_by("created_at").first()
+
         request.subdomain = subdomain
         request.tenant = tenant_from_subdomain
 

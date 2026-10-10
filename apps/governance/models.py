@@ -84,6 +84,7 @@ class SecurityEvent(models.Model):
         POLICY_CHANGED = "policy_changed", "Security policy changed"
         SUPPORT_ACCESS = "support_access", "Platform support access"
         SAAS_ACCESS_CHANGED = "saas_access_changed", "SaaS account access changed"
+        PERMISSIONS_CHANGED = "permissions_changed", "Permissions changed"
 
     class Severity(models.TextChoices):
         INFO = "info", "Info"

@@ -34,6 +34,17 @@ class BedViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     filterset_fields = ["room", "room__ward", "bed_type", "status"]
     search_fields = ["bed_number"]
 
+    def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
+
+        from apps.licensing.service import CapacityExceeded, check_capacity
+
+        try:
+            check_capacity("beds", Bed.objects.filter(hospital_id=self.request.user.hospital_id).count())
+        except CapacityExceeded as exc:
+            raise ValidationError({"detail": str(exc)})
+        super().perform_create(serializer)
+
     @action(detail=True, methods=["post"])
     def assign(self, request, pk=None):
         bed = self.get_object()

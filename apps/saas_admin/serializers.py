@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 
 
 class TenantSubscriptionSerializer(serializers.ModelSerializer):
@@ -110,3 +110,48 @@ class SaaSHospitalSerializer(serializers.ModelSerializer):
     def get_staff_count(self, obj) -> int:
         return obj.users.count()
 
+
+class OnPremiseLicenseSerializer(serializers.ModelSerializer):
+    hospital_name = serializers.CharField(source="hospital.name", read_only=True)
+    issued_by_email = serializers.CharField(source="issued_by.email", read_only=True, default=None)
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OnPremiseLicense
+        fields = [
+            "id", "hospital", "hospital_name", "license_id", "tier", "issued_at", "expires_at", "grace_period_days",
+            "enabled_modules", "max_active_users", "max_beds", "machine_fingerprint", "issued_by_email",
+            "revoked_at", "revoke_reason", "status",
+        ]
+        read_only_fields = fields
+
+    def get_status(self, obj):
+        from django.utils import timezone
+
+        if obj.revoked_at:
+            return "revoked"
+        return "expired" if obj.expires_at < timezone.now() else "active"
+
+
+class GenerateLicenseSerializer(serializers.Serializer):
+    duration_days = serializers.IntegerField(min_value=1, max_value=3650, default=365)
+    grace_period_days = serializers.IntegerField(min_value=0, max_value=90, default=14)
+    modules = serializers.ListField(child=serializers.CharField(), allow_empty=False)
+    machine_fingerprint = serializers.CharField(max_length=128)
+    max_users = serializers.IntegerField(min_value=0, default=0)
+    max_beds = serializers.IntegerField(min_value=0, default=0)
+    tier = serializers.ChoiceField(choices=TenantSubscription.Tier.choices, required=False, allow_blank=True, default="")
+
+    def validate_modules(self, value):
+        from apps.core.models import ALL_MODULES
+
+        unknown = sorted(set(value) - set(ALL_MODULES))
+        if unknown:
+            raise serializers.ValidationError(f"Unknown modules: {', '.join(unknown)}")
+        return sorted(set(value))
+
+    def validate_machine_fingerprint(self, value):
+        value = value.strip().lower()
+        if value != "*" and (len(value) != 64 or any(c not in "0123456789abcdef" for c in value)):
+            raise serializers.ValidationError('Paste the 64-character fingerprint from get_machine_fingerprint, or "*" for any machine.')
+        return value

@@ -77,12 +77,24 @@ def module_for_view(view_module_path: str):
     return None
 
 
+def effective_modules(hospital):
+    """The module keys `hospital` may use, or None for "every module".
+    hospital.enabled_modules (empty = every module, the long-standing
+    convention), further limited on-premise by the license."""
+    from apps.licensing.service import licensed_modules
+
+    enabled = list(hospital.enabled_modules or []) if hospital is not None else []
+    licensed = licensed_modules()
+    if licensed is None:
+        return enabled or None
+    return [m for m in (enabled or licensed) if m in licensed]
+
+
 def is_enabled(hospital, module) -> bool:
-    """An empty list means every module (the long-standing convention)."""
     if module is None or hospital is None:
         return True
-    enabled = hospital.enabled_modules or []
-    return not enabled or module in enabled
+    allowed = effective_modules(hospital)
+    return allowed is None or module in allowed
 
 
 def require_module(hospital, module):

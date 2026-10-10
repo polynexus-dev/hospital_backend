@@ -1,0 +1,63 @@
+# On-premise backend image: application code compiled to native modules
+# with Cython; no application .py source ships in the final image.
+#
+#   docker build -f Dockerfile.backend.compiled -t <registry>/hms-backend:<version> .
+#
+# Prerequisite (platform side, once): python manage.py generate_license_keypair
+# so apps/licensing/public_key.py holds the license verification key.
+
+# ---- build: install deps, compile, strip sources ----------------------------
+FROM python:3.12-slim AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /src
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Refuse to build an image that can't verify licenses.
+RUN grep -q 'PUBLIC_KEY_PEM = """' apps/licensing/public_key.py \
+    || (echo "apps/licensing/public_key.py has no key: run generate_license_keypair first." >&2; exit 1)
+
+# Compile into /build (source in /src is never modified), pinned to
+# on-premise mode. collectstatic then imports the compiled code, which
+# doubles as a check that it loads.
+RUN pip install --no-cache-dir "cython>=3.0,<4" setuptools \
+    && python scripts/compile_cython.py --out /build --on-premise --jobs "$(nproc)" \
+    && cd /build \
+    && DJANGO_SETTINGS_MODULE=config.settings.dev CACHE_URL=locmem:// python manage.py collectstatic --noinput \
+    && rm -rf docker-compose.yml Dockerfile* docker-entrypoint.sh *.md *.json requirements-dev.txt \
+    && ! find apps config -name "*.py" ! -name "__init__.py" ! -path "*/migrations/*" | grep -q . \
+    && pip uninstall -y cython
+
+# ---- runtime ---------------------------------------------------------------
+FROM python:3.12-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 10001 --create-home app
+
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
+    DEPLOYMENT_MODE=on_premise \
+    LICENSE_FILE_PATH=/app/license/hospital.lic
+
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder --chown=app:app /build /app
+WORKDIR /app
+RUN mkdir -p /app/license && chown app:app /app/license && chmod +x docker-entrypoint.onprem.sh
+
+USER app
+EXPOSE 8000
+ENTRYPOINT ["/app/docker-entrypoint.onprem.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]

@@ -226,6 +226,38 @@ VERIFY_PERM_ROLES = {
 }
 
 
+# Reference data nearly every screen reads: department, staff and doctor
+# pickers, slots, and the lab / medicine / imaging catalogues. Not patient
+# or appointment records — roles without those apps (HR, finance) must not
+# read them. Reads require `view_*` (apps.core.permissions.
+# RoleBasedModelPermissions), so every template starts with these, and a
+# user with no role gets them too (backends.HospitalPermissionBackend); a
+# hospital admin can still untick them per role.
+BASELINE_VIEW_MODELS = [
+    ("core", "department"),
+    ("accounts", "user"),
+    ("accounts", "role"),
+    ("appointments", "doctor"),
+    ("appointments", "slot"),
+    ("laboratory", "labtest"),
+    ("pharmacy", "medicine"),
+    ("radiology", "radiologyprocedure"),
+]
+
+
+BASELINE_VIEW_CODES = frozenset(f"{app}.view_{model}" for app, model in BASELINE_VIEW_MODELS)
+
+
+def baseline_view_permissions() -> list:
+    from django.db.models import Q
+    from django.contrib.auth.models import Permission
+
+    query = Q(pk__in=[])
+    for app, model in BASELINE_VIEW_MODELS:
+        query |= Q(content_type__app_label=app, content_type__model=model, codename=f"view_{model}")
+    return list(Permission.objects.filter(query))
+
+
 def apply_permission_template(group, template: str) -> None:
     """Assigns every Django `add_<model>`/`change_<model>`/etc. permission
     implied by `template` to `group`, across every model in each listed
@@ -257,6 +289,8 @@ def template_permissions(template: str) -> list:
                     to_assign.append(perm)
             elif codename.startswith("finalize_") or codename.startswith("approve_") or codename.startswith("triage_"):
                 to_assign.append(perm)
+
+    to_assign += [p for p in baseline_view_permissions() if p not in to_assign]
 
     if template in CLINICAL_ROLES:
         clinical_perm = Permission.objects.filter(content_type__app_label="patients", codename="access_clinical_detail").first()

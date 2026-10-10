@@ -175,3 +175,36 @@ class SupportTicket(TimeStampedModel):
 
     def __str__(self):
         return f"[{self.get_status_display()}] {self.subject} ({self.hospital.name})"
+
+
+
+class OnPremiseLicense(TimeStampedModel):
+    """A signed license file issued to an on-premise installation (see
+    apps.licensing). The file itself is kept so it can be downloaded again.
+
+    Revoking marks it here and stops re-downloads; an offline installation
+    can't be told, so it keeps working until expiry or until a newer
+    license replaces it."""
+
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="onprem_licenses")
+    license_id = models.CharField(max_length=64, unique=True)
+    tier = models.CharField(max_length=16, blank=True)
+    issued_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+    grace_period_days = models.PositiveSmallIntegerField(default=14)
+    enabled_modules = models.JSONField(default=list, blank=True)
+    max_active_users = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
+    max_beds = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
+    machine_fingerprint = models.CharField(max_length=128, help_text='SHA-256 from get_machine_fingerprint, or "*" for any machine.')
+    payload = models.JSONField()
+    license_file = models.TextField(editable=False)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    revoke_reason = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-issued_at"]
+
+    def __str__(self):
+        return self.license_id
