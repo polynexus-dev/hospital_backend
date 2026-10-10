@@ -24,6 +24,7 @@ You'll use two windows:
 In **Window A**:
 
 ```
+# Window A - PowerShell (administrator)
 cd C:\hms-test
 docker compose down -v
 cd C:\
@@ -39,6 +40,7 @@ If the first two lines say there is no such folder or configuration file, that's
 In **Window A**:
 
 ```
+# Window A - PowerShell (administrator)
 mkdir C:\hms-test
 cd E:\Aniket\next\Hospital\Hospital\Backend\dist
 tar -xzf bundle-1.0.0.tar.gz -C C:\hms-test --strip-components=1
@@ -55,6 +57,7 @@ You should see `images.tar`, `install.ps1`, `docker-compose.yml`, `RUNBOOK.md` a
 In **Window A**:
 
 ```
+# Window A - PowerShell (administrator)
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -66,6 +69,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 Open the saved file; you'll copy from it in Part 4:
 
 ```
+# Window A - PowerShell (administrator)
 notepad C:\hms-test\config\REQUEST-LICENCE.txt
 ```
 
@@ -74,7 +78,8 @@ notepad C:\hms-test\config\REQUEST-LICENCE.txt
 In **Window B** (Command Prompt):
 
 ```
-cd E:\Aniket\next\Hospital\Hospital\Backend\tools
+REM Window B - Command Prompt
+cd /d E:\Aniket\next\Hospital\Hospital\Backend\tools
 set LICENSE_SIGNING_KEY_PATH=C:\Users\User\Desktop\key\license_signing_key.pem
 ..\venv\Scripts\python.exe -m license_issuer new
 ```
@@ -103,6 +108,7 @@ It prints a summary and *Wrote C:\hms-test\config\license.lic*.
 Still in **Window B**:
 
 ```
+REM Window B - Command Prompt
 ..\venv\Scripts\python.exe -m license_issuer verify C:\hms-test\config\license.lic
 ```
 
@@ -118,6 +124,7 @@ If either differs, go back to Part 4 and issue it again; the new file replaces t
 Back in **Window A**:
 
 ```
+# Window A - PowerShell (administrator)
 cd C:\hms-test
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
