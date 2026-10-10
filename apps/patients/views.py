@@ -9,7 +9,7 @@ from apps.core.permissions import (
     RequiresViewPermission,
     RoleBasedModelPermissions,
 )
-from apps.core.viewsets import SoftDeleteViewSetMixin, TenantScopedViewSetMixin
+from apps.core.viewsets import AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
 from .models import Document, Patient
 from .registration import PatientRegistrationMixin
@@ -21,9 +21,17 @@ from .serializers import (
 )
 
 
-class PatientViewSet(PatientRegistrationMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
+    # Who changed what on a patient record (DPDP / NABH): field-level diffs on
+    # top of AuditMiddleware's per-request who/when/where log.
+    audited_fields = (
+        "first_name", "last_name", "date_of_birth", "gender", "mobile", "alternate_mobile", "email", "address", "city",
+        "national_id_type", "national_id_number", "insurance_provider", "insurance_policy_number", "employer",
+        "attendant_name", "attendant_phone", "attendant_relation",
+    )
+    audit_redacted_fields = ("mobile", "alternate_mobile", "email", "address", "national_id_number", "insurance_policy_number", "attendant_phone")
     # list/retrieve stay open to every role whose template grants
     # "patients" at all (see apps.core.tests.
     # test_restricted_role_can_still_list_and_retrieve_patients — front
