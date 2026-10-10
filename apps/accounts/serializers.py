@@ -158,6 +158,7 @@ class UserSerializer(serializers.ModelSerializer):
     hospital_enabled_modules = serializers.SerializerMethodField()
     password = serializers.CharField(write_only=True, required=False, allow_blank=False)
     password_expires_in_days = serializers.SerializerMethodField()
+    licence_role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -167,7 +168,7 @@ class UserSerializer(serializers.ModelSerializer):
             "hospital_enabled_modules",
             "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
-            "saas_role",
+            "saas_role", "staff_code", "licence_role",
             "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
             "password", "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts",
             "password_changed_at", "password_expires_in_days", "signature_image", "registration_number",
@@ -200,7 +201,16 @@ class UserSerializer(serializers.ModelSerializer):
             # UserViewSet's block/unblock/unlock actions, which log a
             # SecurityEvent — never a bare PATCH.
             "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts", "password_changed_at",
+            "staff_code",
         ]
+
+    def get_licence_role(self, obj):
+        """"approver" (SaaS Owner), "issuer" (may request licences) or None."""
+        if not obj.is_saas_admin and not obj.is_superuser:
+            return None
+        if obj.has_saas_capability("license_approve"):
+            return "approver"
+        return "issuer" if obj.has_saas_capability("license_issue") else None
 
     def create(self, validated_data):
         from django.contrib.auth.password_validation import validate_password

@@ -36,7 +36,9 @@ def next_license_id(hospital, now):
 
 @transaction.atomic
 def issue_license(hospital, *, issued_by, duration_days, features, machine_fingerprint="", hardware_binding=True,
-                  deployment_id="", max_active_users=0, max_beds=0, grace_period_days=14, tier=""):
+                  deployment_id="", max_active_users=0, max_beds=0, grace_period_days=14, tier="", approved_by=None):
+    """Sign and record a licence. `issued_by` requested it, `approved_by` (a
+    SaaS Owner) authorised it; both staff codes are signed into the licence."""
     from apps.saas_admin.models import OnPremiseLicense
 
     key = signing_key()
@@ -56,6 +58,8 @@ def issue_license(hospital, *, issued_by, duration_days, features, machine_finge
         issued_at=now,
         tier=tier,
         hospital_id=hospital.pk,
+        issued_by=getattr(issued_by, "staff_code", "") or "",
+        approved_by=getattr(approved_by, "staff_code", "") or "",
     )
     record = OnPremiseLicense.objects.create(
         hospital=hospital, license_id=payload["license_id"], tier=tier, issued_at=now,
@@ -64,7 +68,7 @@ def issue_license(hospital, *, issued_by, duration_days, features, machine_finge
         enabled_modules=modules_for(payload["features"]),
         max_active_users=max_active_users, max_beds=max_beds,
         machine_fingerprint=payload["machine_fingerprint"] or "-",
-        payload=payload, license_file=seal(payload, key), issued_by=issued_by,
+        payload=payload, license_file=seal(payload, key), issued_by=issued_by, approved_by=approved_by,
     )
     record.refresh_from_db()
     if not hospital.is_on_premise:

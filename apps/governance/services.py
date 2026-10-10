@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # --- Security events (DOM.3.a) ---------------------------------------------
 
 _CRITICAL = {
+    SecurityEvent.EventType.LICENSE_ALERT,
     SecurityEvent.EventType.ACCOUNT_LOCKED,
     SecurityEvent.EventType.USER_BLOCKED,
     SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT,

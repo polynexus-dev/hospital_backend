@@ -62,6 +62,7 @@ def build_report():
         "app_version": getattr(settings, "APP_VERSION", "dev"),
         "licence": {
             "license_id": payload.get("license_id"),
+            "issued_by": payload.get("issued_by"),
             "deployment_id": payload.get("deployment_id") or getattr(settings, "DEPLOYMENT_ID", ""),
             "state": status.state,
             "expires_at": payload.get("expires_at"),

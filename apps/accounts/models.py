@@ -184,6 +184,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=32, choices=SaaSRole.choices, blank=True,
         help_text="Platform-company role. Assigned and changed only by the SaaS Owner.",
     )
+    # Polynexus staff: a permanent code, signed into every licence they issue.
+    staff_code = models.CharField(max_length=16, unique=True, null=True, blank=True, editable=False)
+    can_issue_licenses = models.BooleanField(
+        default=False,
+        help_text="Polynexus staff: may request on-premise licences (a SaaS Owner approves them). Granted only by a SaaS Owner.",
+    )
     is_2fa_enabled = models.BooleanField(default=False)
     totp_secret = EncryptedCharField(max_length=64, blank=True, editable=False)
     allowed_ip_ranges = models.JSONField(default=list, blank=True, help_text="CIDR ranges this user may log in from; empty = unrestricted.")
@@ -223,6 +229,9 @@ class User(AbstractBaseUser, PermissionsMixin):
                 new_update_fields.add("saas_role")
                 kwargs["update_fields"] = list(new_update_fields)
         super().save(*args, **kwargs)
+        if self.is_saas_admin and not self.staff_code:
+            self.staff_code = f"PNX-{self.pk:04d}"
+            type(self).objects.filter(pk=self.pk).update(staff_code=self.staff_code)
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
@@ -275,6 +284,10 @@ class User(AbstractBaseUser, PermissionsMixin):
             return True
         role = self.saas_role or (self.SaaSRole.OWNER if self.is_saas_admin else "")
         capabilities = self.SAAS_ROLE_CAPABILITIES.get(role, set())
+        if capability == "license_approve":  # signing a licence: SaaS Owners only
+            return role == self.SaaSRole.OWNER
+        if capability == "license_issue":  # requesting one: Owners, plus staff an Owner authorised
+            return role == self.SaaSRole.OWNER or (self.is_saas_admin and self.can_issue_licenses)
         if capability == "tenant_view":
             return "tenant_view" in capabilities or "tenant_manage" in capabilities
         if capability == "analytics_view":

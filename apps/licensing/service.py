@@ -25,6 +25,7 @@ EXPIRED = "expired"
 TAMPERED = "tampered"
 INVALID_MACHINE = "invalid_machine"
 WRONG_DEPLOYMENT = "wrong_deployment"
+REVOKED = "revoked"
 NOT_YET_VALID = "not_yet_valid"
 MISSING = "missing"
 
@@ -70,6 +71,8 @@ class LicenseStatus:
                 "license_id": p.get("license_id"),
                 "hospital_name": p.get("hospital_name"),
                 "deployment_id": p.get("deployment_id"),
+                "issued_by": p.get("issued_by"),
+                "approved_by": p.get("approved_by"),
                 "tier": p.get("tier"),
                 "issued_at": p.get("issued_at"),
                 "starts_at": p.get("starts_at"),
@@ -134,6 +137,28 @@ def open_payload(blob: str) -> dict:
     return payload
 
 
+REVOCATIONS_FILE = Path(__file__).resolve().parent / "revocations.lic"
+
+
+def revoked_license_ids() -> frozenset:
+    """Licence IDs Polynexus revoked, from the signed list built into this
+    release (apps/licensing/revocations.lic, exported from the SaaS console
+    before each build). Missing or unsigned: nothing is revoked."""
+    try:
+        blob = REVOCATIONS_FILE.read_text().strip()
+    except OSError:
+        return frozenset()
+    if not blob or not bundled.PUBLIC_KEY_PEM:
+        return frozenset()
+    try:
+        document = open_license(blob, _public_key())
+    except LicenseTampered:
+        return frozenset()
+    if document.get("type") != "revocations":
+        return frozenset()
+    return frozenset(document.get("revoked") or [])
+
+
 def hardware_bound(payload: dict) -> bool:
     """Licences without the flag predate it and were always bound."""
     return payload.get("hardware_binding", True) is not False
@@ -176,6 +201,10 @@ def verify_license(blob: str | None = None, *, now=None, check_clock=True, check
 
     if not machine_matches(payload, fingerprint):
         status.state, status.message = INVALID_MACHINE, "This license was issued for a different server."
+        return status
+
+    if payload["license_id"] in revoked_license_ids():
+        status.state, status.message = REVOKED, "This licence has been revoked by Polynexus. Contact support."
         return status
 
     if payload.get("deployment_id"):

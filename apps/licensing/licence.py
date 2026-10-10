@@ -22,7 +22,8 @@ def new_deployment_id() -> str:
 def build_payload(*, customer_name: str, deployment_id: str, starts_on: date, expires_on: date,
                   grace_period_days: int = 14, max_active_users: int = 0, features=(), hardware_binding: bool = False,
                   machine_fingerprint: str = "", license_id: str | None = None, issued_at: datetime | None = None,
-                  max_beds: int = 0, tier: str = "", hospital_id: str | None = None) -> dict:
+                  max_beds: int = 0, tier: str = "", hospital_id: str | None = None,
+                  issued_by: str = "", approved_by: str = "") -> dict:
     """A licence payload, validated. Raises ValueError with a readable message."""
     if not customer_name.strip():
         raise ValueError("Customer name is required.")
@@ -54,6 +55,10 @@ def build_payload(*, customer_name: str, deployment_id: str, starts_on: date, ex
         "hardware_binding": hardware_binding,
         "machine_fingerprint": fingerprint if hardware_binding else "",
         "tier": tier,
+        # Staff codes of who requested and who approved it — signed, so
+        # anyone holding the licence can see who issued it.
+        "issued_by": issued_by,
+        "approved_by": approved_by,
     }
     if hospital_id:
         payload["hospital_id"] = str(hospital_id)
@@ -72,6 +77,7 @@ def summary(payload: dict) -> str:
         f"Valid from      : {str(payload.get('starts_at') or payload.get('issued_at'))[:10]}",
         f"Expires on      : {str(payload.get('expires_at'))[:10]}  (+{payload.get('grace_period_days', 0)} days grace)",
         f"Max active users: {payload.get('max_active_users') or 'unlimited'}",
+        f"Issued by       : {payload.get('issued_by') or '-'}  (approved by {payload.get('approved_by') or '-'})",
         "Hardware binding: " + (f"yes ({payload.get('machine_fingerprint')})" if payload.get("hardware_binding", True) is not False else "no"),
         "Features        :",
     ]

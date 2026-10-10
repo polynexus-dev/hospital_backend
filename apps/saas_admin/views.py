@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -14,11 +14,13 @@ from apps.core.permissions import CanManageSaaSBilling, CanManageSaaSSupport, Ca
 from apps.core.viewsets import TenantScopedViewSetMixin
 
 from . import services
-from .models import LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import LicenseRequest, LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 from .pdf import render_invoice_pdf
 from .serializers import (
     GenerateLicenseSerializer,
+    LicenseRequestSerializer,
     LicenseUsageReportSerializer,
+    SaaSStaffSerializer,
     OnPremiseLicenseSerializer,
     SaaSHospitalSerializer,
     SaaSSupportTicketSerializer,
@@ -183,7 +185,9 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "slug", "city", "state"]
 
     def get_permissions(self):
-        if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status", "generate_license"} or (self.action == "permissions" and self.request.method != "GET"):
+        if self.action == "generate_license":
+            return [IsAuthenticated(), IsSaaSAdmin()]  # the licence capability is checked inside
+        if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status"} or (self.action == "permissions" and self.request.method != "GET"):
             return [IsAuthenticated(), CanManageSaaSTenants()]
         return [IsAuthenticated(), CanViewSaaSTenants()]
 
@@ -246,32 +250,44 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="generate-license")
     def generate_license(self, request, pk=None):
-        """Sign an on-premise license for this hospital. Returns the .lic
-        file, or the license record with {"response": "json"}."""
+        """Request an on-premise licence for this hospital (body: the terms
+        plus "otp", a current 2FA code). A SaaS Owner's request is approved
+        and issued at once — the .lic file, or the record with
+        {"response": "json"}. Anyone else's waits for an Owner (202)."""
         from apps.governance import services as gov
         from apps.governance.models import SecurityEvent
-        from apps.licensing.issuing import SigningKeyMissing, issue_license
 
+        from .licence_controls import describe, notify_owners, otp_error
+        from .models import LicenseRequest
+
+        if not request.user.has_saas_capability("license_issue"):
+            return Response({"detail": "Only SaaS Owners, and staff a SaaS Owner has authorised, can issue licences."}, status=status.HTTP_403_FORBIDDEN)
         hospital = self.get_object()
         params = GenerateLicenseSerializer(data=request.data)
         params.is_valid(raise_exception=True)
-        d = params.validated_data
-        try:
-            record = issue_license(
-                hospital, issued_by=request.user, duration_days=d["duration_days"], features=d["features"],
-                deployment_id=str(d["deployment_id"] or ""), hardware_binding=d["hardware_binding"],
-                machine_fingerprint=d["machine_fingerprint"], max_active_users=d["max_users"], max_beds=d["max_beds"],
-                grace_period_days=d["grace_period_days"], tier=d["tier"],
-            )
-        except SigningKeyMissing as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        error = otp_error(request.user, request.data.get("otp"))
+        if error:
+            return Response({"otp": [error]}, status=status.HTTP_400_BAD_REQUEST)
+        terms = {**params.validated_data, "deployment_id": str(params.validated_data["deployment_id"] or "")}
+        lic_request = LicenseRequest.objects.create(hospital=hospital, params=terms, requested_by=request.user)
         gov.log_security_event(
-            SecurityEvent.EventType.SAAS_ACCESS_CHANGED, request=request, user=request.user, hospital_id=hospital.pk,
-            details={"action": "license_issued", "license_id": record.license_id, "expires_at": record.expires_at.isoformat()},
+            SecurityEvent.EventType.LICENSE_ISSUED, request=request, user=request.user, hospital_id=hospital.pk,
+            details={"action": "requested", "request_id": lic_request.pk, "terms": terms},
         )
-        if request.data.get("response") == "json":
-            return Response(OnPremiseLicenseSerializer(record).data, status=status.HTTP_201_CREATED)
-        return license_file_response(record)
+        if request.user.has_saas_capability("license_approve"):
+            record, failure = approve_license_request(lic_request, request.user, request)
+            if failure:
+                return failure
+            if request.data.get("response") == "json":
+                return Response(OnPremiseLicenseSerializer(record).data, status=status.HTTP_201_CREATED)
+            return license_file_response(record)
+        notify_owners(
+            f"Approval needed: licence for {hospital.name}",
+            f"{request.user.staff_code} ({request.user.email}) requested a licence.\n\n{describe(terms, hospital)}\n"
+            "Approve or reject it in the SaaS console: On-Premise Licences.",
+        )
+        return Response({"detail": "Sent to a SaaS Owner for approval.", "request": LicenseRequestSerializer(lic_request).data},
+                        status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=["post"], url_path="toggle-status")
     def toggle_status(self, request, pk=None):
@@ -301,8 +317,10 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ["hospital"]
 
     def get_permissions(self):
-        if self.action in ("revoke", "upload_usage_report"):
-            return [IsAuthenticated(), CanManageSaaSTenants()]
+        if self.action == "revoke":
+            return [IsAuthenticated(), LicenceApprover()]
+        if self.action in ("upload_usage_report", "revocation_list"):
+            return [IsAuthenticated(), LicenceIssuer()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -324,7 +342,9 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(revoked_at__isnull=True, expires_at__gte=now, expires_at__lte=now + timedelta(days=int(params["expiring_within"])))
         if params.get("search"):
             term = params["search"].strip()
-            qs = qs.filter(Q(hospital__name__icontains=term) | Q(license_id__icontains=term))
+            qs = qs.filter(Q(hospital__name__icontains=term) | Q(license_id__icontains=term) | Q(issued_by__staff_code__iexact=term))
+        if params.get("issued_by"):
+            qs = qs.filter(issued_by__staff_code__iexact=params["issued_by"].strip())
         if self.action == "list" and params.get("ordering") != "-issued_at":
             qs = qs.order_by("expires_at")  # renewals due first
         return qs
@@ -349,9 +369,22 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
             usage = report["usage"]
         except (ValueError, TypeError, KeyError):
             return Response({"report": ["This isn't a usage report file."]}, status=status.HTTP_400_BAD_REQUEST)
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        from .licence_controls import notify_owners
+
         record = OnPremiseLicense.objects.filter(license_id=license_id).first()
         if record is None:
-            return Response({"report": [f"No licence {license_id} was issued from this console."]}, status=status.HTTP_400_BAD_REQUEST)
+            # A licence in use that this console never issued: forged, or
+            # issued outside the approval process. Raise it with the Owners.
+            details = {"license_id": license_id, "hospitals": report.get("hospitals"), "issued_by_in_file": report["licence"].get("issued_by"),
+                       "deployment_id": report["licence"].get("deployment_id")}
+            gov.log_security_event(SecurityEvent.EventType.LICENSE_ALERT, request=request, user=request.user, details={"alert": "unknown_licence", **details})
+            notify_owners(f"ALERT: unknown licence {license_id} in use",
+                          f"A usage report names licence {license_id}, which this console never issued.\n{details}")
+            return Response({"report": [f"ALERT: licence {license_id} was never issued from this console. The SaaS Owners have been notified."]},
+                            status=status.HTTP_400_BAD_REQUEST)
         try:
             key = signing_key().public_key()
         except SigningKeyMissing:
@@ -361,6 +394,9 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
             active_users=int(usage.get("active_users") or 0), beds=int(usage.get("beds") or 0),
             report=report, seal_ok=verify(document, key), uploaded_by=request.user,
         )
+        if not saved.seal_ok:
+            gov.log_security_event(SecurityEvent.EventType.LICENSE_ALERT, request=request, user=request.user, hospital_id=record.hospital_id,
+                                   details={"alert": "edited_usage_report", "license_id": license_id, "report_id": saved.pk})
         return Response(LicenseUsageReportSerializer(saved).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"])
@@ -369,6 +405,23 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
         if record.revoked_at:
             return Response({"detail": "This license has been revoked."}, status=status.HTTP_410_GONE)
         return license_file_response(record)
+
+    @action(detail=False, methods=["get"], url_path="revocation-list")
+    def revocation_list(self, request):
+        """The signed list of revoked licences. Save it as
+        Backend/apps/licensing/revocations.lic before building a release, so
+        upgraded installations stop accepting those licences."""
+        from apps.licensing.issuing import SigningKeyMissing
+
+        from .licence_controls import revocation_document
+
+        try:
+            document = revocation_document()
+        except SigningKeyMissing as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        response = HttpResponse(document + "\n", content_type="application/octet-stream")
+        response["Content-Disposition"] = 'attachment; filename="revocations.lic"'
+        return response
 
     @action(detail=True, methods=["post"])
     def revoke(self, request, pk=None):
@@ -382,8 +435,8 @@ class OnPremiseLicenseViewSet(viewsets.ReadOnlyModelViewSet):
             record.revoke_reason = str(request.data.get("reason", ""))[:255]
             record.save(update_fields=["revoked_at", "revoked_by", "revoke_reason"])
             gov.log_security_event(
-                SecurityEvent.EventType.SAAS_ACCESS_CHANGED, request=request, user=request.user, hospital_id=record.hospital_id,
-                details={"action": "license_revoked", "license_id": record.license_id, "reason": record.revoke_reason},
+                SecurityEvent.EventType.LICENSE_ISSUED, request=request, user=request.user, hospital_id=record.hospital_id,
+                details={"action": "revoked", "license_id": record.license_id, "reason": record.revoke_reason},
             )
         return Response(OnPremiseLicenseSerializer(record).data)
 
@@ -455,3 +508,200 @@ class MyInvoicePdfView(APIView):
         response = HttpResponse(render_invoice_pdf(invoice), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{invoice.invoice_number}.pdf"'
         return response
+
+
+class LicenceIssuer(BasePermission):
+    """SaaS Owners, and staff an Owner authorised to issue licences."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.has_saas_capability("license_issue"))
+
+
+class LicenceApprover(BasePermission):
+    """SaaS Owners only: approving, revoking, and managing who may issue."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.has_saas_capability("license_approve"))
+
+
+def approve_license_request(lic_request, approver, request):
+    """Sign and record the licence for an approved request. Returns
+    (record, None), or (None, error Response)."""
+    from apps.governance import services as gov
+    from apps.governance.models import SecurityEvent
+    from apps.licensing.issuing import SigningKeyMissing, issue_license
+
+    from .licence_controls import describe, notify_owners
+
+    t = lic_request.params
+    try:
+        record = issue_license(
+            lic_request.hospital, issued_by=lic_request.requested_by, approved_by=approver,
+            duration_days=t["duration_days"], features=t["features"], deployment_id=t.get("deployment_id") or "",
+            hardware_binding=t["hardware_binding"], machine_fingerprint=t.get("machine_fingerprint") or "",
+            max_active_users=t["max_users"], max_beds=t["max_beds"], grace_period_days=t["grace_period_days"], tier=t.get("tier") or "",
+        )
+    except SigningKeyMissing as exc:
+        return None, Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    lic_request.status = lic_request.Status.APPROVED
+    lic_request.decided_by = approver
+    lic_request.decided_at = timezone.now()
+    lic_request.license = record
+    lic_request.save(update_fields=["status", "decided_by", "decided_at", "license", "updated_at"])
+    gov.log_security_event(
+        SecurityEvent.EventType.LICENSE_ISSUED, request=request, user=approver, hospital_id=record.hospital_id,
+        details={"action": "issued", "license_id": record.license_id, "request_id": lic_request.pk,
+                 "issued_by": lic_request.requested_by.staff_code, "approved_by": approver.staff_code},
+    )
+    notify_owners(
+        f"Licence issued: {record.license_id} for {record.hospital.name}",
+        f"Requested by {lic_request.requested_by.staff_code}, approved by {approver.staff_code}.\n\n{describe(t, record.hospital)}",
+    )
+    return record, None
+
+
+class LicenseRequestViewSet(viewsets.ReadOnlyModelViewSet):
+    """Licence requests. Owners see all and approve or reject; licence
+    managers see their own and can cancel them while pending."""
+
+    serializer_class = LicenseRequestSerializer
+    permission_classes = [IsAuthenticated, LicenceIssuer]
+    queryset = LicenseRequest.objects.select_related("hospital", "requested_by", "decided_by", "license")
+    filterset_fields = ["status", "hospital"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.has_saas_capability("license_approve"):
+            qs = qs.filter(requested_by=self.request.user)
+        return qs
+
+    def get_permissions(self):
+        if self.action in ("approve", "reject"):
+            return [IsAuthenticated(), LicenceApprover()]
+        return super().get_permissions()
+
+    def _pending(self):
+        lic_request = self.get_object()
+        if lic_request.status != LicenseRequest.Status.PENDING:
+            return lic_request, Response({"detail": f"This request is already {lic_request.get_status_display().lower()}."}, status=status.HTTP_400_BAD_REQUEST)
+        return lic_request, None
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """POST {"otp": "123456"} — sign and issue the licence."""
+        from .licence_controls import otp_error
+
+        lic_request, problem = self._pending()
+        if problem:
+            return problem
+        error = otp_error(request.user, request.data.get("otp"))
+        if error:
+            return Response({"otp": [error]}, status=status.HTTP_400_BAD_REQUEST)
+        if lic_request.requested_by.is_blocked or not lic_request.requested_by.is_active:
+            return Response({"detail": "The requester's account is blocked. Reject this request."}, status=status.HTTP_400_BAD_REQUEST)
+        record, failure = approve_license_request(lic_request, request.user, request)
+        if failure:
+            return failure
+        return Response({"request": LicenseRequestSerializer(lic_request).data, "license": OnPremiseLicenseSerializer(record).data})
+
+    def _close(self, request, new_status, action_name):
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        lic_request, problem = self._pending()
+        if problem:
+            return problem
+        lic_request.status = new_status
+        lic_request.decided_by = request.user
+        lic_request.decided_at = timezone.now()
+        lic_request.decision_note = str(request.data.get("note", ""))[:255]
+        lic_request.save(update_fields=["status", "decided_by", "decided_at", "decision_note", "updated_at"])
+        gov.log_security_event(SecurityEvent.EventType.LICENSE_ISSUED, request=request, user=request.user, hospital_id=lic_request.hospital_id,
+                               details={"action": action_name, "request_id": lic_request.pk, "note": lic_request.decision_note})
+        return Response(LicenseRequestSerializer(lic_request).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        return self._close(request, LicenseRequest.Status.REJECTED, "rejected")
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        lic_request = self.get_object()
+        if lic_request.requested_by_id != request.user.pk:
+            return Response({"detail": "Only the person who requested it can cancel it."}, status=status.HTTP_403_FORBIDDEN)
+        return self._close(request, LicenseRequest.Status.CANCELLED, "cancelled")
+
+
+class SaaSStaffViewSet(viewsets.ReadOnlyModelViewSet):
+    """Polynexus staff, for SaaS Owners: who may issue licences, and blocking
+    someone who leaves (ends their sessions at once and removes the right)."""
+
+    serializer_class = SaaSStaffSerializer
+    permission_classes = [IsAuthenticated, LicenceApprover]
+
+    def get_queryset(self):
+        from apps.accounts.models import User
+
+        return User.objects.filter(is_saas_admin=True).order_by("staff_code")
+
+    @action(detail=True, methods=["post"], url_path="licence-right")
+    def licence_right(self, request, pk=None):
+        """POST {"grant": true|false, "otp": "123456"}"""
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        from .licence_controls import otp_error
+
+        error = otp_error(request.user, request.data.get("otp"))
+        if error:
+            return Response({"otp": [error]}, status=status.HTTP_400_BAD_REQUEST)
+        staff = self.get_object()
+        grant = bool(request.data.get("grant"))
+        if grant and staff.is_blocked:
+            return Response({"detail": "Unblock the account first."}, status=status.HTTP_400_BAD_REQUEST)
+        staff.can_issue_licenses = grant
+        staff.save(update_fields=["can_issue_licenses"])
+        gov.log_security_event(SecurityEvent.EventType.LICENSE_ISSUED, request=request, user=request.user,
+                               details={"action": "right_granted" if grant else "right_removed", "staff": staff.staff_code})
+        return Response(SaaSStaffSerializer(staff).data)
+
+    @action(detail=True, methods=["post"])
+    def block(self, request, pk=None):
+        """POST {"reason": "...", "otp": "123456"} — for someone leaving:
+        ends every session now, removes the licence right, cancels their
+        pending requests. Licences they issued stay listed under their code."""
+        from apps.accounts.authentication import end_all_sessions
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        from .licence_controls import notify_owners, otp_error
+
+        error = otp_error(request.user, request.data.get("otp"))
+        if error:
+            return Response({"otp": [error]}, status=status.HTTP_400_BAD_REQUEST)
+        staff = self.get_object()
+        if staff.pk == request.user.pk:
+            return Response({"detail": "You can't block your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        staff.is_blocked = True
+        staff.blocked_reason = str(request.data.get("reason", ""))[:255] or "Left Polynexus"
+        staff.can_issue_licenses = False
+        staff.save(update_fields=["is_blocked", "blocked_reason", "can_issue_licenses"])
+        ended = end_all_sessions(staff)
+        cancelled = LicenseRequest.objects.filter(requested_by=staff, status=LicenseRequest.Status.PENDING).update(
+            status=LicenseRequest.Status.CANCELLED, decided_by=request.user, decided_at=timezone.now(), decision_note="Requester blocked")
+        gov.log_security_event(SecurityEvent.EventType.USER_BLOCKED, request=request, user=staff,
+                               details={"by": request.user.staff_code, "reason": staff.blocked_reason, "sessions_ended": ended, "requests_cancelled": cancelled})
+        notify_owners(f"Staff blocked: {staff.staff_code}", f"{staff.email} was blocked by {request.user.staff_code}: {staff.blocked_reason}")
+        return Response(SaaSStaffSerializer(staff).data)
+
+    @action(detail=True, methods=["post"])
+    def unblock(self, request, pk=None):
+        from apps.governance import services as gov
+        from apps.governance.models import SecurityEvent
+
+        staff = self.get_object()
+        staff.is_blocked = False
+        staff.blocked_reason = ""
+        staff.save(update_fields=["is_blocked", "blocked_reason"])
+        gov.log_security_event(SecurityEvent.EventType.USER_UNBLOCKED, request=request, user=staff, details={"by": request.user.staff_code})
+        return Response(SaaSStaffSerializer(staff).data)

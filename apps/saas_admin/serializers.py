@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
+from .models import LicenseRequest, LicenseUsageReport, OnPremiseLicense, SupportTicket, TenantInvoice, TenantSubscription, TenantUsageSnapshot
 
 
 class TenantSubscriptionSerializer(serializers.ModelSerializer):
@@ -124,13 +124,16 @@ class OnPremiseLicenseSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     days_left = serializers.SerializerMethodField()
     latest_usage = serializers.SerializerMethodField()
+    issued_by_code = serializers.CharField(source="issued_by.staff_code", read_only=True, default=None)
+    approved_by_code = serializers.CharField(source="approved_by.staff_code", read_only=True, default=None)
+    paid = serializers.SerializerMethodField()
 
     class Meta:
         model = OnPremiseLicense
         fields = [
             "id", "hospital", "hospital_name", "license_id", "tier", "issued_at", "expires_at", "grace_period_days",
             "features", "deployment_id", "enabled_modules", "max_active_users", "max_beds", "machine_fingerprint", "issued_by_email",
-            "revoked_at", "revoke_reason", "status", "days_left", "latest_usage",
+            "revoked_at", "revoke_reason", "status", "days_left", "latest_usage", "issued_by_code", "approved_by_code", "paid",
         ]
         read_only_fields = fields
 
@@ -138,6 +141,11 @@ class OnPremiseLicenseSerializer(serializers.ModelSerializer):
         from django.utils import timezone
 
         return (obj.expires_at - timezone.now()).days
+
+    def get_paid(self, obj):
+        from .licence_controls import has_paid_invoice
+
+        return has_paid_invoice(obj)
 
     def get_latest_usage(self, obj):
         reports = list(obj.usage_reports.all()[:1])  # prefetched, newest first
@@ -176,3 +184,29 @@ class GenerateLicenseSerializer(serializers.Serializer):
             raise serializers.ValidationError({"machine_fingerprint": 'Paste the 64-character fingerprint from get_machine_fingerprint, or "*" for any machine.'})
         attrs["machine_fingerprint"] = fingerprint
         return attrs
+
+
+class LicenseRequestSerializer(serializers.ModelSerializer):
+    hospital_name = serializers.CharField(source="hospital.name", read_only=True)
+    requested_by_code = serializers.CharField(source="requested_by.staff_code", read_only=True)
+    requested_by_email = serializers.CharField(source="requested_by.email", read_only=True)
+    decided_by_code = serializers.CharField(source="decided_by.staff_code", read_only=True, default=None)
+    license_id = serializers.CharField(source="license.license_id", read_only=True, default=None)
+
+    class Meta:
+        model = LicenseRequest
+        fields = ["id", "hospital", "hospital_name", "params", "status", "requested_by_code", "requested_by_email",
+                  "decided_by_code", "decided_at", "decision_note", "license", "license_id", "created_at"]
+        read_only_fields = fields
+
+
+class SaaSStaffSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    name = serializers.CharField(source="get_full_name")
+    staff_code = serializers.CharField()
+    saas_role = serializers.CharField()
+    saas_role_label = serializers.CharField(source="get_saas_role_display")
+    can_issue_licenses = serializers.BooleanField()
+    is_blocked = serializers.BooleanField()
+    is_2fa_enabled = serializers.BooleanField()

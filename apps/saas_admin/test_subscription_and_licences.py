@@ -14,9 +14,9 @@ from apps.saas_admin.models import OnPremiseLicense, TenantInvoice, TenantSubscr
 
 @pytest.fixture
 def saas_client(db):
-    client = APIClient()
-    client.force_authenticate(user=User.objects.create_user(email="owner@platform.example", password="x", is_saas_admin=True))
-    return client
+    from apps.licensing.tests import make_saas_client
+
+    return make_saas_client()
 
 
 # --- the hospital's own subscription (SaaS) -----------------------------------
@@ -81,7 +81,7 @@ def test_usage_report_round_trip(keypair, onprem, settings, saas_client, auth_cl
     # 1. Polynexus issues a licence (SaaS side).
     settings.DEPLOYMENT_MODE = "saas"
     issued = saas_client.post(f"/api/v1/saas-admin/hospitals/{hospital.pk}/generate-license/",
-                              {"features": ["hms_core"], "machine_fingerprint": FP, "max_users": 25, "response": "json"}, format="json").data
+                              {"features": ["hms_core"], "machine_fingerprint": FP, "max_users": 25, "response": "json", "otp": saas_client.otp()}, format="json").data
     record = OnPremiseLicense.objects.get(pk=issued["id"])
 
     # 2. The hospital installs it and downloads a usage report (on-premise).

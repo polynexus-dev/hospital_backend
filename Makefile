@@ -19,7 +19,7 @@ BASE_IMAGES    := postgres:16-alpine redis:7-alpine
 BUNDLE_DIR     := dist/bundle-$(VERSION)
 DEPLOY_FILES   := docker-compose.yml env.template install.sh install.ps1 upgrade.sh upgrade.ps1 configure-domain.sh configure-domain.ps1 backup.sh RUNBOOK.md README.md
 
-.PHONY: build build-backend build-frontend test test-backend test-frontend bundle clean
+.PHONY: build build-backend build-frontend test test-backend test-frontend bundle revocations clean
 
 build: build-backend build-frontend
 
@@ -37,7 +37,7 @@ test-backend:
 test-frontend:
 	cd $(FRONTEND_DIR) && npm ci && npx vitest run
 
-bundle: build
+bundle: revocations build
 	rm -rf $(BUNDLE_DIR)
 	mkdir -p $(BUNDLE_DIR)
 	for img in $(BASE_IMAGES); do docker pull --platform $(PLATFORM) $$img; done
@@ -47,6 +47,17 @@ bundle: build
 	chmod +x $(BUNDLE_DIR)/install.sh $(BUNDLE_DIR)/upgrade.sh $(BUNDLE_DIR)/configure-domain.sh
 	tar -C dist -czf dist/bundle-$(VERSION).tar.gz bundle-$(VERSION)
 	@echo "Bundle: dist/bundle-$(VERSION).tar.gz ($$(du -h dist/bundle-$(VERSION).tar.gz | cut -f1))"
+
+# Revoked licences stop working on a server once it upgrades to a release that
+# carries them. Download the list from the SaaS console (On-Premise Licences ->
+# Revocation list) before every release.
+revocations:
+	@if [ -f apps/licensing/revocations.lic ]; then \
+	  echo "Revocation list: apps/licensing/revocations.lic ($$(date -r apps/licensing/revocations.lic +%Y-%m-%d))"; \
+	else \
+	  echo "WARNING: no apps/licensing/revocations.lic - revoked licences will keep working on servers running this release."; \
+	  echo "         Download it from SaaS console -> On-Premise Licences -> Revocation list."; \
+	fi
 
 clean:
 	rm -rf dist

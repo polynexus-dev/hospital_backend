@@ -208,7 +208,15 @@ def main(argv=None, answers=None, out=sys.stdout):
     sub.add_parser("renew", help="Extend a licence's expiry, keeping its licence ID.").add_argument("file")
     args = parser.parse_args(argv)
 
-    commands = {"new": cmd_new, "verify": cmd_verify, "renew": cmd_renew}
+    if args.command in ("new", "renew"):
+        out.write(
+            "Issuing and renewing licences is done in the SaaS console (On-Premise Licences), where only\n"
+            "authorised staff can request them, a SaaS Owner approves each one with a 2FA code, and every\n"
+            "licence is recorded with who issued it. This tool only verifies licence files:\n"
+            "    python -m license_issuer verify <file>\n"
+        )
+        return 2
+    commands = {"verify": cmd_verify}
     try:
         commands[args.command](args, Prompter(answers, out), out)
     except (IssuerError, ValueError) as exc:

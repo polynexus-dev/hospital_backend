@@ -1,12 +1,11 @@
-"""Offline licence issuer — runs on the platform side only.
+"""Licence file checker (platform side).
 
     cd Backend/tools
-    python -m license_issuer new
     python -m license_issuer verify license.lic
-    python -m license_issuer renew license.lic
 
-The signing key comes from LICENSE_SIGNING_KEY (PEM text),
-LICENSE_SIGNING_KEY_PATH, or --key-file — never from the repository.
+Issuing and renewing happen only in the SaaS console, so every licence is
+authorised, approved by a SaaS Owner with 2FA, and recorded with its issuer.
+The signing key lives only on the SaaS server.
 """
 import sys
 from pathlib import Path

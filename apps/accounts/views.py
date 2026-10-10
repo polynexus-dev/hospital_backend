@@ -274,10 +274,14 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         target = self.get_object()
         if target.pk == request.user.pk:
             return Response({"detail": "You cannot block your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        from .authentication import end_all_sessions
+
         target.is_blocked = True
         target.blocked_reason = str(request.data.get("reason", ""))[:255]
-        target.save(update_fields=["is_blocked", "blocked_reason"])
-        gov.log_security_event(SecurityEvent.EventType.USER_BLOCKED, request=request, user=target, details={"by": request.user.email, "reason": target.blocked_reason})
+        target.can_issue_licenses = False
+        target.save(update_fields=["is_blocked", "blocked_reason", "can_issue_licenses"])
+        ended = end_all_sessions(target)  # effective now, not when their tokens expire
+        gov.log_security_event(SecurityEvent.EventType.USER_BLOCKED, request=request, user=target, details={"by": request.user.email, "reason": target.blocked_reason, "sessions_ended": ended})
         return Response(UserSerializer(target).data)
 
     @action(detail=True, methods=["post"])

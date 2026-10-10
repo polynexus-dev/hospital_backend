@@ -85,6 +85,8 @@ class SecurityEvent(models.Model):
         SUPPORT_ACCESS = "support_access", "Platform support access"
         SAAS_ACCESS_CHANGED = "saas_access_changed", "SaaS account access changed"
         PERMISSIONS_CHANGED = "permissions_changed", "Permissions changed"
+        LICENSE_ISSUED = "license_issued", "Licence requested, approved, issued or revoked"
+        LICENSE_ALERT = "license_alert", "Licence security alert"
 
     class Severity(models.TextChoices):
         INFO = "info", "Info"

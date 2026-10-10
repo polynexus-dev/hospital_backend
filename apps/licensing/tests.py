@@ -181,17 +181,29 @@ def test_licensed_modules_limit_the_hospital(onprem, keypair, hospital):
 
 # --- SaaS side: issuing ----------------------------------------------------
 
+def make_saas_client(email="owner@platform.example", **extra):
+    """A logged-in Polynexus staff client with 2FA; client.otp() is a valid code.
+    Defaults to a SaaS Owner (is_saas_admin with no role means Owner)."""
+    import pyotp
+
+    secret = pyotp.random_base32()
+    user = User.objects.create_user(email=email, password="x", is_saas_admin=True, is_2fa_enabled=True, totp_secret=secret, **extra)
+    client = APIClient()
+    client.force_authenticate(user=user)
+    client.user = user
+    client.otp = lambda: pyotp.TOTP(secret).now()
+    return client
+
+
 @pytest.fixture
 def saas_client(db):
-    client = APIClient()
-    client.force_authenticate(user=User.objects.create_user(email="owner@platform.example", password="x", is_saas_admin=True))
-    return client
+    return make_saas_client()
 
 
 @pytest.mark.django_db
 def test_saas_issues_downloads_and_revokes(keypair, saas_client, hospital):
     url = f"/api/v1/saas-admin/hospitals/{hospital.pk}/generate-license/"
-    body = {"duration_days": 365, "features": ["hms_core", "crm"], "machine_fingerprint": FP.upper(), "max_users": 50, "max_beds": 100}
+    body = {"duration_days": 365, "features": ["hms_core", "crm"], "machine_fingerprint": FP.upper(), "max_users": 50, "max_beds": 100, "otp": saas_client.otp()}
     res = saas_client.post(url, body, format="json")
     assert res.status_code == 200 and res["Content-Disposition"].endswith('.lic"')
 
@@ -212,7 +224,7 @@ def test_saas_issues_downloads_and_revokes(keypair, saas_client, hospital):
 def test_issuing_without_signing_key(settings, saas_client, hospital):
     settings.LICENSE_SIGNING_KEY = settings.LICENSE_SIGNING_KEY_PATH = ""
     res = saas_client.post(f"/api/v1/saas-admin/hospitals/{hospital.pk}/generate-license/",
-                           {"features": ["hms_core"], "machine_fingerprint": "*"}, format="json")
+                           {"features": ["hms_core"], "machine_fingerprint": "*", "otp": saas_client.otp()}, format="json")
     assert res.status_code == 503
 
 

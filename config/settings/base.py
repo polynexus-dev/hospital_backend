@@ -296,7 +296,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # JWT, re-checked on every request so blocking someone ends their access at once.
+        "apps.accounts.authentication.ActiveUserJWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
@@ -592,6 +593,17 @@ PUBLIC_APP_URL = env("PUBLIC_APP_URL", default="http://localhost:3000")
 WHATSAPP_PROVIDER = env("WHATSAPP_PROVIDER", default="stub")
 SMS_PROVIDER = env("SMS_PROVIDER", default="stub")
 EMAIL_PROVIDER = env("EMAIL_PROVIDER", default="stub")
+
+# Plain SMTP for staff notifications sent with django.core.mail (e.g. SaaS
+# Owners are emailed about every licence request and issue).
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Polynexus <no-reply@polynexus.in>")
 
 # Only used when WHATSAPP_PROVIDER=aws (AWSEndUserMessagingWhatsAppProvider).
 # AWS credentials themselves come from boto3's standard credential chain

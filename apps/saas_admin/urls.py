@@ -2,6 +2,8 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    LicenseRequestViewSet,
+    SaaSStaffViewSet,
     MyInvoicePdfView,
     MySubscriptionView,
     OnPremiseLicenseViewSet,
@@ -20,6 +22,8 @@ router.register("saas-admin/subscriptions", TenantSubscriptionViewSet, basename=
 router.register("saas-admin/invoices", TenantInvoiceViewSet, basename="tenantinvoice")
 router.register("saas-admin/usage-snapshots", TenantUsageSnapshotViewSet, basename="tenantusagesnapshot")
 router.register("saas-admin/licenses", OnPremiseLicenseViewSet, basename="onpremiselicense")
+router.register("saas-admin/license-requests", LicenseRequestViewSet, basename="licenserequest")
+router.register("saas-admin/staff", SaaSStaffViewSet, basename="saasstaff")
 router.register("saas-admin/tickets", SaaSSupportTicketViewSet, basename="saas-support-ticket")
 router.register("support-tickets", SupportTicketViewSet, basename="support-ticket")
 

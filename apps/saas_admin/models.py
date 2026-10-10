@@ -201,6 +201,7 @@ class OnPremiseLicense(TimeStampedModel):
     payload = models.JSONField()
     license_file = models.TextField(editable=False)
     issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     revoked_at = models.DateTimeField(null=True, blank=True)
     revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     revoke_reason = models.CharField(max_length=255, blank=True)
@@ -231,3 +232,29 @@ class LicenseUsageReport(TimeStampedModel):
 
     def __str__(self):
         return f"{self.license.license_id} usage @ {self.generated_at:%Y-%m-%d}"
+
+
+class LicenseRequest(TimeStampedModel):
+    """Two-person rule for on-premise licences: a licence manager requests,
+    a SaaS Owner approves (with a fresh 2FA code) before anything is signed."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Waiting for approval"
+        APPROVED = "approved", "Approved and issued"
+        REJECTED = "rejected", "Rejected"
+        CANCELLED = "cancelled", "Cancelled"
+
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="license_requests")
+    params = models.JSONField(help_text="The licence terms requested (features, limits, dates, machine).")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.CharField(max_length=255, blank=True)
+    license = models.OneToOneField(OnPremiseLicense, on_delete=models.SET_NULL, null=True, blank=True, related_name="request")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Licence request #{self.pk} for {self.hospital.name} ({self.get_status_display()})"
