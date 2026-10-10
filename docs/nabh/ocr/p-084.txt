@@ -1,0 +1,37 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The HIS/EMR vendor provides maintenance and user support in a timely manner
+Core b. . . .
+with clearly defined service level agreements (SLAs).
+The system shall ensure continuous functionality and prompt issue resolution. This
+should include regular updates, patches, and responsive customer support. The
+HIS/EMR vendor shall define service level agreement (SLA) with healthcare
+providers and track performance against these SLAs on a regular basis. Maintenance
+of an application should include several critical aspects such as performance
+monitoring, memory management, ensuring system availability and adequate
+documentation (user manual, design documents, code change history, installation
+guides, API services documents, etc.) of the application.
+Additionally, skilled IT support staff should be available to provide guidance, perform
+regular application maintenance, address technical issues, and ensure secure and
+smooth system operation. Support channels can include in application support,
+email, online messaging platform, or phone support.
+Levels of support, support process and resolution time should be clearly defined by
+Interpretation [NINE AUIE
+LO Support: Well defined self-help process
+L1 Support: Base end-user support (for functionality or technical issues)
+L2 Support: Support related to system or admin configuration requirements or issues.
+Needs deeper expertise in handling technical problems, technology, and product
+L3 Support: Support related to software bugs or changes in software deployment.
+Needs in-depth expertise in computer hardware, software, system architecture, and
+network configurations. Tasks include diagnosing intricate software bugs, optimizing
+system performance, and addressing hardware issues.
+By adhering to well defined SLAs and support practices, the vendor can ensure
+reliable and efficient support to healthcare organizations. In many cases, LO and L1
+support can be managed by the healthcare organization themselves, whereas the
+HIS/EMR vendor can provide L2 and L3 support for the product.
+Standard
+poms The system captures and manages critical incidents.
+Objective Elements
+Corea The system has the capability to log critical security incidents and events
+: information.
+|| Core || Commitment || Achievement || Excellence

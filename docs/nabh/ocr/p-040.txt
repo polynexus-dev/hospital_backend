@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+The system manages patient feedback, experience and complaints.
+Objective Elements
+. The system has the capability to receive feedback and complaints from the
+Commitment a. : .
+patients/family members.
+The system should have the ability to capture patient feedback using online
+surveys. These surveys can be rolled out to patients during and after their visit or
+stay.
+The system should also allow the sharing of the questionnaires to patients on their
+mobile numbers, online messaging platform, SMS, or email for their feedback on
+these surveys and perform a rating analysis based on the following-
+Patient Satisfaction Score: The feedback form should, at a minimum, include
+the following five questions (but not be limited to), to be rated on a 5-point scale:
+1. How would you rate your overall experience at the hospital
+2. How would you rate the quality of care including doctor consultation,
+nursing care, etc. you received
+3. How would you rate the healthcare staff's clarity of communication and
+Interpretation explanation of the treatment plan
+4. How would you rate the hospital environment including cleanliness and
+amenities
+5. How would you rate the ease of registration/discharge processes
+The system should also have the capability to share the feedback form (as a URL
+or QR code) with the registered mobile numbers of the patients for collecting their
+feedback.
+Collecting patient feedback is important for healthcare organizations to
+continuously improve their service delivery and patient satisfaction.
+In case of complaints, the records of resolution of the complaints shall be captured
+by the system.
+Achievement b. The system analyzes the feedbackreceived and generates reports/ updates
+dashboards.
+|| Core || Commitment || Achievement || Excellence

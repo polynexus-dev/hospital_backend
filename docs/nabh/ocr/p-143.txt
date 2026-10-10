@@ -1,0 +1,68 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Annexure-6 Few Examples of Notifications/ Contraindicative Tests Alerts
+Examples of Notifications/ Contraindicative Tests Alerts
+Patient Medical Prescribe . eae
+Case 7” . Possible Effects Notification
+Condition History d Tests
+Risk of radiation Patient is pregnant.
+X-rays or X-ray or exposure to the Consider alternative
+Pregnant . . . .
+CT scans ; CT scan foetus, leading to imaging modalities or
+. ; woman in :
+1 involving Pregnancy for potential postpone the procedure,
+. her second . . .
+radiation tri ti suspected | developmental if possible, to avoid fetal
+rimester
+exposure injury abnormalities or radiation exposure.
+harm.
+Patient has severe kidney
+Magnetic MRI with Risk of nephrogenic impairment. Use of
+Resonanc_ | Severe . . contrast systemic fibrosis due contrast dye may increase
+. . Patient with . .
+elmaging | kidney for to contrast dye, the risk of nephrogenic
+2 . . . end-stage . . . — .
+(MRI) with | impairmen | di evaluation | leading to potentially | systemic fibrosis.
+renal disease
+contrast t of spinal life-threatening Consider alternative
+dye injury condition. imaging techniques or
+non-contrast MRI.
+Patient has a severe
+| . allergy to iodine or
+Risk of anaphylactic .
+Coronary . shellfish. Use of contrast
+Severe . reaction to contrast
+. angiograp . dye may lead to
+Coronary | allergic Known dye, leading to severe . .
+. , hy for . anaphylactic reaction.
+3 angiograp | reactions allergy to . allergic response and . .
+oa. evaluation | Consider alternative
+hy to iodine contrast dye potential . .
+. of chest | diagnostic tests or pre-
+or shellfish | cardiovascular .
+pain treatment with
+collapse. a. .
+antihistamines and
+corticosteroids.
+Risk of radiation Patient is pregnant.
+Mammogr
+Pregnant fi exposure to the Postpone mammography
+am for
+Mammogr woman in foetus, potentially until after pregnancy to
+Pregnancy . breast J ; .
+aphy her first causing avoid potential harm to
+cancer
+trimester . developmental the fetus from radiation
+screening .
+abnormalities or harm | exposure.
+Asymptomati PSA test Risk of false-positive Patient has a low risk of
+es
+Prostate- L isk of c male with fi results leading to prostate cancer. Consider
+ow risk 0 or
+specific no family unnecessary biopsies | the potential risks and
+5 . prostate . prostate . . .
+antigen history of and treatment with benefits of PSA testing,
+cancer cancer . . . as
+(PSA) test prostate . potential adverse including false-positive
+screening
+cancer effects.

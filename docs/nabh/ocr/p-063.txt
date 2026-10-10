@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+conse The system supports patient services in remote settings.
+Objective Elements
+: The system has the capability to offer remote/virtual clinical consultations to
+Achievement a. :
+patients when needed.
+The system shall assist medical practitioners in providing virtual consultations to
+patients at remote locations. These remote consultations can be provided through
+a variety of modalities e.g., desktop/laptop or mobile applications (including video
+conferencing / instant messaging) based on the available regulatory guidelines.
+. The system should also have the facility to record the consultation sessions.
+Interpretation
+One of the ways this can accomplished is by Unified Health Interface (UHI) which
+is a network of open protocols that enable interoperability in health services. UHI
+is one of the foundational layers in the Ayushman Bharat Digital Mission (ABDM)
+stack that focuses on the discoverability and delivery of health services.
+Excellence b. | The system supports effective homecare services.
+The system shall assist healthcare organizations to digitally manage homecare
+Cciiclmm services. The system should facilitate booking and monitoring of homecare
+services, billing management and collection of patient feedback.
+Standard
+cop.11 The system manages the assessment and re-assessment of patients
+— availing rehabilitation services.
+Objective Elements
+The system supports functional assessment and re-assessment of patients who
+Excellence a. . eee ae .
+avail rehabilitation services.
+The system shall support functional assessments and reassessments for patients
+undergoing rehabilitation services, including physiotherapy, occupational therapy,
+Interpretation speech therapy, and clinical psychology. These assessments are conducted
+using functional assessment scales, incorporated into the healthcare
+organization's system.
+|| Core || Commitment || Achievement || Excellence

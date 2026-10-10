@@ -1,0 +1,49 @@
+NABH Standards for HIS and EMR Systems
+NABH
+for a patient to see a specialist for a specific medical
+service.
+
+62 | Rehabilitation services Rehabilitation services are a broad range of diagnostic,
+therapeutic, and supportive services that help individuals
+recover and improve their physical, sensory, and mental
+capabilities that have been lost or impaired as a result of
+disease, injury, or treatment. These services are designed
+to help patients return to normal life as much as possible
+by regaining their independence and becoming self-
+sufficient.
+
+63 | Role-based access control (RBAC) | Role-based access control (RBAC) is a system that limits
+access to resources based on a user's role within an
+organization. RBAC systems assign access and actions to
+users based on their job roles and designations, and
+everyone with a given role has the same rights. This
+approach can help protect sensitive data from improper
+access and misuse, while also ensuring that employees
+have the information, they need to do their jobs.
+
+ROTA A ROTA is used for workforce scheduling. It is a list or plan
+showing when each employee is supposed to work or be on
+duty.
+
+65 | SANS SANS is the most trusted and largest source for information
+security training and security certification in the world.
+
+Sentinel event A sentinel event is an unexpected occurrence ina
+healthcare setting that results in death or serious physical
+or psychological injury to a patient, or the risk thereof.
+
+67 | Service delivery channel Service delivery channels are the ways that patients
+interact with healthcare organisations, such as phone,
+email, chat, self-service, social media, or face-to-face.
+
+Single sign on Single sign-on (SSO) is a technology that enables users to
+authenticate themselves
+once, using one set of login credentials, to gain access to
+multiple applications and
+systems.
+
+SLA SLA stands for service level agreement. It refers to a
+commitment between a service provider and a client,
+including details of the service, the standards the provider
+must adhere to, and the metrics to measure the
+performance.

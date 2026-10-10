@@ -1,0 +1,28 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall be able to request the latest status information for specific payor
+transactions - Coverage Eligibility, PreAuthorization and Claims. To enable this
+functionality, the system should be able to:
+Interpretation e Send Status Check Requests to the payor for specific payor transactions.
+e Receive and process status responses from the payor and update the status
+of the request.
+e Protect Patient Information throughout the information exchange process.
+(oToyTiissimme| |The system notifies the patients about the status of their claims.
+The system shall have the capability of sending notifications to patients regarding
+Interpretation their claim status. These notifications can be sent by SMS, email, online
+messaging platform or made accessible through the patient portal.
+The system receives payment reconciliation communication from the payor and
+Excellence g. .
+responds to it.
+The system shall be able to receive payment reconciliation information from the
+payor, which allows healthcare organizations to keep track of the payment
+settlements for each adjudicated claim.
+Interpretation To enable this functionality, the system should be able to:
+e Receive a payment reconciliation notice from the payor.
+e Process and respond to the payment reconciliation notice with the status.
+e Safeguards the privacy and security of patient information during the information
+exchange.
+: The system shows relevant dashboard(s) of all pre-authorization and claim
+Commitment h.
+statuses.
+|| Core || Commitment || Achievement || Excellence

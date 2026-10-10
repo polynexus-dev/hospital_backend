@@ -1,0 +1,72 @@
+# Turnkey on-premise stack. Images come from the platform's private registry;
+# run ./install.sh for first-time setup.
+name: hms
+
+x-backend: &backend
+  image: ${REGISTRY:-registry.polynexus.in/hms}/hms-backend:${HMS_VERSION:-latest}
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://${POSTGRES_USER:-hms}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hms}
+    CACHE_URL: redis://redis:6379/1
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/0
+    # The machine fingerprint must identify this server, not the container.
+    LICENSE_HOST_ROOT: /host
+  volumes:
+    - ./license:/app/license
+    - /etc/machine-id:/host/etc/machine-id:ro
+    - /sys/class/dmi/id/product_uuid:/host/sys/class/dmi/id/product_uuid:ro
+    - ./media:/app/media
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  backend:
+    <<: *backend
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "config", "worker", "--beat", "--loglevel=info"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hms}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hms}
+      CACHE_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      LICENSE_HOST_ROOT: /host
+      RUN_MIGRATIONS: "0"
+
+  frontend:
+    image: ${REGISTRY:-registry.polynexus.in/hms}/hms-frontend:${HMS_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hms}
+      POSTGRES_USER: ${POSTGRES_USER:-hms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

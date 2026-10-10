@@ -1,0 +1,55 @@
+Zz
+s Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =x
+7 Monitoring on
+4
+2
+Ss
+benefits so as to The denominator shall Si
+enable the Number of include the total number of a
+patient to make discharges patients discharged until o
+an informed and deaths midnight of the last day of the s
+decision of calendar month. =
+his/her health z=
+care no
+5
+To capture this, the organization | The system shall calculate 2
+should maintain a register in the the number of stock outs of m
+pharmacy and stores (and also, emergency medications. In E
+if necessary, in the wards) case the system does not Oo
+wherein all such events are capture this value, there <
+A stock-out is an captured. The organization shall | should be a provision for ES
+event that occurs capture the number of instances. | entering the manually 3
+when an item In one instance, it is possible collected data 7)
+Number of | listed as an Number of . that there was a stock-out of
+26 PSQ 3c omer ‘ong iC emergency omer ‘eng cc Number Monthly more than one emergency drug.
+ae ti y medication by di geney For example, if on the 7th there
+medications the organization rugs was an instance of stock out of
+is not available in two emergency drugs and on
+the organization. 24th there was an instance of
+stock out of one emergency
+drug, the value of the indicator
+would be two.
+Sampling: No
+A mock aril 'sa To capture the variation, it is Considering the challenges
+° suggested that every of data capture for this
+exercise of a 7 arn
+reparedness for organization develop a checklist indicator through the system,
+Pp to capture the events during a there should be a provision
+any type of event. , f :
+It could be an mock drill. This shall also include | for entering the manual/
+Number of 4 tabletop exercises. electronically collected (app/
+iati event or disaster. | Total number of online forms) data.
+27 PSQ 3d variations | This is basically a | variations in a Number Monthly :
+observed in | dry run or mock drill Sampling: No
+mock drills preparedness pling:
+drill.
+For example, Fire
+-mock drill,
+disaster drill,
+Code Blue Drill.
+z
+>
+wo
+=x
+4

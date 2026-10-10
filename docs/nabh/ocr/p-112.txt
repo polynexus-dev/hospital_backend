@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+The system has the capability to support NABH defined key
+performance indicators and analytical dashboards
+Objective Elements
+Commitment a The system electronically computes and publishes Key Performance Indicators
+(KPIs) per NABH accreditation standards for hospitals and healthcare organizations.
+The system captures relevant patient and administrative data, and computes KPIs
+as per NABH accreditation standards for hospitals.
+The system must have the ability to compute the KPls based on end-user defined
+periods (start/end dates) and export the KPIs and underlying computation to end
+. users for further analysis (in JSON, .csv, .xml, .xls, .pdf formats).
+Interpretation
+The list of KPls to be computed by HIS/EMR system based on NABH accreditation
+standards is given in Annexure-8.
+The format for exporting KPI data to NABH is given in ‘Resource’ folder on NABH
+portal. Link to report format
+ee us tes
+Commitmentp The system electronically computes and publishes Key Performance Indicators
+=) (KPIs) per NABH Digital Health Standard (DHS).
+The system has the capability of capturing relevant patient and administrative data,
+and computing KPls as per NABH Digital Health Standard (DHS).
+The system must have the ability to compute the KPls based on end-user defined
+periods (start/end dates) and export the KPIs and underlying computation to end
+A users for further analysis (in JSON, .csv, .xml, .xls, .pdf formats).
+Interpretation
+The list of KPIs to be computed by HIS/EMR system based on NABH Digital health
+standards is given in Annexure-9.
+The format for exporting KPI data to NABH is given in ‘Resource’ folder on NABH
+portal. Link to report format
+emery reas Type
+The system has the capability to publish NABH KPIs data every quarter as per the
+UU format defined by NABH.
+|| Core || Commitment || Achievement || Excellence

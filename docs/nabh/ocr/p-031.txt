@@ -1,0 +1,23 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Coreyiiiiiaimmn| Ihe system appends radiology reports.
+A patient may visit radiology multiple times for multiple tests. The reports from
+Interpretation these multiple tests will be prepared at different times. The system should have
+the capability to append all the radiology reports.
+Excellence g. The system has the capability to book radiology test appointment slots based on
+equipment and staff availability.
+The ability to conduct radiology tests is dependent on the availability of radiology
+equipment and qualified staff. The system should be able to book radiology tests
+based onthe radiology equipment and staff availability along with the patient's
+cedeiciieimmm clinical condition.
+Such functionalities help in the optimal use of radiology equipment and staff and
+reduce wait time for patients.
+Core h. The system generates a non-editable final report once it is signed by the radiologist.
+The system shall have the capability to generate a final report with the ability of the
+iteyeciielime radiologist to sign the report. Final reports generated and signed by the radiologist
+shall not be editable.
+Corvin he system flags the amended radiology reports issued by the radiologist.
+The system shall have the capability to edit the final report and issue an amended
+Interpretation report to the patient. The system shall be able to maintain an audit trail of all
+original and revised reports.
+|| Core || Commitment || Achievement || Excellence

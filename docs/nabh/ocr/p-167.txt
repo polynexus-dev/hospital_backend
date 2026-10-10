@@ -1,0 +1,51 @@
+Zz
+Frequency of e
+Standard Definition cli BS EME astm =x
+collation/ Guide
+Monitoring 2
+Ss
+Ophthalmology s
+a O
+If it is possible to A
+Post ti retrieve data from Q
+ostoperative HIS/EMR, the data
+endophthalmitis is an Number of cases of shall be captured z
+inflammatory condition postoperative | through the system. 2
+of the eye, presumed to endophthalmitis Rate (per However, et
+Postoperative | be due to an infectious honda Mandatory if the Shallonges of data m
+PSQ3a_ | Endophthalmit | process from bacteria, X100 ophthalmic Monthly —_| specialty is in the capture for this E
+is rate fungi, or, on rare at eries Scope indicator through the o
+occasions, parasites Total no of Ophthalmic 9 system, there should a
+that enter the eye . P be a provision for @
+. surgeries entering the manual/ 3
+during the electronically ©
+perioperative period collected (app/
+online forms) data
+Gastroenterology
+Minimal Sedation
+(Anxiolysis) - A drug-
+induced state during
+which patients respond | No. of patients sedated ;
+normally to verbal for the colonoscopy Optional If it is possible to
+commands. Although rocedure retrieve data from
+cognitive function and p implementing HIS/EMR, the data
+coordination may be ‘ shall be captured
+impaired, ventilatory Endoscopy will be through the system
+Percentage of and cardiovascular alee However,
+patients functions are Total number of patients practice, However, Consi dering the
+undergoing unaffected undergoing the indicator pertains challenges of data
+PSQ 3a . X100 Percentage Monthly to Colonoscopy only
+Colonoscopy . Colonoscopy capture for this
+h Moderate sedation as_ advised by the indicator through the
+wno are (Analgesia) - Indicates American Association system, there should
+sedated a drug-induced of Gastroenterology. bea provision for
+consciousness durin This includes all_—_| entering the manual
+hich patient om patients including electronically
+waicn patients respon: out-patient and collected (app/
+purposefully to verbal daycare. online forms) data.
+commands, either
+alone or accompanied 2
+by light tactile >
+stimulation. a
+=x
+4

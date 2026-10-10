@@ -1,0 +1,28 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+con The system provides a Clinical Decision Support System.
+Objective Elements
+Excellence a. The system supports Clinical Decision Support System (CDSS).
+Clinical Decision Support System (CDSS) plays a pivotal role in enhancing clinical
+decision-making, promoting patient safety, and facilitating effective risk
+assessment and management within healthcare organizations.
+By providing evidence-based recommendations, alerts, and guidelines, CDSS
+tools empower healthcare providers to make informed decisions, thereby
+tenets improving patient outcomes, reducing medical errors, and enhancing efficiency in
+care delivery processes.
+The system shall be equipped to offer CDSS functionality either internally or
+integrated with external CDSS systems. This functionality can be across a wide
+range of domains like diagnosis, drug prescriptions, and treatment planning.
+Refer Annexure-5 for a non-exhaustive list of common CDSS use cases.
+The system triggers alerts to medical practitioners whenever critical interventions
+Excellence b. .
+are required.
+The system shall provide alerts for critical scenarios such as duplicate therapy,
+drug interactions, allergy warnings, and other pertinent issues. By proactively
+eins identifying critical scenarios, the system significantly enhances patient safety.
+Refer Annexure-6 for a non-exhaustive list of Notifications/ Contraindicative Tests
+Alerts that can be raised by the system.
+Commitment c. The system triggers an alert for notifiable diseases as required by thealth
+department.
+|| Core || Commitment || Achievement || Excellence

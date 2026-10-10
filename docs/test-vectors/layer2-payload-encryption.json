@@ -1,0 +1,35 @@
+{
+  "_description": "Known-answer test vector for the Layer-2 payload encryption protocol (ECDH-P256 + HKDF-SHA256 + AES-256-GCM), generated from the server's own primitives (apps.core.payload_crypto). Use this to unit-test a new client implementation (Flutter/Dart, etc.) without needing a running server: if your port computes the same derived_aes_key_hex and can decrypt gcm2_token back to plaintext, it is byte-compatible with the server.",
+  "_warning": "These private keys are test-only and intentionally public. Never reuse this key material for anything real.",
+  "curve": "P-256 (secp256r1)",
+  "point_encoding": "X9.62 uncompressed point, urlsafe-base64 (no padding stripped)",
+  "hkdf": {
+    "hash": "SHA-256",
+    "salt": null,
+    "info_utf8": "hospital-crm-payload-v1",
+    "output_length_bytes": 32
+  },
+  "aead": {
+    "algorithm": "AES-256-GCM",
+    "nonce_length_bytes": 12,
+    "aad": null,
+    "token_format": "\"gcm2$\" + urlsafe_base64(nonce || ciphertext_with_tag)"
+  },
+  "client_private_key_int_hex": "0x1f3c2a7e5b9d4061a8c3f2e1d0b4a69783c5e2f1a0b9c8d7e6f5a4b3c2d1e0f1",
+  "server_private_key_int_hex": "0x7a6b5c4d3e2f1001a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081",
+  "client_public_key_b64u": "BOmLanZ9HGMCdUyCDjPcOfEWB5i3ow0PxZUTZd2WG52Cf-haBFzdfRNojwd4BRafJxl94S8SLxffG5iDPx5tIPo=",
+  "server_public_key_b64u": "BMyYZ3WbcI_d30MABFy4FRwGBFjXWzFaBeYNlefcjjHkup0in3Jo91twFwumrFHrbpRghwM5_L_FnqeozEcTamk=",
+  "shared_secret_hex": "4cd091d224a86371a7bbecd033ea8a4db55d09f2f93522f0cf85d342566e7e75",
+  "derived_aes_key_hex": "5c7929dc0d19626e02b1205975a134d321e5c48aa46ab4a02d35307b76a1481e",
+  "nonce_hex": "000102030405060708090a0b",
+  "plaintext_utf8": "{\"hello\":\"world\"}",
+  "gcm2_token": "gcm2$AAECAwQFBgcICQoLkMVPS7lokrFLuL4P84ux4QJUSqMs2FM5ts5cIEpJcLT0",
+  "how_to_use": [
+    "1. Derive a private key from client_private_key_int_hex on your target curve (P-256) -- or simply hardcode client_public_key_b64u / server_public_key_b64u and skip private-key derivation if your library only exposes point math, not scalar-to-keypair import.",
+    "2. Run ECDH between the client private key and server_public_key_b64u (or server private key + client_public_key_b64u) -- either direction must yield shared_secret_hex.",
+    "3. Run HKDF-SHA256(shared_secret, salt=empty, info='hospital-crm-payload-v1', length=32) -- must yield derived_aes_key_hex.",
+    "4. AES-256-GCM-decrypt gcm2_token's nonce+ciphertext with derived_aes_key_hex, no AAD -- must yield plaintext_utf8 exactly.",
+    "5. Optionally also AES-256-GCM-ENCRYPT plaintext_utf8 with derived_aes_key_hex and nonce_hex -- must yield the same ciphertext bytes embedded in gcm2_token (confirms your encrypt path, not just decrypt)."
+  ],
+  "generated_by": "Backend/apps/core/payload_crypto.py primitives, verified via a round-trip through the real decrypt_payload() function -- see docs/API_ENCRYPTION_GUIDE.md §9"
+}

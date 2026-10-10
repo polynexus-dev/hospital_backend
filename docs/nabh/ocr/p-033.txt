@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall have the capability to raise an alert/ notification if the test ordered
+is contraindicated in certain conditions, e.g. some tests are not suitable for
+. pregnancy, chest x-rays to be avoided for patients with pacemakers, tests not
+Interpretation : - . aye
+suitable for a specific gender, etc. The medical practitioner should also have the
+right to reject the alert based on the patient’s condition.
+This can substantially help in reducing medical errors.
+Core m. The system links the radiology report/s of the patient to their ABHA.
+The system shall link a patient’s radiology reports to their ABHA. Linking a
+patient’s radiology reports to their ABHA number/Address makes the information
+more shareable and helps healthcare providers to have a complete and accurate
+Interpretation understanding of a patient's health status, allowing them to make more informed
+decisions about diagnosis, treatment, and care planning.
+This corresponds to Milestone 2 (M2) of ABDM.
+. The system maintains a record of the tests that are outsourced to other radiology
+Commitment n. a. ; .
+centres and maintains a repository of their results.
+The system shall maintain a list of tests sent to external radiology centres and
+Interpretation maintain digital records of these tests. These tests should be clearly identifiable,
+and records of the reports should be maintained.
+Standard
+The system supports patient admissions.
+Objective Elements
+Core a. | The system configures rules/ workflow for patient admission.
+iciederelicelam There are different types of admissions. The system should be able to generate
+admission documents and configure admission rules accordingly:
+e Emergency admission
+|| Core || Commitment || Achievement || Excellence

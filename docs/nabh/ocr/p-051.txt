@@ -1,0 +1,49 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Objective Elements
+
+(eT -iaeee| The system maintains records of prospective donors.
+The system shall register and screen blood donors by creating a database at least
+for the rare blood groups like Bombay and O negative and securely stores donor
+information and medical histories. This database must be readily accessible to
+relevant healthcare staff during the screening process for potential donors. The
+database should also capture crucial details such as the frequency of blood
+
+irerpretation donations, blood grouping, compatibility screening results and blood component
+analysis.
+Digital systems help in streamlining the screening process e.g., to identify high-
+risk donors-based travel history and underlying health conditions. This ensures
+that only eligible donors are accepted and minimizes the risk of transfusion-
+transmitted infections.
+
+Category . .
+Commitment MEET! HIS Type Functional
+
+foreyiienil-yiiaieme! The system should support the calculation of turnaround time.
+The system should capture the start time (when the request is generated for the
+blood components) and end time (when the blood/blood component is cross-
+matched/ reserved and/or available for transfusion).
+
+Interpretation
+The system should enable capturing of any sub-activity involved in this process
+as defined in the organization’s policy and reasons for delay in issuing.
+
+Category . .
+Achievement Jaa EET HIS Type Functional
+
+PXe((cigesml he system manages the stock of blood and blood components.
+The system shall report the availability of blood units, promptly verify requisitions,
+and manage dispatch times efficiently. Such capabilities empower blood banks to
+effectively manage their inventory, track blood donations and transfusions, and
+
+Interpretation generate essential reports. The system should also manage the alerts for expiry,
+date and time of blood component formations. The system should also provide
+the records of blood discarded as per the blood discard policy of the healthcare
+organization.
+
+. The system supports safe transfusion of blood/blood components and captures
+
+Commitment c. . or
+
+blood transfusion related incidents.
+|| Core || Commitment || Achievement || Excellence

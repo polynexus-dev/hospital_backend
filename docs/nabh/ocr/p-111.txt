@@ -1,0 +1,38 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+e Implement upload, upgrade and deprecation and storage of LOINC codes by
+version into the system.
+e Populate applicable outbound FHIR data exchange messages with system
+supported LOINC codes.
+emery mess tps
+Achievement g. The system supports DICOM (Digital Imaging and Communications in Medicine)
+standards for imaging datasets.
+The system shall provide the functionality for medical professionals to view
+captured images from multiple modalities, radiologist reports, readings and
+annotations relevant to the encounter and historical images.
+Medical imaging plays an instrumental role in diagnostics and quality of care.
+With increasing use of medical imaging, access to medical images along with
+clinical data of patients helps physicians provide better care.
+The system shall support following DICOM related capabilities
+eee on e Support imaging visualization and storage of medical images
+e System should support modalities relevant to the medical specialties e.g.,
+Ultrasound for mother and childcare, X-Rays/MRI/CT for orthopedics (viewing
+capabilities required for regular PC/laptop screens)
+e Implement the following ABDM imaging resource profiles
+a) Disgnosticreportimaging
+b) Imaging Study
+Reference: https://www.nrces.in/standards/dicom
+Excallencaih’ The system supports SNOMED CT or NRCeS Drug Registry for coding of drugs
+and devices.
+The systems shall support use of SNOMEDCT or NRCeS Drug Registry for coding
+of drugs and devices. These terminologies enable healthcare systems to accurately
+identify and exchange information about medications and medical devices.
+The system shall support the following Drugs and Devices coding related
+capabilities:
+Meuse © 'mplement upload, upgrade and deprecation and storage of drug codes by
+version into the system.
+e Implement coding of prescriptions through application user interface, backend
+matching services or through dedicated medical coding service modules.
+e Populate applicable outbound FHIR data exchange messages with system
+supported drug codes.
+|| Core || Commitment || Achievement || Excellence

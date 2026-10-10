@@ -1,0 +1,25 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Yellow: Borderline or cautionary results
+Red: Abnormal or critical results
+(oie ee The system flags the incorrect tests/ reports that need to be repeated.
+The system shall have the capability to flag a test for which an incorrect report has
+been issued. Insuch cases, a repeat test is required. After the repeat test, a new
+report can be generated.
+Interpretation
+In certain cases, the laboratory may be required to repeat a particular test. The
+system shall have the capability to flag such tests which are required to be
+repeated. This helps in improving the quality of laboratory tests and record keeping.
+. The system sends notifications to patients and medical professionals when their
+Commitment k.
+reports are ready.
+The system shall send notifications to the patients once the reports are ready.
+. This can be done through email, online messaging platform, SMS, or a notification
+Interpretation .
+on the patient portal.
+Coreyitiiuis eee [he system allows patients to view/download their reports.
+The system shall also have the capability to allow the patients to view/download
+their reports. A link to the reports should be sent to the patients by email, online
+Interpretation messaging platform, SMS, or patient portal. The link should provide secure access
+to patients to view and download their reports.
+|| Core || Commitment || Achievement || Excellence

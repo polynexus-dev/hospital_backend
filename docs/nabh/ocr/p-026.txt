@@ -1,0 +1,26 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+e Prefix: Specimen identifier starts with a department or location code (e.g.,
+“LAB” for the laboratory)
+e Sequential Number: A numeric portion that increments with each new
+specimen.
+e Date and Time Stamp: Include the collection date and time (e.g.,
+“LAB2105071230” for a sample collected on May 7, 2021, at 12:30 PM).
+Core c. The system tracks specimens.
+With a unique identifier assigned to each sample, lab technicians can easily track
+and manage the sample, improving efficiencies, and reducing the risk of mix-ups
+or errors. The key features of specimen tracking include splitting orders, progress
+Interpretation tracking, and data review & approval.
+Tracking allows increased visibility of the status of the sample, for example
+whether the sample has been processed rejected, or there is a mismatch, etc.
+—_ _ i“
+(ori aeam The system creates/ modifies templates for laboratory reports.
+The system shall have the capability to create , modify, and configure the reporting
+Interpretation templates for different specialties like biochemistry, microbiology, etc. and for
+provisional and final reports.
+(oreyiliiucaia-me |he system enables sample label printing.
+. As soon as the sample is collected, the system shall generate printable unique
+Interpretation
+labels for the samples.
+Commitment f. The system appends laboratory reports.
+|| Core || Commitment || Achievement || Excellence

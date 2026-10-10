@@ -1,0 +1,54 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+The system shall promptly alert and notify the relevant teams about the activation
+of various emergency codes. Emergency codes, such as Code Red, Yellow, Blue,
+Pink, and Black are commonly used in healthcare organizations to manage patient
+care during critical situations. The digital system could incorporate displays,
+announcements, notifications, and alerts through SMS and other online
+communication channels for the various emergency codes. The system should
+also provide protocols defined by the healthcare organization during the medical
+emergency codes announcement like code blue, code black etc.
+
+Some of the suggested ways by which systems can help manage or capture
+
+: emergency codes/ staff response are as below:
+Interpretation e By maintaining a list of team members/ respondents to the code and activating
+the mechanisms whenever a code is announced.
+
+e By maintaining a log or a record of different codes activated in a defined period
+and the respective corrective and preventive action taken thereof.
+
+e By integrating the healthcare organization's operations in the response system,
+for example, blocking of the healthcare organization’s exit doors in case code
+pink or code yellow is announced.
+
+The sample list of Emergency codes is given for guidance in Annexure 4.
+
+Standard
+coms The system supports Intensive care services.
+Objective Elements
+eatesory read ce
+Commitment a. The system supports the rational use of intensive care services by adopting
+appropriate admission and discharge criteria.
+
+The system shall ensure that intensive care resources are used efficiently and
+
+effectively. By implementing clear and evidence-based criteria for admitting
+
+patients to and discharging them from intensive care units (ICUs), the system aims
+to optimize the allocation of these critical resources.
+
+This feature can help to ensure that only patients who truly need intensive care
+
+’ receive it, thereby improving patient outcomes, reducing unnecessary healthcare
+Interpretation costs, and preventing the overburdening of ICU resources. This approach
+supports a more organized and judicious use of intensive care services, benefiting
+
+both patients and healthcare providers.
+
+The sample list of evidence-based criteria for admitting and discharging patients
+
+in ICU is given for guidance in Annexure 7
+
+|| Core || Commitment || Achievement || Excellence

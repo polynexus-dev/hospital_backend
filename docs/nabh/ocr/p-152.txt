@@ -1,0 +1,52 @@
+Zz
+Ss. ’ —_ Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+Monitoring 72)
+g
+complication For example, the data which is system, there should be a Qa
+resulting collated in early January provision for entering the =
+directly from the (assuming that the December manual/ electronically O
+index operation data is being reported) would collected (app/ online forms) 3
+during the same include surgeries done in the data. =
+admission. For month of November. =
+example, post- This also includes unplanned re- on
+operative exploration. This shall not =
+bleeding, include surgeries under LA. a
+debridement, Number of However, if any such patient m
+secondary patients who requires an unplanned return to | The system shall count the =
+suturing, underwent the OT, the same shall be total number of patients who a
+embolectomy, Surgeries In captured in the incident form. underwent surgeries in the D
+i the OT OT. <
+evaluation g
+under Sampling: No @O
+anesthesia etc. Fy
+Percentage of Number of This should be done by a
+surgeries surgeries prospective audit. The audit shall
+where the where the be done when the surgery is
+organization's WHO safe being performed. A person(s)
+procedure to surgery working in the OT complex Considering the challenges
+prevent checklist was could be entrusted with this of data capture for this
+adverse followed responsibility. It is preferable that | indicator through the system,
+events like the x00 | Percent Monthly the identity of the person there should be a provision
+7 psa3a_| Wrong site, Gy auditing is anonymized from the | for entering the manual/
+wrong patient, operating team. electronically collected (app/
+and wrong online forms) data.
+surgery have Lualbier Gi Sampling: Yes
+been surgeries that Sampling methodology:
+adhered to. were audited Stratified random (distributed
+across various days and
+operating surgeons).
+Any adverse on
+reaction to the The number of units includes
+transfusion of whole blood and components. The numerator shall be
+Percentage of | blood or blood Number of The denominator is the number captured through an incident
+8 PSQ3a_| transfusion components transfusion xtoo | Percent Monthly of units transfused and not the reporting module/software
+reactions shall be reactions age number of units issued from the (stand-alone or integrated
+considered as blood bank. with HIS/EMR system).
+transfusion z
+reaction. It may Sampling: No
+z
+1)
+wo
+=x
+4

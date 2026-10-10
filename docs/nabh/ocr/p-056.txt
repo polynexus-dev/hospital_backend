@@ -1,0 +1,32 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+The system has the capability to record the surgical/ procedure safety
+COP.6. as .
+checklist in operating rooms/wards/OPD.
+Objective Elements
+Achievement a. The system records procedure/ surgical safety checklist in operating
+rooms/wards/OPD.
+The system shall have the capability to assist healthcare organizations in
+recording a comprehensive surgical safety checklist within operating rooms or a
+Interpretation procedure checklist in various areas of the hospital to prevent adverse events like
+a wrong site, wrong patient and wrong procedure/surgery. The system should also
+capture the time stamp and name of the person filling the checklist.
+Achievement b. The system captures notes related to pre-operative assessment and patient
+preparation for surgeries.
+The system shall capture detailed information during pre-operative assessments
+and patient preparation for surgeries. This includes medical practitioner
+Interpretation clearance, documented consent from the patient, pre-anesthetic review and plan,
+arrangements for blood transfusion, and patient centric data comprising medical
+history, laboratory results, and imaging studies.
+SCC (lilememm The system maintains records of patient consent.
+The system shall have the capability to record patient consent for various healthcare
+activities, and procedures. Patient consent is a critical component of healthcare
+delivery, ensuring that patients are informed and empowered to make decisions
+A about their care. The system facilitates the documentation of patient consent for
+Interpretation f : . . oe :
+treatment, medical procedures, sharing of health information, participation in
+research studies, and other healthcare-related activities in alignment with statutory
+requirements. The system should mark the records belonging to a minor or patient
+with disability and obtain consent from the legal guardian.
+|| Core || Commitment || Achievement || Excellence

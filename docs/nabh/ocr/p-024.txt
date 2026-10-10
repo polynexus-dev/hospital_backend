@@ -1,0 +1,41 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+The healthcare organization requires a system to manage queues for various
+healthcare services such as patient registration, OPD, pharmacy, laboratory,
+radiology, etc.
+The system may be able to manage and monitor patient types like - scheduled
+visits, walk-in, new visits, revisits, etc.
+Scan and share are good options to manage queues in the OPD area of any
+healthcare facility. The patient can scan the QR code and share their demographic
+
+Interpretation details with the healthcare facility. Patients receive a token number against their
+transaction which is shared with the data entry operator of a Health facility. This
+makes patient registration faster and also reduces the chances of demographic
+error.
+A queue management system enables healthcare organization staff to monitor
+and control patient flow, assigning a digital token to track progress of queue
+Additionally, the system should have digital signage or display boards to provide
+patient’s real-time information about the digital token status.
+
+Excellence h. The system has the capability of queue management for various healthcare
+services.
+The healthcare organization requires a system to manage queues for various
+healthcare services such as patient registration, OPD, pharmacy, laboratory,
+radiology, etc.
+The system may be able to manage and monitor patient types like - scheduled
+
+. visits, walk-in, new visits, revisits, etc.
+
+Interpretation
+A queue management system enables healthcare organization staff to monitor
+and control patient flow, assigning a digital token to track progress of queue.
+Additionally, the system should have digital signage or display boards to provide
+patient's real-time information about the digital token status.
+
+. The system displays estimated patient waiting times for various healthcare
+
+Excellence i. .
+
+services.
+|| Core || Commitment || Achievement || Excellence

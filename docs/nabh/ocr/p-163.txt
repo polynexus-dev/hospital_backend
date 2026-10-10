@@ -1,0 +1,51 @@
+Zz
+s Frequency of fa
+. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+No Monitoring oO
+g
+Needlestick injury The denominator is the average | The number of needle stick Si
+is a penetrating Number of of the sum of the daily figures for injuries shall be captured a
+stab wound from | jeediestick the number of beds occupied by | through an incident reporting oO
+a needle (or other injuries patients. ; module/software (stand 3
+sharp objects) The rate will be monitored on a alone or integrated with =x
+that may result in monthly basis but reported HIS/EMR system). 2
+exposure to cumulatively i.e. in the form of on
+blood or other year to date. For example, in =
+body fluids. Average January it would be January The system shall calculate 2
+Rate of Needlestick peeinediseds Monthly on a | data but in February it would be | the average occupied beds. m
+30 PSQ3d_ | needlestick injuries are X1000 | Rate cumulative January + February data, in July =
+injuries wounds caused basis it would be data from January to 0
+by needles that July, and so on so that by the &
+accidentally end of the year the annual rate is Q
+puncture the skin. obtained. $
+a
+(Canadian Centre Sampling: No
+for Occupational
+Health and
+Safety)
+Handover is an important The system shall calculate
+communication tool used by the total number of
+healthcare workers. handovers done
+The data can be collated appropriately.
+Total number of together but it has to be Considering the challenges
+handovers captured separately for doctors of data capture for this
+done and nurses. indicator through the system,
+appropriately Handover documentation by there should be a provision
+each shift can be used as a for entering the manual/
+guide to capturing the electronically collected (app/
+information. online forms) data.
+Appropriate Percent- The handover information )
+31 PSQ 3d during shift X100 age Monthly shared shall consist of the
+change patient's current condition, The system shall caloulate
+Total number recent changes in condition, the total number of handover
+of handover ongoing treatment, and possible SO OTA based on the
+opportunities changes or complications. If the stal .
+organization is using a
+standardized handover template
+(for example SBAR), for the
+handover to be deemed
+appropriate, all the components
+need to be filled. Though the 2
+organization shall use all or none =
+=x
+4

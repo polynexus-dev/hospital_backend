@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Excellence i. The system has the capability to predict bed availability.
+From the data available in the system, the system shall be able to predict how the
+bed availability will change over the next few days / weeks.
+Interpretation
+This information can be very useful during extreme situations ( eg., during dengue
+outbreaks, pandemics) and for business / capacity planning purposes.
+Standard
+mace The system manages patient discharge and transfer processes.
+Objective Elements
+Core a. The system creates / modifies a discharge summary.
+The system shall have predefined templates for the discharge summary. The
+template for discharge summary should include (but not limited to):
+e Patient's name
+e Unique identification number
+e Name of the treating doctor
+e Date of admission and date of discharge
+: e Reasons for admission
+Interpretation
+¢ Significant findings, diagnosis and patient's condition at time of discharge
+e Information regarding investigation results
+e Any procedure performed
+e Medication administered
+e Any other treatment given
+Coreyiliticalaeme| The system shows the list of patients due for discharge.
+The system shall show the list of patients due for discharge on a daily basis. The
+discharges like LAMA, DAMA, and absconding shall be clearly marked in the
+Interpretation system and a notification regarding the same should be sent to the relevant
+departments and staff.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,29 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Panties Ihe system creates and manages training calendars for the staff.
+The system shall assist the human resource team to create and manage the training
+calendar for the staff. As per the healthcare organization policy, an annual training
+calendar can be planned for all the staff. These include trainings based on specific
+job descriptions, training on safety and quality and on-going professional training of
+, staff. Further, training needs can be identified during the performance evaluation
+
+Interpretation .
+process. This feature enables the human resource team to schedule and
+communicate upcoming training programs, workshops, and events effectively.
+Typically, this functionality allows planning and scheduling of training and provides
+information such as dates, topics, modes, pre-requisites and trainer information to
+the staff.
+
+(ereyiiiturcaimesa| Ihe system supports the scheduling of the training programs for the staff.
+
+The system shall capture the attendance along with post training evaluation for each
+staff. The system shall also have provisions to collect feedback on the effectiveness
+of training initiatives.
+
+Interpretation Human resource teams can use these reports to evaluate participation and the
+impact of training sessions. The human resource team can also generate
+customized reports based on criteria such as training type, date range, and staff
+attendance. This capability provides valuable insights for continuous improvement
+and strategic decision-making.
+
+|| Core || Commitment || Achievement || Excellence

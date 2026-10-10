@@ -1,0 +1,50 @@
+Zz
+Ss Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+" Monitoring on
+a
+Ss
+range from a Qa
+mild allergic =
+reaction Ty
+(including The denominator shall s
+chills/rigors) to Number of include the total number of =
+alife- units units transfused until =
+threatening transfused midnight of the last day of the no
+complication calendar month. =
+like TRALI and Qa
+Graft Versus m
+Host Disease. =
+Bs)
+2
+The system shall calculate a
+the total number of deaths in @
+Actual deaths all its ICUs until midnight of Fy
+in ICU the last day of the calendar
+Predicted death shall be Ents
+9 PSQ 3a Morality Ratio Rett® ently etc. The denominator shall be
+captured through the system.
+Sampling: No Considering the challenges
+i of data capture for this
+ares ICU indicator through the system,
+there should be a provision
+for entering the manual/
+electronically collected (app/
+online forms) data
+The system shall calculate
+Number of the total number of returns in
+returns to ICU all ICUs within 48 hours until
+within 48 hours This shall include data from all midnight ofthe last day of the
+Return to ICU ICUs within the organization,
+10 | PSQ3a_ | within 48 xtoo | Percent Monthly excluding HDUs.
+hours age The system shall calculate
+Number of Sampling: No the total number of
+discharges/tran : discharges/transfers from all
+sfers from the the ICUs until midnight of the
+ICU last day of the calendar
+month.
+z
+1)
+wo
+=x
+4

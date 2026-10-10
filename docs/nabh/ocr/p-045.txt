@@ -1,0 +1,43 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall have the capability for medical practitioners to view commonly
+prescribed medications and create order sets. The system should have a
+comprehensive medication database (drug names, dosage forms, routes,
+strengths, indications, contraindications, and potential side effects, as well as the
+categorization of medications into different classes or therapeutic categories). This
+: information assists medical practitioners in making informed decisions.
+
+Interpretation
+Order sets (also known as “abbreviated medication lists”) help to organize and
+automate the process of placing orders. To facilitate the creation of order sets,
+the system should offer pre established templates tailored for common medical
+conditions or procedures. These templates can then be personalized by medical
+practitioners to suit their specific needs and the needs of individual patients.
+
+Excellence d. The system provides details of the medications, radiology and diagnostics.
+
+The system shall have a feature that allows the medical practitioner to get details
+of medication, radiology, and laboratory orders e.g., know about type, dosage ,and
+specific instructions related to a prescribed order.
+
+Interpretation For example, a particular diagnostic test may carry information about the patient
+preparation, time of collection, site of collection, details or subcategories of the
+test deployed, expected report preparation time, etc. Similarly, a medication may
+carry details around differentstrengths and formulations available, potential side
+effects, potential contraindications, etc.
+
+Achievement e. The system has the capability to capture the digital signatures of treating medical
+practitioners.
+
+The system shall have the capability to deploy digital signatures to identify the
+treating medical practitioner and ensure the authenticity of medical records. Digital
+signature methods may include biometric authentication, one time password
+(OTP) generated digital signatures, or digital signature keys, which help obliterate
+
+Interpretation the need for a doctor to physically sign the documents.
+
+It is imperative to note that the copying/pasting of signatures onto records is
+permissible only with explicit permission from the respective medical practitioner.
+Digital signatures shall be time stamped for audit purposes.
+
+|| Core || Commitment || Achievement || Excellence

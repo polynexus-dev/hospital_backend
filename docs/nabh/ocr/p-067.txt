@@ -1,0 +1,29 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Standard
+The system maintains inventory records for medicines and consumables
+in the pharmacy.
+Objective Elements
+The system has the capability to identify emergency medications, and high risk
+Core a. a. F . . . oe
+medications including look-alike sound alike medications.
+The system shall tag high alert, look alike and sound alike medications and have
+checks in place to ensure that different strengths of the same medications are
+easily identifiable by the prescribing physician and at points of their storage.
+Interpretation
+The sample list of high-risk medication is given for guidance in Annexure-3
+The system has the capability to search, track and maintain inventory records of
+Core b. :
+medicines and consumables in the pharmacy.
+The system shall manage the inventory of medicines and consumables, which
+helps in streamlining supply management. The system should be able to search
+and track inventory levels, monitor expiration dates, and quickly locate specific
+items when needed. This ensures that the supplies are readily available for patient
+care. The system should also maintain records of inventory with proper grouping
+and categorization of medicines.
+Interpretation This could be done by utilizing Bar Code / QR code technology to enhance
+tracking accuracy.
+For example, high-risk medications (including sound-alike drugs) and varying
+concentrations of the same medications should be appropriately managed. The
+system should flag the stock out of any identified emergency medications.
+|| Core || Commitment || Achievement || Excellence

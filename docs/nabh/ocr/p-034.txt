@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+e Planned admission.
+e Day care admission
+For example: In case of emergency admissions, the system should have the
+capability to admit the patient with limited information. The system should highlight
+only the critical fields to allow admission as soon as possible. These may include
+details like demographic details and brief medical history of the patient. In addition,
+if the case needs to be reported to relevant authorities, the system should have the
+ability to capture the required information needed to make the report and notify the
+medical practitioner to take the appropriate action.
+The system may have an option for choosing triage in case of emergency
+admissions.
+
+Core b. The system configures templates for various healthcare services.
+The system shall configure and modify various templates that are used by the
+
+icWwelaciiam healthcare organizations during the admission process. The system shall clearly
+identify mandatory and non-mandatory fields in the templates.
+
+Core c. The system manages patient’s admission related information.
+The system shall capture admission related information which may include patient
+demographics, preliminary diagnosis, medical history, care plan, date of admission,
+expected date of discharge, package details, payor details, etc. Additionally, the
+
+ieedcciciieam system should have capabilities to:
+e Capture both mandatory and non-mandatory patient data
+e Scan and upload patient documents (e.g., consent form)
+e Capture and track the insurance details of the patient
+
+Achievement d. The system creates and manages healthcare packages for patients with
+
+inclusion/exclusion of services.
+|| Core || Commitment || Achievement || Excellence

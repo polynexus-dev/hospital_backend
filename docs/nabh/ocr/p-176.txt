@@ -1,0 +1,13 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Sample size calculation (Monthly)
+
+Screening Population# Sample Size*
+ee
+#Screening population is the 'base' from which the samples would be selected. The 'base' shall be the
+average of the previous three months. For example, in the case of time for initial assessment of patients,
+this would be the average number of patients admitted per month in the preceding three months.
+Assuming that the average is 200, this would constitute the screening population and the organization
+would have to sample 132 patients over the entire month.
+
+*For the recommended sample size, all the samples should be taken on a continuous basis.

@@ -1,0 +1,50 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+46 | Medico legal case A medico-legal case can be defined as a case of injury or
+ailment, etc., in which investigations by the law-enforcing
+agencies are essential to fix the responsibility regarding the
+causation of the injury or ailment.
+
+47 | Multifactor authentication (MFA) | Multi-factor authentication is a security process that
+requires users to provide multiple authentication factors to
+access IT systems. Typically, this involves something the
+user knows, such as a password, and something the user
+has, such as a mobile device or security token.
+
+48 | NHCX The National Health Claims Exchange (NHCX) is a
+centralized platform developed by the government to
+streamline insurance claims processing. NHCX aims to
+streamline and standardize health insurance claim
+processing, enhancing efficiency in the insurance industry
+and improving the patient experience.
+
+49 | NRCeS MoHFW has established a Centre of Excellence named as
+National Resource Centre for EHR Standards (NRCeS) at C-
+DAC, Pune to accelerate and promote adoption of EHR
+standards in India.
+
+50 | Nursing professional A nursing professional, often referred to as a nurse, is a
+healthcare provider who is trained and licensed to practice
+nursing. Nurses integrate the art and science of caring and
+focus on the protection, promotion, and optimization of
+health and human functioning. They play a crucial role in
+the prevention of illness and injury, facilitation of healing,
+and alleviation of suffering through compassionate
+presence.
+
+51 People with health problems who visit the hospital for
+diagnosis or treatment, but do not require a bed or to be
+admitted for overnight care are treated at the Outpatient
+department.
+
+52 | Operating System An Operating System (OS) is a type of system software that
+manages computer hardware and software resources and
+provides common services for computer programs.
+
+53 | Order sets Order sets, also known as medical order sets or
+abbreviated medication lists, are electronic documents that
+contain all the necessary instructions for healthcare
+professionals to follow during a procedure or treatment.
+They are a way to organize and automate the process of
+placing orders.

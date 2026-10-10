@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+baiabchdid risse bidind
+Core e. The system is capable of taking a backup/ archiving old data.
+The system shall be capable of data backup/ archive, empowering administrators to
+systematically retain and access data for a specified retention period depending on
+the law of the state or healthcare organization requirements (e.g., 5 years or as
+’ notified by state laws). This will help the system to adhere to the data compliance
+CCU requirements as per industry best practices.
+The system shall be capable of retrieving and restoring the backup whenever
+needed. The system shall follow the data backup/archiving policy/SOP as
+documented by the healthcare organization.
+mamas read ie
+Commitment f The source code management processes are defined and practiced by the
+©) HIS/EMR vendor.
+The HIS/EMR vendor shall follow well-defined source code management
+processes. These processes should include organized versioning and thorough
+documentation (e.g., high level design, low level design, and solution architecture).
+Interpretation
+By adhering to these practices, the vendor can enhance collaboration among
+developers, facilitate code review, and contribute to the overall stability and
+maintainability of the system.
+Standard
+bom The system provides software support and guidance to the users.
+Objective Elements
+eatesory ries’ Bie
+Corea The HIS/ EMR vendor disseminates timely patches or updates to address key
+' functionality bugs or identified security issues.
+The HIS/ EMR vendor shall consistently provide timely patches and updates to
+. address key functionality bugs or identified security and other issues. This proactive
+Interpretation ; . a
+approach ensures that the system remains robust for care delivery and resilient
+against emerging threats, vulnerabilities, and evolving cybersecurity challenges.
+|| Core || Commitment || Achievement || Excellence

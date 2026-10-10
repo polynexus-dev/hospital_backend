@@ -1,0 +1,19 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Patient
+Response
+Did the staff inform you not to move or lie still during the MRI scan?
+18 Did the staff inform you about the constraints of space where you lie Yes/ No/ Not
+down inside the MRI machine? Applicable
+19 Did they inform you about how to respond if you feel uncomfortable Yes/No
+or scared during the MRI?
+20 Did the staff inform you about the occurrence of loud noise when Yes/ No/ Not
+the MRI is in the process? Applicable
+1 Did the staff tell you when and where the result/ report of MRI will Yes/No
+be available?
+To summarize, PREMs offer great insights into what is happening on the ground. As it comes
+directly from the patients, the chances of any intentional/ unintentional bias are minimal. If
+implemented properly, PREMs can be a great proactive tool to ensure good quality of service
+than depending on near misses or incidents to happen and be reported. PREMss offer a unique
+opportunity to directly involve the patients in their own care as they are important
+stakeholders in the quality of care.

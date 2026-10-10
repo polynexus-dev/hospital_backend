@@ -1,0 +1,41 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+(ore tilvilmia| The system checks and flags duplicate patient registrations.
+The system shall be able to identify and merge duplicate patient registrations
+based on a set of unique patient identifiers (e.g., ABHA, Aadhar, any National ID
+number, name, and date of birth).
+
+1 :
+
+nterpretation This helps with correct patient identification and reduces the possibility of errors
+and improves the quality of care.
+
+Corey tiliweees) The system supports-patient registration in offline mode.
+Digital systems may become unavailable temporarily due to Internet failure (e.g.,
+network issues, system breakdown, or planned maintenance activities). During
+these unprecedented situations, HIS/EMR system shall be able to support patient
+
+Interpretation registration process including capturing of key patient details (e.g., unique patient
+identifier, name, address, phone number, date of birth, gender etc.) and medical
+history in the offline mode. The offline data shall be accurately synchronized once
+the system gets back to online mode.
+
+TOUTES The system groups multiple visits of the patient under episodes of care.
+The system shall identify multiple visits of the same patient for a specific condition
+as a part of a larger episode of care An episode represents a continuous period
+during which the patient receives related healthcare services.
+For example, in the case of pregnancy: each prenatal visit, ultrasound, and
+
+Interpretation postpartum check-up should be grouped into the same pregnancy episode.
+
+P The system can use timestamps or other criteria to determine the start and end of
+an episode. This ability to bundle multiple patient visits helps in keeping accurate
+records of the patient's visits over time and ensures continuity of care.
+
+Additional Information: Building patient visits needs to be done as per the defined
+criteria which will vary for different specialties, conditions, diagnoses, etc.
+. The system links all patient medical records to the respective unique patient
+Core i. . Le
+identifier.
+|| Core || Commitment || Achievement || Excellence

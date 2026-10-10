@@ -1,0 +1,53 @@
+Zz
+Frequency of >
+ies)
+Standard Definition cet GIRS) Gena =
+collation/ Guide
+Monitoring 2
+Ss
+Rehabilitation Medicine s
+Optional. This is Ifit is possible to o
+applicable only to retrieve data from Q
+admitted patients HIS/EMR, the data Se
+undergoing shall be captured 77)
+neurorehabilitation through the system. 2
+(For example Stroke, However, et
+Trauma, Spinal Considering the =
+injuries, post- challenges of data =
+The sum of the neurosurgery etc.). capture for this es)
+functional gain achieved The organization shall indicator through ‘ne g
+before the discharge in use the Functional ne em, nere “i ou Q
+. Functional gain implies | patients undergoing Rate (per Independence © @ provision Tor 4
+Functional . . — entering the manual/ 3
+. . improvement in neurorehabilitation. hundred Measure (FIM) scale. lectronicall a
+PSQ 3a gain following . X100 - Monthly This assesses electronically
+cee as physical quality and neurorehabilit € collected (app/
+rehabilitation tivi ti tient physical and line f dat:
+activity. ation patients) Cognitive disability. online forms) data.
+Ranges from 18 to
+Total number of patients 126. Higher scores
+undergoing indicate more
+neurorehabilitation freedom for patients.
+Further, this is a
+measure of disability
+for a variety of
+populations and is
+not specific to any
+diagnosis.
+Sepsis Management
+Mandatory if specialty | if it is possible to
+Number of sepsis (ICU) is inthe scope | retrieve data from
+Percentage of patients who receive The start time of the shall bo captured
+sepsis patients Sepsis is a life- care as per the Hour-1 timeframe of one hour through the system
+who receive threatening organ sepsis bundle. is when the patient However, :
+10 PSQ 3a dysfunction caused by X100 Percentage Monthly reaches ER or ICU. In onan
+care as per the case the patient is Considering the
+a dysregulated host p challenges of data
+Hour-1 sepsis | response to infection shifted to the ICU vane
+. ft the ER, the start capture for this
+bundle. Total number of sepsis rom the ER, indicator through the
+cases time is when the ig z
+patient arrives at the system, there should >
+ER. be a provision for wo
+=x
+4

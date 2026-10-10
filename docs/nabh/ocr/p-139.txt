@@ -1,0 +1,67 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Annexure-5 Examples of Clinical Decision Support System in the healthcare system
+Examples of Clinical Decision Support System in the healthcare system
+5 Type Medical Current Prescribed CDSS Alert Description
+al History Medication Medication
+Potential Serious
+Interaction:
+Patient has a a Alerts healthcare Monitor patients
+. Amlodipine . . . .
+history of 5me once Prescribed provider to potential | closely for signs of
+Drug-drug | hypertension oak with adverse interactions | hypotension.
+1 Interactio | and GERD ve Clarithromycin | between Consider alternative
+Omeprazole . vr
+n (Gastroesoph 20me once for Amlodipine and antibiotics if
+ageal reflux . ; pneumonia. Clarithromycin, interaction cannot
+. daily. . .
+disease). which may cause be avoided.
+increased risk of
+hypotension.
+Severe Allergy Alert:
+Prescribed Flags Amoxicillin as Avoid prescribing
+Patient has a . potentially Amoxicillin to the
+Allergy with . . .
+2 . known allergy | None. an allergenic for the patient. Consider
+Checking rn Amoxicillin for . . -
+to penicillin. sinusitis patient, reducing alternative
+: the risk of allergic antibiotics.
+reactions.
+D Alert:
+oe osage ert Adjust Digoxin
+Patient is an . Provides dosage .
+Prescribed ' dosage according to
+Dosage elderly . rn recommendations
+ore with Digoxin an CDSS
+3 Recomme | individual None. . for Digoxin based on .
+. . for atrial recommendations.
+ndations with renal ri age and renal . .
+. . fibrillation. . . Monitor for signs of
+impairment. function, reducing aan
+. we toxicity.
+the risk of toxicity.
+Clinical Guideline
+Alert:
+Patient Helps ensure Follow CDSS
+. . . adherence to
+Clinical presents with Prescribed . prompts and
+a. P . evidence-based .
+Guidelines | acute with aspirin ao. recommendations
+. None. . clinical guidelines .
+Adherenc | myocardial and statin . for aspirin and
+. . for acute myocardial .
+e infarction therapy. . . statin therapy
+symptoms infarction initiation
+v . treatment, .
+improving patient
+outcomes.
+Diagnostic Test Alert
+Patient . Assists healthcare Order ECG and
+| Prescribed . . .
+. _ | complains of . providers in cardiac enzymes as
+Diagnostic . with ECG and . .
+5 . chest pain None. . diagnosing acute recommended by
+Assistance cardiac
+and shortness enzymes coronary syndrome _ | CDSS. Interpret
+of breath. y ; by suggesting results promptly.
+diagnostic tests

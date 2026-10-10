@@ -1,0 +1,1678 @@
+     Cancer Care and Management
+      Oncology Annexure to NABH
+       Digital Health Standards for
+
+              HIS/EMR Systems
+
+Cancer Care and Management Oncology Annexure to NABH Digital Health Standards for HIS/EMR Systems 1st Edition, 2025
+     ISBN 97881993337-8-9
+
+     9 788199 333789
+
+© All Rights Reserved
+No part of this book may be reproduced or transmitted in any form without permission in writing
+from the author.
+First Edition September 2025
+ACKNOWLEDGEMENT  The development of the first-ever Oncology-specific Annexure to the NABH
+                 Digital Health Standards for Hospital Information Systems (HIS) and
+                 Electronic Medical Records (EMR) marks an important milestone in
+                 advancing quality cancer care through digital enablement. This initiative
+                 reflects NABH's commitment to ensuring that clinical workflows, patient
+                 safety, and treatment outcomes in oncology are strengthened by
+                 technology-driven standards.
+
+                 This work was made possible through the vision and insight of Shri. Jaxay
+                 Shah, Chairperson QCI, who always championed the vision of accessible
+                 and high-quality healthcare across India. Mr Rizwan Koita, Chairperson of
+                 NABH was the guiding force behind developing digital workflows of cancer
+                 care as part of the HIS/EMR systems in India. Mr. Chakravarthy T. Kannan,
+                 Secretary General of QCI, ensured seamless co-ordination and the
+                 availability of essential resources to bring this annexure to life.
+
+                 We extend our sincere gratitude to the National Cancer Grid (NCG), a
+                 collaborative network of over 370 cancer centers across India, for their
+                 expertise and contributions in defining oncology-specific workflows and
+                 standards. Their extensive experience in delivering cancer care has been
+                 instrumental in shaping this document.
+
+                 Special appreciation is due to the technical committee, domain experts
+                 from NCG, and digital health specialists who meticulously reviewed
+                 workflows and incorporated international benchmarks.
+
+                 We are also thankful to the NABH board members, whose thoughtful inputs
+                 significantly enhanced the quality and comprehensiveness of the module.
+
+                 Finally, we would like to recognize the officers at the NABH Secretariat for
+                 their unwavering commitment and effort in bringing this oncology-specific
+                 annexure to completion.
+
+                                                                                                         Jai Hind
+CONTENTS
+
+Introduction                                               1
+
+Summary of the Standards                                   2
+
+Compliance Level                                           2
+
+Abbreviations                                              3
+
+Intent of the Annexure                                     5
+
+CHAPTERS
+
+Oncology Enhancements To Digital Health Standards
+
+Chapter 1: Access Assessment and Continuity of Care (AAC)  6
+
+Chapter 2: Care of Patients (COP)                          8
+
+Chapter 3: Management of Medication (MOM)                  15
+
+Chapter 4: Information Management System (IMS)             17
+
+Oncology Specic Standards
+
+Chapter 5: Muti-Disciplinary Care (MDC)                    19
+
+Annexures                                                  24
+
+References                                                 32
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                   ®
+
+                                          Introduction
+
+Cancer is one of the leading causes of morbidity and mortality worldwide, and India is witnessing a
+rapidly growing cancer burden. With increasing incidence, late-stage presentations, and the complexity
+of oncology care, the disease poses profound challenges for patients, clinicians, and the healthcare
+system as a whole. Oncology, by its very nature, requires multidisciplinary collaboration, longitudinal
+care, and integration of advanced diagnostics, therapeutics, and follow-up pathways.
+
+In this context, digital health technologies--particularly HIS (Hospital Information Systems) and EMRs
+(Electronic Medical Records)--play a pivotal role in streamlining oncology workows, enhancing
+clinical decision-making, ensuring continuity of care, and supporting evidence generation.
+Standardized oncology-specic functionalities within HIS/EMRs are therefore essential to enable
+clinicians, care teams, and health systems to deliver comprehensive, high-quality, and patient-centered
+cancer care.
+
+This annexure on Oncology HIS/EMR serves as a specialty certication in addition to the NABH Digital
+Health Standards for HIS/EMR Systems. It denes oncology-specic capabilities and workows
+required for effective and essential cancer care delivery in India, covering aspects such as
+multidisciplinary tumor boards, treatment planning, chemotherapy and radiotherapy management,
+survivorship care, and long-term follow-up. By complementing the HIS/EMR certication, this annexure
+ensures that oncology care providers are equipped with digital systems aligned to the unique needs of
+oncology practice.
+
+While these standards have been developed through extensive internal deliberations and consultation
+with oncology experts at National Cancer Grid (NCG) and digital health stakeholders, NABH recognizes
+that oncology is a rapidly evolving domain. Continuous engagement and feedback from Oncologists,
+cancer care institutions, digital health companies, and other stakeholders will be critical to rening and
+updating these standards in alignment with emerging best practices and innovations.
+
+Through this initiative, NABH reafrms its commitment to advancing excellence in oncology care,
+strengthening digital health infrastructure, and fostering a more integrated, efcient, and patient-centric
+cancer care ecosystem in India.
+
+                   1
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                   ®
+
+                        SUMMARY OF THE STANDARDS
+
+Annexure                         Objective  Core Commitment Achievement Excellence
+               Standard
+
+                                 Elements
+
+Access
+
+Assessment
+
+and                1    1                   0       1           0        0
+
+Continuity of
+
+Care (AAC)
+
+Care of
+
+Patients           4    7                   1       2           3        1
+
+(COP)
+
+Management
+
+of Medication      1    1                   0       1           0        0
+
+(MOM)
+
+Information
+
+Management         2    2                   1       1           0        0
+
+System (IMS)
+
+Muti-
+
+Disciplinary       3    7                   4       0           0        3
+
+Care (MDC)
+
+Total              11   18                  6       5           3        4
+
+                        COMPLIANCE LEVEL
+
+                   Compliance Level for NABH CMS - Oncology Annexure
+
+Category of Objectives  Compliance Total Number of Number of objectives to
+
+                            Level                   Objectives  be complied with
+
+Core                        100                     6                 6
+Commitment
+Achievement                 80                      5                 4
+Excellence
+                            70                      3                 2
+
+                            50                      4                 2
+
+                                               2
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                 ®
+
+                                     ABBREVIATIONS
+
+AAC                Access Assessment and Continuity care
+
+ABDM               Ayushman Bharat Digital Mission
+
+AE                 Adverse Event
+
+API                Application Programming Interface
+
+BMI                Body Mass Index
+
+BSA                Body Surface Area
+
+CDSS               Clinical Decision Support System
+
+CMS                Certication of Medical Software
+
+COP                Care of Patients
+
+CPOE               Computerised Provider Order Entry
+
+CTCAE v5.0         Common Terminology Criteria for Adverse Events, Version 5.0
+
+DICOM              Digital Imaging and Communications in Medicine
+
+ECG                Electrocardiogram
+
+EMR                Electronic Medical Record
+
+eMAR               Electronic Medication Administration Record
+
+ENT                Ear, Nose, and Throat
+
+EHR                Electronic Health Record
+
+GFR                Glomerular Filtration Rate
+
+HIS                Hospital Information System
+
+HPR                Histopathology Report
+
+ICD-O / ICD-O3 International Classication of Diseases for Oncology (3rd Edition)
+
+                                               3
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                     ®
+
+ICMR               Indian Council of Medical Research
+IMS                Information Management System
+KPI                Key Performance Indicator
+LIS                Laboratory Information System
+MDT / MDTB         Multi-Disciplinary Team / Multi-Disciplinary Tumour Board
+MDC                Multi-Disciplinary Care
+MOM                Management of Medication
+NCG                National Cancer Grid
+NABH               National Accreditation Board for Hospitals & Healthcare Providers
+OE                 Objective Element
+OPD / IPD          Outpatient Department / Inpatient Department
+PAC                Pre-Anesthesia Checkup
+PACS               Picture Archiving and Communication System
+PET-CT             Positron Emission Tomography ­ Computed Tomography
+PS                 Performance Status
+RIS                Radiology Information System
+RT                 Radiotherapy
+SNOMED CT          Systematized Nomenclature of Medicine ­ Clinical Terms
+TNM                Tumour, Node, Metastasis Staging System
+
+XM CSV / JSON Data Exchange Formats
+
+                                     4
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                   ®
+
+           ONCOLOGY ENHANCEMENTS TO NABH DIGITAL HEALTH
+               STANDARDS FOR HIS/EMR SYSTEMS 1ST EDITION
+
+Intent of the annexure
+
+An HIS/EMR system designed for oncology care must capture comprehensive patient information,
+including demographic details, medical and surgical history, medication records, and laboratory results.
+Given the chronic and complex nature of cancer, the system should also facilitate the capture of
+longitudinal data to enable an integrated and coordinated approach to treatment. This oncology-specic
+annexure builds upon the existing 1st edition NABH Digital Health Standards for HIS/EMR Systems and
+Objective Elements (OEs) by incorporating oncology-focused enhancements, as well as introducing
+new standards and OEs tailored to the unique requirements of cancer care and management. The
+HIS/EMR companies applying for Oncology certication should comply with the enhancements to the
+existing standards and new standards as per the compliance level mandated by NABH.
+
+                   5
+CHAPTER 1
+
+Access, Assessment, and
+
+Continuity of Care (AAC)                                                               ®
+
+Chapter             Standard  Objective  Core Commitment Achievement Excellence
+
+                              Elements
+
+Access Assessment
+
+and Continuity of   1            1        0      1                      0  0
+
+Care (AAC)
+
+Digital Health Standards and Objective Elements
+
+ Summary of Standards Enhanced for Oncology
+
+AAC.3.          The system handles laboratory test orders and samples.
+
+Standard        The system handles laboratory test orders and samples.
+
+ AAC.3.
+
+Objective Elements
+
+Category            Commitment      Head     Common  Type                  Functional
+
+Objective Element The system congures clinical and administrative workow for laboratory
+
+3.a                 management.
+
+Interpretation      Laboratory Management is an important part of a healthcare organization's
+                    system, and this system should support the following features:
+                    Laboratory Management is vital for healthcare organizations, and the system
+                    should support:
+                    Y Workows: Setup of master data, process congurations, and information
+
+                        ow between practitioners, the lab, and billing.
+                    Y Quality Controls: Conguration of essential quality controls.
+                    Y Report Generation: Ability to generate specialty-specic reports (e.g.,
+
+                        microbiology, biochemistry).
+
+                                          6
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                  ®
+
+Category           Commitment  Head                 Common Type  Functional
+
+Oncology           The system shall support end-to-end integration of the Molecular Biology
+Enhancement        workow to enable precision oncology and genomics-informed care.
+
+                   The system shall facilitate molecular-specic sample registration with
+                   barcode-based tracking, EMR-enabled test requisition workows with
+                   requisite clinician authorization, and seamless bidirectional integration with
+                   the Laboratory Information System (LIS).
+
+                   The system shall support structured bioinformatics reporting for molecular
+                   test results, and those reports are integrated into the patient's electronic
+                   medical record and linked to their longitudinal health history to support
+                   informed clinical decision-making and continuity of care.
+
+                   The system should enable the generation of a unied output that combines
+                   molecular biology ndings with immunohistochemistry (IHC) and
+                   histopathology results to support tumor board discussions and help develop
+                   comprehensive treatment plans based on integrated diagnostic data.
+
+                                     7
+CHAPTER 2
+
+Care of Patients ( COP )                                                        ®
+
+Chapter             Standard  Objective  Core Commitment Achievement Excellence
+
+Care of Patients              Elements
+(COP)
+                    4           7        1        2                       3  1
+
+Digital Health Standards and Objective Elements
+
+Summary of Standards Enhanced for Oncology
+
+COP.1.          The system manages consultation services in OPD and IPD
+
+COP.10.         The system supports patient services in remote settings.
+
+COP.12.         The system provides a Clinical Decision Support System.
+
+COP.13.         The system has the capability to create care plans.
+
+Standard        The system manages consultation services in OPD and IPD
+
+ COP.1.
+
+Objective Elements
+
+Category            Commitment              Head     EMR Type Functional
+
+Objective Element The system records and reviews initial assessment in OPD and IPD, and
+
+1 .a                patient progress.
+
+Interpretation      The system shall record and review the initial assessment of patients
+                    undergoing treatment in OPD and IPD. During initial assessment, a thorough
+                    review is conducted by a designated member of staff. The records of review
+                    include vital signs, medical history, physical examination ndings, and
+                    diagnostic tests, and any previous treatments. The system shall maintain a
+                    comprehensive record of all these details.
+
+                    The system should be able to capture initial assessment and re-assessment
+                    for different categories of patients, including antenatal, obstetrics, paediatrics,
+                    ophthalmology, ENT, etc.
+
+                                         8
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                    ®
+
+Category           Commitment     Head              EMR Type Functional
+Interpretation
+                   The system shall allow nurses and medical practitioners to monitor and
+                   analyse the progress of the patients, enabling them to track trends in patients'
+                   conditions over time. This feature empowers nurses and medical practitioners
+                   to make informed decisions regarding patient care.
+
+Oncology           The system shall also have the functionality to:
+Enhancement
+                   Y Record the list of diagnostic tests that led to conrmation of the primary
+                       diagnosis.
+
+                   Y Capture and conrm the primary diagnosis along with the date of primary
+                       diagnosis and TNM staging of the disease as per clinical guidelines, also
+                       capture the modalities used - imaging, histo- cytopathology and any
+                       special tests, etc
+
+                   Y Document the initial assessment for patients undergoing radiotherapy,
+                       including scan details, patient positioning, and immobilisation (e.g., cast)
+                       information.
+
+                   Y Capture surgery-related data ­ including details, name, extent, frozen
+                       sections, HPR
+
+                   Y Capture chemotherapy / radiation related data, including the number of
+                       cycles, cycle intervals, date, time, and type of chemotherapy /radiation -
+                       indication setting adjuvant, concurrent, neoadjuvant and palliative etc,
+                       response / toxicity / any changes (dose medication, incomplete treatment)
+                       .
+
+                   Y Record, view, and update patient details scheduled for chemotherapy,
+                       including indications (as dened by the hospital), vitals, and diagnostic
+                       results (laboratory and radiology reports/images).
+
+                   Y Capture the cause of death occurring during or within 30 days post-
+                       completion of treatment, including systemic therapy, radiation therapy,
+                       surgery, or concurrent modalities.
+
+                   Y Capture and log the identity of the user entering the data.
+
+                   Y Refer to Annexure - (A) Surgical Oncology Module ,(B) Radiation oncology
+                       Module ,(C) - Chemotherapy Oncology Module
+
+                               9
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                     ®
+
+Category           Commitment       Head                  EMR Type Functional
+
+Objective Element The system provides a summary of the patient's condition, medication order
+
+1.b                and follow-up visit for the OPD visit
+
+Interpretation     The system shall generate a concise overview of a patient's health condition,
+                   thereby enhancing clinical efciency and patient care in the OPD.
+
+                   The following shall be included in the overview:
+
+                   Summary of the patient's condition: The Summary could include relevant
+                   medical history, current symptoms, diagnosis, and any signicant ndings
+                   from physical examinations or tests.
+
+                   Medication Order Management: The system should provide history and
+                   details of the medications being prescribed along with the dosage, frequency,
+                   and route of administration, any episode of allergic/ adverse reaction/drug
+                   interaction.
+
+                    Follow-Up Visits: The system should facilitate the scheduling and
+                   documentation of follow-up visits. This helps healthcare providers and
+                   patients to manage upcoming appointments and capture follow-up
+                   consultation notes.
+
+Oncology           Follow up: The system shall provide a feature to update the follow-up status
+Enhancements       (such as active surveillance, stable disease, no evidence of disease, relapsed,
+                   referral, any long-term treatment complications), mark appointments and
+                   dates of visit planned and the actual outcome (death/survivorship/left
+                   treatment)
+
+Category           Achievement      Head                  EMR Type Functional
+
+Objective Element
+                              The system creates order sets based on frequently prescribed medicines
+
+1.c
+
+Interpretation     The system should have a comprehensive medication database (drug names,
+                   dosage forms, routes, strengths, indications, contraindications, and potential
+                   side effects, as well as the categorisation of medications into different classes
+                   or therapeutic categories). This information assists medical practitioners in
+                   making informed decisions.
+
+                   Order sets (also known as "abbreviated medication lists") help to organise
+                   and automate the process of placing orders. To facilitate the creation of order
+                   sets, the system should offer pre-established templates tailored for common
+                   medical conditions or procedures. These templates can then be personalised
+                   by medical practitioners to suit their specic needs and the needs of individual
+                   patients.
+
+                                10
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                 ®
+
+Category           Achievement        Head                EMR Type Functional
+
+Oncology           The system should have a provision to create pre-dened order sets for
+Enhancement        chemotherapy drugs, selection of brands ,including drug dosage and
+                   capping, based on dened pathways or custom-dened as per disease
+                   group/organ (as dened by the healthcare organisation)
+
+                   The system should have a provision to modify a chemotherapy drug order set
+                   with an option (eg: drop down list) to enter justications/reasons for
+                   modication.
+
+Category           Core         Head                Common Type Technical
+
+Objective Element The system has the capability to generate Computerized Provider Order Entry
+
+1.g                (CPOE) for radiological examinations.
+
+Interpretation     The system should have the capability to allow medical practitioners to place
+                   radiology orders for patients. This functionality empowers medical
+                   practitioners to electronically order a diverse array of radiology tests.
+
+                   Computerized Provider Order Entry (CPOE) for radiology services empowers
+                   treating medical practitioners with access to the catalogue of available
+                   radiology tests. Medical practitioners can select the suitable tests, thereby
+                   mitigating potential confusion within both radiology and billing departments,
+                   with indications
+
+                   The system should give the schedules of the radiology tests while creating
+                   orders. The system may also provide the availability of slots for the use of
+                   radiology equipment/appointment list of the radiology department for
+                   preparation of patients for example time of fasting and shifting along with
+                   provision for special instructions.
+
+Oncology           The system shall have a provision to record details of radiation therapy
+Enhancement        treatment, including the ability to select the type of procedure, imaging
+                   modality (CT, CT+MRI, CT+PET), and pretreatment verication, as well as
+                   view and mark checklists for the treatment as specied by the healthcare
+                   facility
+
+                   Refer to Annexure B - Radiation oncology Module
+
+Standard        The system supports patient services in remote settings.
+
+ COP.10.
+
+                                11
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                    ®
+
+Objective Elements
+
+Category            Achievement  Head               EMR  Type Technical
+
+Objective Element
+                              The system supports effective home care services/ palliative care.
+
+10. b
+
+Interpretation      The system shall assist healthcare organizations to digitally manage home
+                    care services. The system should facilitate booking and monitoring of home
+                    care services, billing management , and the collection of patient feedback.
+
+Oncology            The system shall support the integration of oncology-specic home care
+Enhancement         workows with a focus on patient proling, adverse event tracking, remote
+                    monitoring, medication adherence, teleconsultations, and home nursing
+                    management.
+
+                    The system must ensure secure communication, emergency response, and
+                    document sharing, with modular capabilities for diet, mental health, and
+                    advanced remote diagnostics.
+
+                    The system shall also capture the details of patients ( Adult/Paediatric/under
+                    the survivorship program as detailed in this document - Refer to Annexure I for
+                    Cancer Survivor form and Annexure E for palliative medicine assessment
+                    module
+
+Standard
+
+COP.12.         The system provides a Clinical Decision Support System.
+
+Objective Elements
+
+Category            Excellence   Head               EMR  Type Functional
+
+Objective Element
+                              The system supports the Clinical Decision Support System (CDSS).
+
+12. a
+
+Interpretation      Clinical Decision Support System (CDSS) plays a pivotal role in enhancing
+                    clinical decision-making, promoting patient safety, and facilitating effective
+                    risk assessment and management within healthcare organizations.
+                    By providing evidence-based recommendations, alerts, and guidelines,
+                    CDSS tools empower healthcare providers to make informed decisions,
+                    thereby improving patient outcomes, reducing medical errors, and enhancing
+                    efciency in care delivery processes.
+                    The system shall be equipped to offer CDSS functionality either internally or
+                    integrated with external CDSS systems. This functionality can be across a
+                    wide range of domains like diagnosis, drug prescriptions, and treatment
+                    planning.
+                    Refer to Annexure-5 for a non-exhaustive list of common CDSS use cases.
+
+                                 12
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                     ®
+
+Category            Excellence   Head               EMR             Type Functional
+
+Oncology            The system shall be able to suggest treatment protocols to doctors based on
+Enhancement         the diagnosis, staging, pathology reports /molecular pathology reports site,
+                    and the host characteristics
+
+                    The system shall trigger an automated alert to the treating clinician in
+                    instances where treatment protocol recommendations are unavailable due to
+                    incomplete or non-congruent diagnosis, staging, or pathology data. This
+                    mechanism ensures proactive identication and agging of decision-support
+                    gaps, thereby upholding clinical governance and patient safety.
+
+                    The system should be able to suggest the dosage based on BSA, AUC, BMI,
+                    Height, Weight, Creatine, Age and GFR, etc. (as per dened rules)
+
+                    Refer Annexure H for NCG Clinical Guidelines and protocol
+
+Standard
+
+COP.13.         The system has the capability to create care plans
+
+Objective Elements
+
+Category            Achievement  Head               EMR             Type Functional
+
+Objective Element The system has the capability to create customized care plans based on
+
+13. a               current standards of practice
+
+Interpretation      The system shall be able to develop customized care plans for specic
+                    disease conditions in patients. For example, care plans for individuals with
+                    asthma, diabetes, COPD etc. Care plans shall also include elements of
+                    assessment and evaluation, goal setting, interventions, monitoring and
+                    adjustments, documentation and communication, etc. They may also include
+                    aspects of preventive, promotive, curative, rehabilitative, and palliative care.
+
+Oncology            The system shall support the creation of customised care plans based on
+Enhancement         approved guidelines (e,g, NCG guidelines) or clinician-dened protocols
+                    tailored to the organ, disease group, stage, and tumour site.
+
+                    For example, a Care plan for cancer should include elements of a plan for
+                    management of comorbidities, a care plan for the cancer, and pain
+                    management. For those who have completed treatment, a follow-up plan and
+                    survivorship plan are provided. For advanced disease ­ palliative care
+
+                    It shall maintain a complete audit trail as per the facility's requirements.
+                    The system shall allow users to view, update, or modify chemotherapy and
+                    radiotherapy plans, including treatment sequence, type, reasons for changes,
+                    outcomes, and user remarks.
+
+                                 13
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                  ®
+
+Category           Achievement  Head                EMR  Type Functional
+
+Oncology           Additionally, the system shall include a radiotherapy planning requisition
+Enhancement        module to capture session counts, cycle intervals, planning protocols, site of
+                   incidence, region of interest, procedure dates, and diagnostic ndings (e.g.,
+                   PET-CT/CT), in alignment with institutional protocols.
+
+                   Refer to Annexure B for Radiation Oncology Module , Annexure C -
+                   Chemotherapy Oncology Module , Annexure E - Palliative Medicine
+                   Assessment Module
+
+                                14
+CHAPTER 3
+
+Management of
+
+Medication ( MOM)                                                                          ®
+
+Chapter             Standard           Objective  Core Commitment Achievement Excellence
+
+                                       Elements
+
+Management of                          1          0     1                   0  0
+                                    1
+
+Medication ( MOM)
+
+Digital Health Standards and Objective Elements
+
+ Summary of Standards
+
+MOM.3.          The system supports the safe administration of medications
+
+Standard
+
+MOM.3.          The system supports the safe administration of medications
+
+Objective Elements
+
+Category            Commitment                    Head  EMR  Type              Functional
+
+Objective Element The system has the capability of maintaining an electronic medication
+
+3.b                 administration record ( eMAR)
+
+Interpretation      An e MAR provides a comprehensive view of medication administration to the
+                    medical practitioners administering medications.
+
+                    The electronic Medication Administration Record (eMAR) system should have
+                    the capability to record drugs administered using a specic template. The
+                    eMAR should contain:
+
+                    Y Dosage: The prescribed amount of the medication.
+
+                    Y Route of Administration: The method by which the medication is
+                        administered (for example, oral, intravenous, subcutaneous).
+
+                    Y Date and Time: When the medication was given.
+
+                    Y Administering Personnel: The name or initials of the person who
+                        administered the medication and who veried the medication in case of
+                        high-risk medications.
+
+                    Y Record of any medication administered based on verbal orders.
+
+                                                  15
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                ®
+
+Category           Commitment  Head                 EMR  Type  Functional
+
+Objective Element The system has the capability of maintaining an electronic medication
+
+3.b                administration record ( eMAR)
+
+Interpretation     An e MAR provides a comprehensive view of medication administration to the
+                   medical practitioners administering medications.
+
+                   The electronic Medication Administration Record (eMAR) system should have
+                   the capability to record drugs administered using a specic template. The
+                   eMAR should contain:
+
+                   Dosage: The prescribed amount of the medication.
+
+                   Route of Administration: The method by which the medication is administered
+                   (for example, oral, intravenous, subcutaneous).
+
+                   Date and Time: When the medication was given.
+
+                   Administering Personnel: The name or initials of the person who administered
+                   the medication and who veried the medication in case of high-risk
+                   medications.
+
+                   Record of any medication administered based on verbal orders.
+
+Oncology           The eMAR should also contain,
+Enhancement        Y Dilution for parenteral with diluent and volume, and rate
+                   Y Premedication
+                   Y Post chemo meds ­ duration, frequency, and name.
+                   The system shall have a feature to view all date wise chemotherapy orders of
+                   the patient, with status as completed or canceled or modied and reasons
+                   (dened drop-down list), if any.
+                   The system shall also have a feature to capture date, time and type (e.g.
+                   adjuvant) of the planned and actual radiotherapy/ chemotherapy sessions
+
+                               16
+CHAPTER 4
+
+Information Management
+
+System ( IMS)                                                                                      ®
+
+Chapter             Standard  Objective  Core Commitment Achievement Excellence
+
+Information                   Elements
+Management
+System ( IMS)         2       2          1         1  0                                     0
+
+Digital Health Standards and Objective Elements
+
+Summary of Standards
+
+IMS.1.          The system supports healthcare data and interoperability standards for patient,
+                clinical, administrative information to ensure continuity of care, including ABDM
+
+IMS.2.          The system has the capability to support NABH dened key performance indicators
+                and analytical dashboards
+
+Standard        The system supports healthcare data and interoperability standards for patient,
+                clinical, administrative information to ensure continuity of care, including ABDM
+ IMS.1.
+
+Objective Elements
+
+Category            Core                     Head     EMR Type Technical
+
+Objective Element The system shall support ICD 10/11 or SNOMED CT covering clinic
+
+1.e                 terminologies for diagnosis, morbidity, and mortality data accurately.
+
+Interpretation      The system shall support ICD 10/11 or SNOMED CT codes. The system
+                    should have the capability to prompt and recommend the relevant ICD 10/11
+                    or SNOMEDCT codes.
+
+                    Implementation of ICD 10/11 or SNOMEDCT can be done through application
+                    user interface, backend matching services, or through dedicated medical
+                    coding service modules.
+
+                    The system shall support the following coding capabilities:
+
+                    Implement upload, upgrade and deprecation and storage of codes by version
+                    into the system
+
+                                         17
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                   ®
+
+Category            Core            Head            EMR Type Technical
+
+Oncology            The system shall also support the capture of ICD-O/ICD- O3 codes to allow the
+Enhancement         capture of the morphology and grade of the disease.
+
+                    The system shall also support the capture of CTCAE v5.0 codes to enable
+                    standardised recording of treatment-related toxicities, including their grade
+                    and category
+
+Standard        The system has the capability to support NABH dened key performance indicators
+                and analytical dashboards
+ IMS.2.
+
+Objective Elements
+
+Category            Commitment  Head                Common Type  Technical
+
+Objective Element   The system electronically computes and publishes Key Performance
+2.a                 Indicators (KPIs) per NABH accreditation standards for hospitals and
+                    healthcare organizations
+
+Interpretation      The system captures relevant patient and administrative data, and computes
+                    KPIs as per NABH accreditation standards for hospitals. The system must have
+Oncology            the ability to compute the KPIs based on end-user dened periods (start/end
+Enhancement         dates) and export the KPIs and underlying computation to end-users for further
+                    analysis (in JSON, .csv, .xml, .xls, .pdf formats).
+
+                    The list of KPIs to be computed by HIS/EMR system based on NABH
+                    accreditation standards is given in Annexure 8
+
+                    The format for exporting KPI data to NABH is given in the Resource folder on
+                    NABH portal. Link to report format
+                    The system shall have the capability to capture and share information required
+                    for cancer registries as per the requirement in dened formats.
+
+                    For the list of Oncology KPIs to be computed by HIS/EMR system, refer to
+                    annexure F1. To understand the NCG Oncology KPI reporting and analytics
+                    format, refer to annexure F2
+
+                                18
+CHAPTER 5
+
+Multi-Disciplinary Care (MDC)                                                               ®
+
+Chapter             Standard           Objective  Core Commitment Achievement Excellence
+
+                                       Elements
+
+Muti-Disciplinary                      7          4     0    0                         3
+                                    3
+
+Care (MDC)
+
+The below set of oncology-specic standards and objective elements have been newly added to
+ensure a comprehensive oncology HIS/EMR workow.
+
+Digital Health Standards and Objective Elements
+
+ Summary of Standards
+
+MDC. 1.         The system creates a Multi-Disciplinary Tumor Board workow
+MDC. 2.         The system can capture details related to research and trials
+MDC. 3.         The system can capture details related to bone marrow transplantation
+
+Standards
+
+MDC. 1.         The system creates a Multi-Disciplinary Tumor Board workow
+
+Objective Elements
+
+Category            Core                          Head  HIS  Type           Functional
+
+MDC 1.a             The system enables patient selection, tumor board ID assignment, MDTB
+                    review scheduling, and automated clinician notications.
+
+Interpretation      A Multi-Disciplinary Tumor Board (MDTB) is a collaborative team of
+                    oncologists, radiologists, pathologists, surgeons, and other specialists who
+                    review complex cancer cases to ensure optimal treatment planning as per the
+                    standard treatment guidelines with individualization based on the patient and
+                    disease characteristics. Integrating MDTB into HIS/EMR enhances patient
+                    care by enabling structured case discussions, decision documentation, and
+                    evidence-based treatment coordination, improving outcomes and efciency.
+
+                                                  195
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                     ®
+
+Category           Core  Head                       HIS  Type  Functional
+Interpretation
+                   The system should allow the treating medical practitioner to select a patient for
+                   MDTB based on congurable clinical criteria such as conrmed or possible
+                   diagnosis, TNM stage, and organ system.
+
+                   It should also enable the selection of required medical practitioners for the
+                   MDTB and send appointment notications to block their calendars.
+
+Category           Core  Head                       EMR  Type  Functional
+MDC 1.b
+                   The system displays the list of patients scheduled for MDTB meetings,
+Interpretation     allowing the medical practitioner to select and view patient-specic details on
+                   a single screen.
+
+                   The system should provide a centralized, dynamic list of patients scheduled
+                   for upcoming tumor board meetings, with lters by date, specialty, or disease
+                   category. Users should be able to select a patient and review all relevant
+                   clinical data--case notes, lab results, procedure details, radiology/pathology
+                   images, and supporting documents--in a single screen. Patient data should
+                   be seamlessly pulled from EMR, PACS, LIS, and RIS to enable
+                   comprehensive, streamlined access.
+
+Category           Core  Head                       HIS  Type  Functional
+MDC 1. c
+                   The system records the attendance and details of medical practitioners who
+Interpretation     attend the MDTB meeting, and documents them as per the department.
+
+                   The system shall allow authorised users to view the list of medical
+                   practitioners assigned to the MDTB meetings.
+
+                   The system should have an MDTB attendance feature that records the
+                   details of medical practitioners who attended the meeting, such as name,
+                   designation, speciality, and role in the proceedings, ensuring accountability
+                   and compliance with multidisciplinary team (MDT) documentation
+                   standards.
+
+                   The system could facilitate the sending of automated calendar reminders to
+                   medical practitioners participating in tumor board discussions to ensure
+                   timely participation.
+
+                         20
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                    ®
+
+Category        Excellence        Head              EMR  Type                  Functional
+
+MDC 1.d         The system has the capability to document a summary of the tumour board
+                discussion related to the diagnoses and treatment recommendations.
+
+Interpretation  The system should document the individual inputs related to diagnosis,
+                treatment recommendations, and follow-ups, and capture a summary of the
+                multidisciplinary inputs in a standardized format.
+
+                Refer Annexure D for multidisciplinary module
+
+Standards
+
+MDC. 2.         The system can capture details related to research and trials
+
+Objective Elements
+
+Category        Core        Head        EMR              Type  Functional
+MDC 2.a
+                The system has the provision to capture consent, label patients enrolled under
+                research trials, and view the list of research trials conducted.
+
+Interpretation  The system provides a provision to assign patients to research trials by using a
+                check box. The system shall have a provision to capture the following,
+                Screened for trial - Yes/No...........................
+                Eligible for trial - Yes/No....................
+                Consent given yes/No , - Ability to upload the consent
+
+                The system shall have ability to capture other details e.g., Ethic's Committee
+                Trial Name............................
+                Trial ID ....................
+
+                The system shall also have a provision to view the list of patients enrolled in the
+                past/present for ongoing/past research and clinical trials conducted.
+
+                Refer Annexure J for Sample consent form for Clinical Trail
+
+Category        Excellence        Head              HIS  Type                  Functional
+MDC 2.b
+                The system supports the end-to-end management of clinical and research trials,
+                including randomization and enrollment, visit tracking, investigational product
+                management, adverse event monitoring, and close-out and archival
+
+                                        21
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                    ®
+
+Category        Excellence  Head                    HIS  Type  Functional
+
+Interpretation  The system shall provide structured functionalities to manage all key components
+                of a research or clinical trial, ensuring traceability and regulatory compliance.
+                Specically, the system shall include:
+
+                Randomization & Enrollment: The system shall support randomization logic and
+                maintain logs of enrolled participants with their trial arms.
+
+                Visit Management: The system shall allow conguration and scheduling of study-
+                specic visits and procedures, and enable tracking of visit adherence and
+                completion status.
+
+                Investigational Product (IP) Management: The system shall provide inventory
+                management for investigational drugs/devices, including batch tracking,
+                dispensing logs, and accountability records.
+
+                Adverse Event Monitoring: The system shall enable documentation and
+                classication of adverse events (AEs), their severity, causality assessment, and
+                linkage to trial protocols.
+
+                Close-Out & Archival: The system shall facilitate closure of trial records with nal
+                status, ensure archiving of all related documents (including approvals, monitoring
+                reports, and logs), and provide controlled access for audits or regulatory review.
+
+                The system should maintain linkage of this module with patient master data,
+                consent records, ethics committee approvals, and ensure role-based access to
+                maintain condentiality and integrity of research data
+
+Standards
+
+MDC. 3.         The system can capture details related to bone marrow transplantation
+
+Objective Elements
+
+Category        Excellence  Head                    EMR  Type  Functional
+
+MDC 3.a         The system has the provision to enter donor and recipient details in dened
+                templates for bone marrow transplant.
+
+Interpretation  The system shall have the provision to enter donor and recipient details in
+                dened templates (elds as dened by the facility) for bone marrow transplants.
+
+                The transplant will be both Autologous and Allogeneic transplants
+
+                                  22
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                                                                 ®
+
+Category        Excellence  Head                    EMR  Type  Functional
+
+Interpretation  Autologous transplant should capture the following,
+                1. Indication
+                2. Disease status at transplant
+                3. Pre-transplant work up ­ PS, ECHO, ECG, Dental, PFT, GFR any other
+
+                      referrals
+                4. Stem cell mobilization agents
+                5. Conditioning therapy and dates
+                6. Date of stem cell infusion
+                7. Stem cell dose
+                8. Date of Neutrophil Engraftment
+                9. Date of platelet engraftment
+                10. Any signicant complication
+
+                Allogeneic Transplants should capture the following,
+                1. Indication
+                2. Disease status at transplant
+                3. Pre-transplant work up ­ PS, ECHO, ECG, Dental, PFT, GFR any other
+
+                      referrals
+                4. Type of donor ­ MSD/Haplo/ MUD/ others
+                5. Donor workup details
+                6. Conditioning therapy and dates
+                7. Date of stem cell infusion
+                8. Stem cell dose
+                9. Date of Neutrophil Engraftment
+                10. Date of platelet engraftment
+                11. GVHD prophylaxis
+                12. Acute GVHD details
+                13. Chronic GVHD details
+                14. Treatment of GVHD
+                15. Any signicant complication
+
+                The system shall also have provisions,
+                1. To process internal approvals for the transplantation procedure (E.g.,
+
+                      transplant committee approval)
+                2. There is a provision for sharing reports with authorized agencies (reports
+
+                      such as the consent form, Psychiatric evaluation, doctor's recommendation,
+                      etc.).Refer Annexure G1 and G2 for consent forms
+
+                                  23
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                   ®
+
+                                          ANNEXURE
+
+A) Surgical Oncology Module: https://www.kcdo.in/src/docx/ner-surgical-oncology-module-2.0.pdf
+B) Radiation Oncology Module: https://www.kcdo.in/src/docx/ner-radiation-oncology-module-
+
+      2.0.pdf
+C) Chemotherapy Oncology Module: https://www.kcdo.in/src/docx/ner-medical-oncology-module-
+
+      2.0.pdf
+D) Mulltidisciplinary Tumour Board Module: https://www.kcdo.in/src/docx/ner-multi-disciplinary-
+
+      tumor-board-module-2.0.pdf
+E) Palliative Medicine Assessment Module: https://www.kcdo.in/src/docx/ner-palliative-medicine-
+
+      assessment-module-2.0.pdf
+F) 1) NABH Key Performance Indicators: Cancer Care and Management (Page 21 ­ 27)
+
+      2) NCG KPI Sample Tabular Format: https://docs.google.com/document/d/1fzH-
+           5J_Cd4Awi2ENxn0_TKBTIIpfc5wm/edit#heading=h.8nomxu9t5981
+
+G) 1) Transplant consent: consent form sample template
+      2) Transplant committee approval template
+
+H) NCG Clinical Guideline and protocol - https://www.ncgindia.org/cancer-guidelines (2019)
+I) Cancer survivor form: Cancer Survivor form
+J) Clinical trial sample consent form - https://actrec.gov.in/sites/default/les/TMC_IEC/
+
+      3.%20Template%20for%20Informed%20Consent%20Form.pdf
+
+                   24
+                           F1 : Key Performance Indicators : Cancer Care Management                                                                                         Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+
+     S.                                              Inclusion        Exclusion                                    Duration
+                Indicator                             criteria         criteria
+                           Denition                                                  Formula                 Unit  of           Data Variables  HIS/EMR Guide
+    No.
+                                                                                                                   Reporting
+
+                                                                      Provisionally
+
+                                                                      diagnosed or (Number of cancer
+
+                           Measures the number of    All cancer       non-           cases conrmed by                                           Capture biopsy/cytology
+
+                           cancer cases conrmed      cases            conrmed histopathology/cytopat               Daily /      Histopathology  details, structured
+
+       Cancer Case         through                   conrmed by       cases (e.g.,   hology during the             Monthly /    reports /       pathology reports,
+
+    1  Load                histopathological/cytopa  histopathology   clinical,      dened timeframe) ÷ %          Bi-          Cytopathology   conrmation status-
+
+                           thology examination       and              radiological,  (Total number of              annually /   reports         "Conrmed by
+
+                           during a dened            cytopathology    or suspected   cancer patients               Annually                     histopathology/cytopatholo
+
+                           reporting period.                          without        registered during the                                      gy" (Yes/No)
+
+                                                                      pathological same timeframe) * 100
+
+25                                                                    conrmation).
+
+       Distribution                                  All individuals
+
+       of cancer                                     with conrmed     Individuals    (Number of cases at           Daily /
+
+       cases by            Distribution of cancer    cancer           without a nal  each stage group/             Monthly /                    Use most recent staging
+                                                                                                                                                 data at the time of nal
+    2  relevant            cases by stage group at   diagnosis        diagnosis or   Total number of nally %       Quarterly /  TNM staging
+                                                                                                                                                         diagnosis
+       stage at nal        nal diagnosis.            within the       staging        diagnosed cancer              Annually
+
+       diagnosis                                     dened                           cases) × 100
+
+                                                     timeframe
+
+       Percentage Measures the proportion            Patients                        (Number of surgeries                                           Map treatment plan
+                                                                                                                                                decisions (e.g., from MDT
+       of cancer           of patients who           advised          Patients not   performed within 3                         MDT Plan,
+                                                                                                                                 Name of          discussions) to surgery
+    3  surgeries           underwent surgery         surgery and      advised        months of advice/       %     Daily to     procedure       dates. Backend capture of
+
+       performed within 3 months of being            subsequently     surgery        Total patients advised        Annually                       alternate treatments or
+                                                                                                                                                 deviations from planned
+       Vs advised          advised                   operated within                 surgery in the MDT
+                                                                                                                                                            surgery.
+                                                     3 months                        plan) × 100
+
+                                                                                                                                                                            ®
+     S.                                              Inclusion                                                         Duration                                             Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                             criteria
+                           Denition                                    Exclusion criteria  Formula               Unit  of         Data Variables   HIS/EMR Guide
+    No.
+                                                                                                                       Reporting
+
+                           Treatment modalities
+
+                           planned in MDT
+
+                           Surgery only: Treatment
+
+                           involving surgical
+
+                           procedures alone.
+
+                           Systemic therapy only:
+
+                           Treatment involving
+
+                           systemic therapy alone.
+
+                           Radiotherapy only:
+
+                           Treatment involving
+
+                           radiotherapy alone.
+
+                           S+R: Combined             All individuals                       (Number of Cases
+
+       Treatment           treatment involving       with a conrmed    Cases with          in Each Treatment
+
+       modalities          surgery and               diagnosis of      missing or          Modality Category                                       Classify S/R/C
+
+       according to        radiotherapy.             cancer.           incomplete          as per the                  Monthly /  Treatment plan   combinations. Auto-
+
+    4  clinical            S+C: Combined             Cases with        information on      treatment plan in     % Quarterly /    in MDT Module    capture from MDT
+
+       extent of           treatment involving       complete          treatment           MDT/ Total Number           Annually                    plan. Maintain
+
+       disease             surgery and systemic      information on    modalities.         of Cancer Cases in                                      temporal history.
+
+26                         therapy.                  treatment                             MDT) ×100
+
+                           R+C: Combined             modalities used
+
+                           treatment involving
+
+                           radiotherapy and
+
+                           systemic therapy.
+
+                           S+R+C: Combined
+
+                           treatment involving
+
+                           surgery, radiotherapy,
+
+                           and systemic therapy.
+
+                           Symptomatic care:
+
+                           Supportive care focused
+
+                           on managing symptoms
+
+                           without curative intent.
+
+                                                                                                                                  Cause of death,
+
+                                                                                                                                  Date of
+
+                                                                                                                                  admission,       Capture death as
+
+                           Captures mortality data   All conrmed       Deaths occurring    (Number of                             Reason for       surgery outcome.
+
+    5  Mortality           for cancer patients in    cancer deaths     outside the         inpatient deaths/     %     Monthly to admission, Type  Record cause of
+
+       Rate                hospital                  occurring in the  hospital setting    Total cancer-related        Annually   of surgery,      death, Capture
+
+                                                     hospital                              admissions) *100                       30/90-day        reason for admission
+
+                                                                                                                                  mortality, date of and procedure details
+
+                                                                                                                                  last therapy
+
+                                                                                                                                  before death
+
+                                                                                                                                                                            ®
+     S.                                              Inclusion                                                         Duration                                             Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                             criteria
+                           Denition                                    Exclusion criteria  Formula               Unit  of         Data Variables   HIS/EMR Guide
+    No.
+                                                                                                                       Reporting
+
+                           Treatment modalities
+
+                           planned in MDT
+
+                           Surgery only: Treatment
+
+                           involving surgical
+
+                           procedures alone.
+
+                           Systemic therapy only:
+
+                           Treatment involving
+
+                           systemic therapy alone.
+
+                           Radiotherapy only:
+
+                           Treatment involving
+
+                           radiotherapy alone.
+
+                           S+R: Combined             All individuals                       (Number of Cases
+
+       Treatment           treatment involving       with a conrmed    Cases with          in Each Treatment
+
+       modalities          surgery and               diagnosis of      missing or          Modality Category                                       Classify S/R/C
+
+       according to        radiotherapy.             cancer.           incomplete          as per the                  Monthly /  Treatment plan   combinations. Auto-
+
+    4  clinical            S+C: Combined             Cases with        information on      treatment plan in     % Quarterly /    in MDT Module    capture from MDT
+
+       extent of           treatment involving       complete          treatment           MDT/ Total Number           Annually                    plan. Maintain
+
+       disease             surgery and systemic      information on    modalities.         of Cancer Cases in                                      temporal history.
+
+27                         therapy.                  treatment                             MDT) ×100
+
+                           R+C: Combined             modalities used
+
+                           treatment involving
+
+                           radiotherapy and
+
+                           systemic therapy.
+
+                           S+R+C: Combined
+
+                           treatment involving
+
+                           surgery, radiotherapy,
+
+                           and systemic therapy.
+
+                           Symptomatic care:
+
+                           Supportive care focused
+
+                           on managing symptoms
+
+                           without curative intent.
+
+                                                                                                                                  Cause of death,
+
+                                                                                                                                  Date of
+
+                                                                                                                                  admission,       Capture death as
+
+                           Captures mortality data   All conrmed       Deaths occurring    (Number of                             Reason for       surgery outcome.
+
+    5  Mortality           for cancer patients in    cancer deaths     outside the         inpatient deaths/     %     Monthly to admission, Type  Record cause of
+
+       Rate                hospital                  occurring in the  hospital setting    Total cancer-related        Annually   of surgery,      death, Capture
+
+                                                     hospital                              admissions) *100                       30/90-day        reason for admission
+
+                                                                                                                                  mortality, date of and procedure details
+
+                                                                                                                                  last therapy
+
+                                                                                                                                  before death                              ®
+     S.                                          Inclusion                                                          Duration                                                 Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                         criteria
+                           Denition                                  Exclusion criteria  Formula              Unit  of           Data Variables    HIS/EMR Guide
+    No.
+                                                                                                                    Reporting
+
+                                                                     Patients for whom                                                             Discharge summary
+
+                                                                     treatment was                                               Systemic          at completion to have
+
+                                                 Patients who        planned in the      (Number of patients                     therapy status,   a status update
+
+                                                 initiated systemic  MDT but not         completing planned                      Completion        asking the clinician to
+
+       Systemic Measures percentage of           therapy,            initiated.          systemic therapy /         Daily /      status,           ll- completed
+
+    6  therapy             patients completing   Patients who        Patients who        Total patients       %     Monthly /    Discharge         planned no of cycles-
+
+       Completion          planned systemic      completed           opted for an        Initiated on               Quarterly /  Summary at        Yes/No, if no specify
+
+       Rate                therapy.              planned systemic    alternative         systemic therapy)          Annually     completion /      the reasons from the
+
+                                                 therapy as per      treatment plan      × 100                                   Reason for Non-   drop-down list-
+
+                                                 treatment plan      after discussion                                            Completion        Death/Progression/de
+
+                                                                     with healthcare                                                               faulter/Tolerance/
+
+                                                                     providers.                                                                    Others.
+
+                                                                                                                                                   Type of radiation
+
+                                                                                                                                                   therapy-
+
+28                                                                                                                                                 EBRT/Brachytherapy/
+
+                                                                                                                                                   Both
+
+                                                 All Cancer                                                                      Radiation         EBRT- Radiation
+
+                                                 patients for                                                                    therapy           therapy completion
+
+                                                 whom radiation                                                                  completion-       date, Treatment
+
+                                                 therapy was part    Patients for whom                                           Planned or        completion- Planned
+
+                                                 of the treatment    the radiation                                               unplanned         or Unplanned,
+
+                                                 plan as a part of   therapy plan was    (Number of patients                     Reason for Gap-   Treatment Gap-
+
+                           Percentage of patients MDT treatment      modied due to       completing                              Poor              Yes/No, Reason for
+
+       Radiation           who successfully      planning            medical reasons     radiation therapy /        Daily /      Compliance/       Gap- Poor
+
+    7  Therapy             complete their        Patients who        Patients who        Total patients       %     Monthly /    Treatment         Compliance,
+
+       Completion          prescribed radiation  successfully        opted for an        Initiated on               Quarterly / related toxicity/  Treatment related
+
+       Rate                therapy               completed the       alternative         radiation therapy)         Annually     Machine           toxicity, Machine
+
+                                                 prescribed          treatment plan      × 100                                   breakdown/        breakdown, Others
+
+                                                 course of           after discussion                                            Others            In case of Brachy- it is
+
+                                                 radiation therapy   with healthcare                                             Type of           Total Radiotherapy
+
+                                                 within the          providers                                                   Radiation         Dose planned Vs
+
+                                                 specied                                                                         therapy- EBRT, given at the time of
+
+                                                 timeframe                                                                       Brachytherapy, completion, Total no
+
+                                                                                                                                 Both              of
+
+                                                                                                                                                   fractions/Fractionatio
+
+                                                                                                                                                   n delivered date and
+
+                                                                                                                                                   time/ Dose per
+
+                                                                                                                                                   fraction.
+
+                                                                                                                                                                             ®
+     S.                                            Inclusion                                                            Duration                                            Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                           criteria
+                           Denition                                      Exclusion criteria  Formula              Unit  of           Data Variables   HIS/EMR Guide
+    No.
+                                                                                                                        Reporting
+
+        Average                                    All newly                                 Median of time (in                                       Histopath reporting
+
+        Time from Median time from initial         diagnosed                                 days) from                                               date, date of
+
+        Presentation       presentation or         cancer cases          Pre-diagnosed       presentation/screen        Monthly /    Registration     registration, Auto-
+
+    8   /Screening         screening to            where time is         cases who have      ing to conrmed       Day   Quarterly / date, Histopath   calculate time
+
+        to Final           conrmation of nal       measured from         been partially      diagnosis for all    s     Annually     date             difference and tag
+
+        Cancer             cancer diagnosis.       rst hospital          treated outside     newly diagnosed                                          TAT category in
+
+        Diagnosis                                  registration or                           cancer cases.                                            structured eld
+
+                                                   screening
+
+                                                                         Cases with
+
+                                                                         missing or
+
+                                                                         unreliable data
+
+                                                                         regarding the time
+
+29      Median Time                                                      of diagnosis or     Median of time
+
+        from                                       Cases that            initiation of       intervals (in days)                     Histopathology     Histopathology
+                                                                                                                                                        reporting date,
+        Diagnosis to       Median time from        received surgery,     treatment.          from diagnosis to          Monthly /    reporting date,  Treatment initiation
+                                                                                                                                                       dates- maintain a
+    9   Initiation of      conrmed cancer          chemotherapy, or      Cases where         start of rst         Day   Quarterly /  Protocol         temporal history of
+                                                                                                                                                      the patient journey.
+        Denitive           diagnosis to initiation of radiation as rst treatment initiation  denitive treatment   s     Annually     assignment
+
+        Treatment          denitive treatment.     denitive              was delayed for     across all eligible                     date/ Surgery
+
+        for Cancer                                 treatment             reasons unrelated   cases.                                  date
+
+                                                                         to the hospital's
+
+                                                                         processes (e.g.,
+
+                                                                         patient
+
+                                                                         preference,
+
+                                                                         comorbidities).
+
+                                                   Patients              Missing/incomplet
+
+                                                   diagnosed with        e recurrence data   (Patients with                          Gender, Age,     Use Decision Panel.
+                                                                                                                                     State, Stage,         Track end-of-
+                           First recurrence within 5 non-metastatic      Patients            Recurrence / Total                                            treatment and
+                                                                                                                                       Modality,
+    10  Relapse after      years post-treatment for (Stage I­III) solid  presenting with     non-metastatic       %     Annually      Recurrence        recurrence status.
+                                                                                                                                                      Use mapped surgical
+        treatment          non-metastatic cancer.  tumors or             metastatic disease patients completed                           Status
+                                                                                                                                                               codes.
+                                                   hematologic           at diagnosis        treatment 5 years
+
+                                                   cancers.              (Stage IV).         ago) × 100
+
+                                                                         Patients who
+
+                                                                                                                                                                            ®
+     S.                                               Inclusion                                                           Duration                                              Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                              criteria
+                           Denition                                      Exclusion criteria  Formula                Unit  of           Data Variables   HIS/EMR Guide
+    No.
+                                                                                                                          Reporting
+
+                                                                         received only
+
+                                                                         palliative
+
+                                                                         treatment.
+
+                                                                         Patients lost to
+
+                                                                         follow-up
+
+                                                                         immediately post-   Numerator:
+
+                                                                         treatment (within 3 Number of patients
+
+                                                                         months).            with non-metastatic
+
+                                                      Patients who       Patients with       cancer who                                Gender, Age,     Use Decision Panel.
+                                                                                                                                       State, Stage,         Track end-of-
+                           First recurrence within 5  have completed second primary          experienced a                                                   treatment and
+                                                                                                                                         Modality,
+    10  Relapse after      years post-treatment for   curative-intent malignancy within documented rst              %     Annually      Recurrence        recurrence status.
+                                                                                                                                                        Use mapped surgical
+        treatment          non-metastatic cancer.     treatment (e.g., the 5-year follow- recurrence (local,                               Status
+                                                                                                                                                                 codes.
+                                                      surgery, denitive  up window.          regional, or distant)
+
+                                                      chemoradiation).   Cases where         within 5 years after
+
+                                                                         recurrence cannot   completion of
+
+                                                                         be reliably         primary curative-
+
+                                                                         determined due to intent treatment.
+
+30                                                                       incomplete
+
+                                                                         documentation or
+
+                                                                         lack of
+
+                                                                         imaging/pathologi
+
+                                                                         cal conrmation.
+
+                                                      Hospital stay                                                                                     Track
+
+                                                      duration                                                                                          admission/discharge,
+
+                                                      calculated from                                                                                   reason for admission-
+
+                                                      admission to       Admissions                                                    Type of          surgery or inpatient
+
+                                                      discharge          unrelated to                                                  Procedure/       treatment, level of
+
+                                                      Surgical           cancer (e.g.,                                                 Admission/Disch  post op monitoring
+
+                                                      procedures         comorbid            Total number of                           arge dates,      from anesthesia
+
+                                                      (elective or       condition           hospital days ÷                           Treatment        module marked as
+
+        Hospital           Average hospital stay      emergency)         management)         Total number of Day          Monthly /    modality, post-  Routine/High
+
+    11  Length of          duration for surgical or   Inpatient          Day-care or         patients               s     Quarterly /  op monitoring-   dependency/
+
+        Stay               inpatient treatment.       treatments         outpatient          undergoing surgery           Annually     Routine/High     Intensive care, Post-
+
+                                                      related to cancer procedures not       or inpatient care                         dependency/      op complications, list
+
+                                                      (e.g.,             requiring                                                     Intensive care,  of
+
+                                                      complications,     overnight                                                     Clavien Dindo    surgeries/procedures
+
+                                                      planned            admission                                                     grade-1/2/3/4/5  mapped to OT
+
+                                                      admissions for                                                                                    scheduler, Clavien
+
+                                                      chemo/radiother                                                                                   Dindo grading of
+
+                                                      apy)                                                                                              worst complication-
+
+                                                                                                                                                        1/2/3/4/5               ®
+     S.                                            Inclusion                                                           Duration                                               Oncology Annexure  NABH Digital Health Standards for HIS/EMR Systems:
+                Indicator                           criteria
+                           Denition                                   Exclusion criteria  Formula                Unit  of             Data Variables  HIS/EMR Guide
+    No.
+                                                                                                                       Reporting
+
+                                                                                          (No of pts where                                            Capture referral date
+                                                                                                                                                         and department,
+                                                    All patients for                      intent was palliative
+                                                   whom treatment                                                                                     Intent to treatment as
+        Palliative         Percentage of patients                                         and were referred                Monthly /  Referral date,        curative and
+                                                       intent was                         to palliative care/    % Quarterly /         Department
+    12  Care Referral      referred to palliative     marked as       None                                                             referred to,     palliative, Auto-ag
+                                                        palliative                          Total no of pts                Annually   Stage, Intent   non-curative patients
+                           care.                                                          whose intent was                                            who were not referred
+
+                                                                                          recorded as                                                    to palliative care.
+
+                                                                                          palliative) *100
+
+31
+
+                                                                                                                                                                              ®
+NABH Digital Health Standards for HIS/EMR Systems:
+
+Oncology Annexure                                   ®
+
+                                        REFERENCES
+
+1. Koita Centre for Digital Oncology. Surgical oncology module . 2024 . Available from:
+    h ps://www.kcdo.in/src/docx/ner-surgical-oncology-module-2.0.pdf
+
+2. Koita Centre for Digital Oncology. Radia on oncology module . 2024 . Available from:
+    h ps://www.kcdo.in/src/docx/ner-radia on-oncology-module2.0.pdf
+
+3. Koita Centre for Digital Oncology. Chemotherapy oncology module . 2024 . Available from:
+    h ps://www.kcdo.in/src/docx/ner-medical-oncology-module2.0.pdf
+
+4. Koita Centre for Digital Oncology. Mul disciplinary tumour board module. 2024 . Available from:
+    h ps://www.kcdo.in/src/docx/ner-mul -disciplinarytumor-board-module-2.0.pdf
+
+5. Koita Centre for Digital Oncology. Pallia ve medicine assessment module [Internet]. 2024 [cited 2025
+    Sep 11]. Available from: h ps://www.kcdo.in/src/docx/ner-pallia ve-medicineassessment-module-
+    2.0.pdf
+
+6. Koita Centre for Digital Oncology. Key performance indicators . 2024. Available from:
+    h ps://docs.google.com/document/d/1fzH-
+    5J_Cd4Awi2ENxn0_TKBTIIpfc5wm/edit#heading=h.8nomxu9t5981
+
+7. Na onal Organ and Tissue Transplant Organisa on. Transplant consent form sample template . 2014 .
+    Available from: consent form sample template
+
+8. Na onal Organ and Tissue Transplant Organisa on. Transplant commi ee approval template . 2014.
+    Available from: Transplant commi ee approval template
+
+9. Na onal Cancer Grid. NCG clinical guideline and protocol ]. 2019. Available from:
+    h ps://www.ncgindia.org/cancer-guidelines
+
+10. Na onal Cancer Grid. Cancer survivor form]. 2024 ]. Available from: Cancer Survivor form
+11. Advanced Centre for Treatment, Research and Educa on in Cancer. Clinical trial sample consent form .
+
+    2020. Available from:
+    h ps://actrec.gov.in/sites/default/files/TMC_IEC/3.%20Template%20for%20Informed%20Consent%2
+    0Form.pdf
+
+                   32
+

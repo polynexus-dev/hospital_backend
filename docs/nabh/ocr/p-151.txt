@@ -1,0 +1,56 @@
+Zz
+s Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+7 Monitoring on
+4
+2
+Ss
+Q
+A medication =
+error is any Total number of o
+preventable medication It is preferred that the data is os
+The methodology for capt s
+event that may errors le methodology Tor capture captured through the system am
+cause or lead to shall be as stated in NABH's for all the sub-components of z=
+4 psa 3a_| Incidence of inappropriate P document on medication errors. | medication errors. Wherever ao
+medication medication use x100 | Percent Monthly The indicator shall be captured there is a limitation in =
+errors or patient harm age for admitted capturing the information Q
+while the Patients. through the system, there m
+medication is in Total number . should be a provision for =
+the control of of Sampling: Yes 7 entering the manual/ >
+the healthcare opportunities Sampling methodology: electronically collected (app/ <
+professional, Stratified random online forms) data. a
+patient, or @
+consumer. (Ref: Fy
+NCC- MERP).
+Adverse Drug The organization can use or
+reaction is a download PvPI software (Vigi
+response to a Fow) to document and
+drug which is Number of analyze adverse drug
+noxious and adverse reactions.
+unintended, drug The numerator shall be
+Percentage of and which reactions The organization needs to have captured through an incident
+in- patients occurs at doses a mechanism in place to ensure | reporting module/software
+5 PSQ3a_ | developing normally used x100 | Percent Monthly that all adverse drug reactions (stand-alone or integrated
+adverse drug iin aren or age are captured and reported. with HIS/EMR system).
+reaction(s). prophylaxis,
+Fi A Sampling: No
+diagnosis, or The denominator shall
+therapy of .
+' include the total number of
+disease or for Number of i i il midni
+heen . : inpatients until midnight of
+the modification | inpatients the last day of the calend;
+of physiologic © ae ay ofine calendar
+function. montn.
+Unplanned The data shall be captured with The system shall count the
+return to the OT a delay of 30 days. This ensures | total number of unplanned
+Percentage of | jg defined as Number of Percent that the organization has surgeries done within 30
+6 PSQ 3a unplanned any secondary unplanned X100 age Monthly adequate time to capture days. Wherever there is a
+return to OT procedure returns to OT complications that require an limitation in capturing the
+required for a unplanned return to the OT. information through the
+z
+>
+wo
+=x
+4

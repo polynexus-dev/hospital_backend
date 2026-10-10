@@ -1,0 +1,56 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+should be able to do shift swaps or changes on the staff request, with approval
+workflows managed by administrators to maintain roster integrity.
+
+The system may also be customized to offer automatic roster generation based on
+pre-defined templates that consider factors such as staff qualifications and
+compliance with labour regulations. The system should generate a report of the
+actual assignment of healthcare professionals for each location, each shift each day.
+
+Achievement e. | The system communicates shift schedules to all staff.
+
+To streamline staff communication related to shift schedules, changes, swap
+requests, and important announcements, the system shall have robust
+communication capabilities.
+
+Interpretation Such capabilities can include mobile notifications, a centralized announcement
+board, or an integrated messaging system. These tools facilitate seamless
+communication among staff members, promoting collaboration and addressing
+scheduling concerns in real-time.
+
+category ese Type
+
+>CCltaaa Ihe system predicts staffing needs based on historical data and workload.
+
+Predicting staffing needs, based on historical data and workload, requires analytics
+
+and forecasting demand/support capabilities based on historical data.
+
+The system should enable administrators input historical staffing data, patient volume
+. data and develop staffing needs. The staffing models should provide easy to
+
+Interpretation .
+
+understand output and visual trends.
+
+The system may set up automated alerts and notifications for administrators when
+
+staffing levels deviate from predicted patterns or when immediate adjustments are
+
+needed based on sudden changes in patient volume.
+
+ima [Commiment | read ae
+
+Commitment g. | The system manages staff attendance and maintains records.
+
+The system shall have a comprehensive attendance management module. This
+module should provide options for capturing attendance — manual entry, biometric
+’ verification (fingerprint or face detectors), integration with attendance tracking
+
+Interpretation devices (access cards), or location-based recording (mobile apps or web interfaces).
+The system shall maintain records of attendance. The system will display the leave
+balance for the staff and give options for applying for leave.
+
+|| Core || Commitment || Achievement || Excellence

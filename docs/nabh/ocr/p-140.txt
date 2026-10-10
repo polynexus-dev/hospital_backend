@@ -1,0 +1,84 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+based on patient
+symptoms.
+Abnormal Test
+Results Alert:
+Generates alerts for | Investigate
+
+Alerts for | Patient has a . healthcare providers | abnormal renal
+
+. Metformin Abnormal . .
+Abnormal | history of 1000 m renal function when renal function | function test results
+Test diabetes ; 8 test results indicate | further. Adjust
+. twice daily. test results. . .
+
+Results mellitus. potential Metformin dosage
+complications in if necessary.
+patients with
+diabetes.
+
+Diagnostic Test Alert
+woe . Provides guidance Order chest X-ray as
+
+Decision Patient .
+
+. . on ordering recommended by
+
+Support presents with Prescribed .
+
+. appropriate CDSS. Interpret
+7 for symptoms None. with chest X- . . .
+Orderin suggestive of ra diagnostic tests, results in
+8 88 . ¥. such as chest X-ray, | conjunction with
+
+Tests pneumonia. . a an
+based on patient clinical findings.
+symptoms and
+clinical presentation.
+
+Assists healthcare
+providers with Utilize CDSS
+Patient Prescribed clinical . suggestions to
+Clinical . . . documentation by ensure accurate
+admitted with with ACE . .
+Document . . ere suggesting documentation of
+. a diagnosis of | None. inhibitor and . A
+ation : . : appropriate codes congestive heart
+. congestive diuretic . . . .
+Assistance . for congestive heart | failure diagnosis
+heart failure. therapy. .
+failure and and prescribed
+prescribed medications.
+medications.
+Clinical Pathway
+Alert
+. . Supports adherence | Follow clinical
+Clinical Patient Prescribed to anical athways athwa m
+admitted with with P . Y P y .
+
+Pathway . ee for community- recommendations
+
+community- None. antibiotics and . wpa ae
+
+Adherenc . acquired for antibiotics and
+
+acquired oxygen .
+e . pneumonia, oxygen therapy
+pneumonia. therapy. . ee
+ensuring initiation.
+standardized and
+effective treatment.
+Assesses the
+oy Implement fall
+Elderly patient's through revention
+Fall Risk patient with a Prescribed fall risk assessment ote ies based on
+10 | Assessme | history of None. with tool in EMR based &
+. ' a CDSS assessment.
+nt Parkinson's Levodopa. on age, mobility, . a
+. . . Monitor patient's
+disease. and medical history, a
+a mobility closely.
+guiding
+implementation of

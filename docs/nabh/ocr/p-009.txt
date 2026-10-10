@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+In the vast and diverse healthcare landscape of India, the rapid integration of digital technology has the potential to
+revolutionize healthcare delivery. With a burgeoning population and increasing healthcare demands, the need for
+reliable and secure digital health solutions has never been more critical.
+NABH has made significant strides in advancing healthcare quality by releasing its new standards for Hospital
+Information Systems (HIS) and Electronic Medical Record (EMR) systems in India. In this evolving landscape of
+digital technology, it is imperative that the systems being used in the hospitals are standardized, usable, scalable,
+ensure data security and at the same time ease the burden of the clinical and administrative staff. In this context, the
+HIS and EMR Standards plays a pivotal role in ensuring that these technologies meet the unique challenges and
+requirements of the Indian healthcare system.
+Itis pertinent to note that under these Standards, the systems associated with administrative features are categorized
+under HIS, while those with a predominance of clinical features fall under the EMR category. It is acknowledged that
+a single product may encompass both administrative and clinical features. In such instances, the product is eligible
+to apply for both HIS and EMR certifications. This dual certification allows for a comprehensive evaluation and
+recognition of the product’s multifaceted capabilities.
+Certification in the context of healthcare refers to the formal evaluation procedure by means of self - assessment
+and external peer review process to accurately assess one’s level of performance in relation to established standards
+and to implement ways to improve the health care system continuously. Certification is the most important approach
+to improving the quality of healthcare organizations and serves as a guiding force to drive these organizations to
+follow standardized procedures to ensure patient safety and quality by way of establishing systems, protocols leading
+to a culture that is safe and patient centric. Certification is a systematic approach to do the rights things as per the
+right procedure to the right patient at the right time to have the right outcome.
+This program is specifically designed for companies who have developed Hospital Information System (HIS) and
+Electronic Medical Records (EMR) systems within India. Compliance with these standards ensures that the products
+are standardized and equipped with all the essential functionalities required for efficient and effective healthcare
+service delivery. Obtaining the NABH certification enhances the brand value of the products, thereby making them
+more appealing to potential adopters.
+Hospitals, in turn, are more inclined to adopt products that have been certified by NABH, as this certification serves
+as a testament to the product’s quality, reliability, and adherence to established healthcare standards. Thus, NABH
+certification not only elevates the status of the product but also contributes to the overall improvement of healthcare
+service delivery in India.
+1. The HIS and EMR systems would be tested against pre-defined test cases and validation criteria. Reputed
+third-party testing agencies, to be referred to as, NABHEmpaneled Software testing agencies (NESTA)
+©

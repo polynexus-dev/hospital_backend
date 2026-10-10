@@ -1,0 +1,56 @@
+NABH Standards for HIS and EMR Systems
+NABH
+establish, implement, operate, monitor, review, maintain
+and continually improve an ISMS (information security
+management system).
+
+38 | ISO/IEC 82304 The purpose of the IEC 82304-1 standard is to identify
+product requirements for health software manufacturers,
+such as : Risk management, product validation, installation
+instructions and instructions for use.
+
+39 Key Performance Indicators are measurable and
+quantifiable metric used to track progress towards a
+specific goal or objective. These are the critical (key)
+quantifiable indicators of progress toward an
+intended result.
+
+ee
+
+41 | LOINC Logical Observation Identifiers Names and Codes
+Logical Observation Identifiers Names and Codes, or LOINC,
+is a universal code system for identifying medical
+laboratory observations and clinical measurements. It
+is used to standardize the identification of test results and
+measurements, which helps to improve the accuracy and
+efficiency of medical data exchange between
+healthcare organizations and patients. LOINC codes are
+used to uniquely identify laboratory and clinical
+observations in electronic health records (EHRs), billing
+systems, public health reporting, and research studies.
+
+42 | Master data Master data is the set of identifiers that provides context
+about business data such aslocation, customer, product,
+asset, etc.
+
+43 | Medical practitioners In this document medical practitioners refer to the clinical
+service providers like doctors.
+
+Medical reconciliation Medical reconciliation, often referred to as “med rec”, is a
+crucial process in patient care that occurs during transitions
+in care—upon hospital admission, transfer from one unit to
+another during hospitalization, or discharge from the
+hospital to home or another facility.
+
+The process involves reviewing the patient’s complete
+medication regimen at the time of admission, transfer, &
+discharge and comparing it with the regimen being
+considered for the new setting of care. This is done to avoid
+inadvertent inconsistencies, such as unintentionally
+omitting needed medications, unnecessarily duplicating
+existing therapies, or prescribing incorrect dosages.
+
+45 | Medication Medication, for the reference in this document, includes all
+medicines, medical devices, implants, consumables,
+vaccines and other items that are regularly used ina
+hospital pharmacy.

@@ -1,0 +1,32 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall have the capability to create and manage different healthcare
+packages. The package information should capture the inclusion/exclusion of
+services, charges, etc.
+Healthcare packages can include charges based on the type of services availed,
+. for example choice of bed/ room, ward, charges for medical treatment, medicines,
+Interpretation : . . .
+ICU, operation theatre, ambulance services, consultation, physiotherapy, food
+etc.
+Fixed Package: Some healthcare organizations offer fixed package deals for
+specific treatments (e.g., maternity packages, cardiac surgery packages) that
+include a set of healthcare services at a fixed price.
+Commitment d. The system creates and manages healthcare packages for patients with
+inclusion/exclusion of services.
+The system shall have the capability to create and manage different healthcare
+packages. The package information should capture the inclusion/exclusion of
+services, charges, etc.
+Healthcare packages can include charges based on the type of services availed,
+Interpretation for example choice of bed/ room, ward, charges for medical treatment, medicines,
+P ICU, operation theatre, ambulance services, consultation, physiotherapy, food
+etc.
+Fixed Package: Some healthcare organizations offer fixed package deals for
+specific treatments (e.g., maternity packages, cardiac surgery packages) that
+include a set of healthcare services at a fixed price.
+Core e. The system designates the treating medical practitioners.
+Interpretation The system shall designate the treating medical practitioners along with the
+supporting team.
+, The system autopopulates all relevant data fields when a patient is admitted on
+Commitment f. : oo : te
+entering their unique patient Identifier.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,48 @@
+NABH Standards for HIS and EMR Systems
+NAB 1
+1. To evaluate the implementation of patient centered care policies — PREMs being feedback
+directly from the patients, offer an opportunity to evaluate the effective implementation of
+all patient centered care policies by healtcare organisations.
+2. To identify areas for improvement- PREMs can be used as a proactive measure to identify
+potential areas for improvement rather than waiting for an incident to happen and then
+reactively taking corrective actions.
+3. To assess the effectiveness of corrective actions— Whenever any corrective and preventive
+actions are implemented, the effective implementation of those actions can be evaluated
+using PREMs.
+4. To assess and improve (if needed) communication with patients and families.
+5. To ensure that, the patient’s voice is documented and listened to provide individual care and
+enhance patient experience.
+Implementing PREMs
+e Finalizing the questionnaire
+There are two simple approaches to implementing PREMs —
+1. Utilizing readymade PREMs questionnaire — Various validated questionnaires are
+available either free of charge or on a payment basis or have been reported in -peer
+reviewed journals. An organization can decide to opt for one of those questionnaires. The
+Agency for Healthcare Research and Quality (AHRQ) has published various questionnaires
+based on the type of facility or disease-specific questionnaires on their website. Some
+examples include the Accident and Emergency Department Questionnaire* (AEDQ), the
+National Inpatient Survey, the navigated Transcranial Magnetic Stimulation (nTMS) —
+PREMS®, and the Consumer Assessment of Healthcare Providers and Systems (CAHPS)
+PREMS® amongst others.
+2. Preparing a bespoke questionnaire
+> Once the questionnaire is made, assess ease of understanding by conducting a pilot to
+ensure optimal usage. Remove any unclear or unnecessary questions.
+
+> If any changes are made after the pilot —retesting is recommended.
+
+> Test the questionnaire in small different groups of patients. Having a multilingual
+questionnaire is useful in view of global medical travelers.
+
+> Define the number of times the PREMs tool will be given to the patient. For example,
+for a patient who is planning to undergo surgery, the first PREM questionnaire can be
+given after the first meeting with the surgeon and the second time during the
+postoperative stay.
+
+> Various modes can be utilized like face-to-face interviews, email, over the telephone,
+or using electronic forms which comply with data security guidelines.
+
+> Sharing forms with patients using QR codes is another cost-effective and easy way for
+patients using a smartphone.
+
+> Asking the patient to fill in the form in front of the treating clinician or staff should be
+avoided.

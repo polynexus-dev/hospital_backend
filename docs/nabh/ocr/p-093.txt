@@ -1,0 +1,27 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+PXonCige am Ihe system issues notifications to the suppliers regarding their payment status.
+The system shall be able to send notifications to suppliers regarding payment
+. status or updates including details of relevant invoices. This can be facilitated
+Interpretation . or . .
+through a vendor portal or direct communication e.g., SMS, email, online
+messaging platform, etc.
+Standard
+rou The system performs patient billing functions.
+Objective Elements
+Corea The system configures rates for various services provided by healthcare
+‘ organizations.
+Interpretation The healthcare organization shall configure rates for all the services being offered.
+P This flexibility allows for customized pricing based on the services provided.
+Core b. The system configures patient billing templates.
+The system shall have the feature of configurable billing templates, tailored to the
+needs of healthcare organization sensuring consistency across all billing documents.
+The template includes at least the following but is not limited to-
+a) Patient unique identifier
+b) The date on which the bill was generated and the date(s) over which the services
+Interpretation were delivered
+P c) Details of the services availed
+In addition, the bill shall clearly mention whether it is an interim or final bill and bear
+all necessary disclaimers as per the healthcare organization’s policy.
+(oreyiitiiuiciimesen) The system generates estimates for the care/services rendered.
+|| Core || Commitment || Achievement || Excellence

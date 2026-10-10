@@ -1,0 +1,38 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Annexure-1 Patient-Reported Experience Measures (PREMs)
+Patient-reported experience measures (PREMSs) is a critically important tool to ensure that
+the patient safety policies and protocols are being implemented by healthcare workers. If
+used effectively, this tool can provide plenty of benefits.
+Why do we need PREMs?
+Over the past two decades, patient-centered care has becomeimportant in the healthcare
+industry, with numerous initiatives, protocols, and processes being introduced to ensure
+patient safety and satisfaction. However, despite all these measures, we continue to
+encounter a high number of incidents of patient harm in our healthcare facilities.
+Considering these factors, it highlights the opportunity for further advancements in patient
+safety protocols within the Indian healthcare system.
+The Role of PREMs
+Despite the development of various protocols and guidelines to prevent avoidable accidents,
+such events continue to be reported regularly. This suggests gaps in the implementation of
+these policies by healthcare workers PREMSs, being direct feedback from patients, can validate
+the effectiveness of these policies and protocols.
+Engaging with patients and families in care has been shown to provide numerous benefits,
+making it imperative for healthcare providers to ensure this involvement.
+What are PREMs?
+Patient reported experience measures are specific self-reporting instruments that measure
+patient’s perception of experience while receiving care.
+PREMs are basically a questionnaire-based survey that the patient is expected to take based
+on their perception. It is a tool that helps in assessing whether the intended actions are being
+performed by the healthcare workers. For example, if a question asks the patient whether all
+their questions related to a surgical procedure were answered to their satisfaction? An
+positive answer from all patients establishes that the surgeon is thoroughly explaining the
+surgical intervention to all patients whereas if some patients give a negative response, it
+implies that the surgeon needs to give more detailed explanations to answer the questions
+patients and/or their families may have.
+This way PREMs act like constructive feedback directly from the patients and thus it is a useful
+measure of what happens during a care episode. It is a good tool to evaluate if healthcare
+professionals are following various safety procedures and protocols.
+Potential uses of PREMs
+PREMs can be used extensively for various purposes. A specific questionnaire can be designed
+to evaluate various aspects of the quality of care being provided to the patients throughout
+their journey. Some of the broad applications are enlisted below —

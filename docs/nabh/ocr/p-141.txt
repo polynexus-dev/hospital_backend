@@ -1,0 +1,66 @@
+NABH Standards for HIS and EMR Systems @ Gy
+NABH
+appropriate fall
+prevention
+strategies.
+Assesses the
+patient's risk of
+developing pressure | Implement
+| | ti
+Pressure Patient is Prescribed uicers pressure ulcer’) preventive
+P F . risk assessment tool | measures based on
+Ulcer Risk | bedridden with pressure- |.
+11 we dees None. in EMR based on CDSS assessment.
+Assessme_ | with limited relieving . ae -
+a immobility, guiding | Ensure proper
+nt mobility. mattress. . ae .
+preventive positioning and skin
+measures such as care.
+pressure-relieving
+support surfaces.
+Sepsis Alert
+Patient Helps healthcare Act promptly on
+. . . providers screen for | CDSS alerts
+Sepsis presents with Prescribed re .
+. . and detect early indicating possible
+Screening | fever, with blood . . . ee
+12 . None. signs of sepsis based | sepsis. Initiate
+and Early | tachycardia, cultures and _ .
+. we as on clinical appropriate
+Detection | and antibiotics. a
+. indicators, management and
+hypotension. we ge ae
+facilitating prompt monitoring.
+intervention.
+Medication
+Reconciliation Alert .
+. . we a Review and
+. Lisinopril Assists in reconciling .
+. ae Patient . . . oy reconcile
+Medicatio 10mg once Discrepancies | the patient's - ue .
+admitted . . oe ee medication lists
+n daily, in medication medication list : wae
+13 ... | froma long- . wae during transitions of
+Reconcilia Metoprolol list between across transitions of
+. term care . vege : ap care as
+tion i" 50mg twice facilities. care, identifying
+facility. . . . recommended by
+daily. discrepancies and
+. a CDSS.
+ensuring continuity
+of care.
+Supports the
+t of Follow CDSS
+. Patient with . Prescribed pielia inal ° ouow .
+Chronic Insulin . wae diabetes mellitus by | recommendations
+. poorly . with additional a. rn
+Disease glargine 20 providing for optimizing
+14 controlled . oral .
+Managem . units at . recommendations treatment and
+diabetes . hypoglycemic we oe
+ent . bedtime. for optimizing monitoring of
+mellitus. agent. . .
+treatment and diabetes mellitus.
+monitoring.
+Note: The alerts and notifications mentioned in the annexure are only suggestive and need not be incorporated
+verbatim by the digital system.

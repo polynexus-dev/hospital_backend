@@ -1,0 +1,28 @@
+NABH Standards for HIS and EMR Systems 69)
+NAB 1
+Information Management System (IMS)
+Intent of the Chapter:
+The intent of this chapter is to provide a comprehensive framework of standards and guidelines for Hospital
+Information Systems (HIS) and Electronic Medical Record (EMR). The primary objective is to ensure
+interoperability, security, privacy, and integrity of patient data. By adhering to relevant digital health
+standards, organizations can enhance the functionality and reliability of their digital solutions.
+Key standards and guidelines covered in this chapter include:
+1. Interoperability and Continuity of Care
+2. Key Performance Indicators and Analytics
+3. Compliance with Quality and Security Standards
+Additionally, the chapter also emphasizes the importance of robust consent management mechanisms
+that are aligned with data privacy laws.
+By following these guidelines, healthcare technology providers can build open systems that form the
+backbone of a resilient and efficient healthcare ecosystem, ensuring trust and reliability in digital health
+solutions.
+The intent is to ensure safeguarding patient privacy while leveraging technology to enhance health care
+delivery.
+Summary of Standards
+The system supports healthcare data and interoperability standards for patient,
+IMS.1 clinical, and administrative information to ensure continuity of care, including
+ABDM.
+The system has the capability to support NABH defined key performance indicators
+IMS.2 and analytical dashboards.
+The system complies with Information Security (ISO 27001:2022) and Safety and
+IMS.3 Security of Health Software Products (ISO 82304) standards.
+|| Core || Commitment || Achievement || Excellence

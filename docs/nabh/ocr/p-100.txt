@@ -1,0 +1,37 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Summary of Standards
+HRM.1. The system manages human resource administration.
+HRM.2. The system manages recruitment and exit related activities.
+HRM.3. The system manages the training needs of the staff.
+Standard
+rns The system manages human resource administration
+Objective Elements
+ae ries ie
+Commitment a. The system captures personal and professional data (master data) related to
+medical and non-medical staff.
+The system shall manage essential master data elements related to staff. This
+involves details such as names of departments, structures, staff master data, role
+master, and department master.
+The system shall also maintain staff's personal files which contain information such
+as their contact details, employment history, health records, credentialing and
+privileging performance evaluations, trainings and certifications, job duties and
+responsibilities, benefits and compensation, workplace related incidents, disciplinary
+action (if any) and other important documentation related to their employment with
+the hospital.
+The system should also include staff information forms, education forms, and
+professional record forms, enabling administrators to input and update essential staff
+Interpretation details. These details encompass personal information such as names, addresses,
+phone numbers, emergency contacts, email addresses, gender, date of birth, salary
+bank account information, education, skills, certifications, degrees and registration.
+Additionally, the system should support the uploading of important documents such
+as birth certificates, Aadhaar cards, Healthcare Provider Registration number
+(ABDM-HPR), PAN cards, driving licenses, photographs, and registration
+certificates.
+The forms should include fields for personal information, job roles, qualifications,
+and other relevant data. Additionally, the system should maintain staff family details,
+including the names and ages of spouses and children, and information about
+parents.
+In terms of functionality, the system should support operations such as Create,
+Read, Update, and Delete for staff records including contractual staff. Additionally,
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,44 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall ensure that patient records generated across different service
+
+Interpretation areas (e.g., pharmacy, laboratory, radiology, etc.) are linked to the patient's
+unique patient identifier.
+
+levi ituigee| The system shares patient medical records with different facilities/ affiliates.
+
+The system shall ensure access to patient's medical records across different
+facilities/affiliates of a healthcare organization.
+
+il etaTeeteete en Facilities/affiliates refer to specialized units, for example, blood bank, pharmacy,
+laboratories. Larger healthcare organizations may have facilities at different
+locations (Split locations).
+
+DNase) lhe system manages patient referrals across different specialties.
+
+Patient referral through the system shall allow medical practitioners to digitally
+refer patients to other specialists under same registration. The system shall allow
+medical practitioners to share relevant patient’s clinical information with other
+specialists.
+
+Interpretation
+The digital system of referral can improve the efficiency and accuracy of the
+process and streamline communication between the medical practitioners.
+
+The system may also highlight the urgency of referral needed.
+
+bei [commitment ries? Common/EMR ee
+
+(oToyiTilaisuen) Ihe system manages patient referrals across different specialties.
+
+Patient referral through the system shall allow medical practitioners to digitally
+refer patients to other specialists under the same registration. The system shall
+allow medical practitioners to share relevant patient’s clinical information with
+other specialists.
+
+Interpretation
+The digital system of referral can improve the efficiency and accuracy of the
+process and streamline communication between medical practitioners.
+
+The system may also highlight the urgency of referral needed.
+|| Core || Commitment || Achievement || Excellence

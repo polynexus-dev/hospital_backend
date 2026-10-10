@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+CoTTiicimene The system verifies the patient's mobile number.
+After a patient is registered in a system, a notification’ OTP shall be sent to the
+Interpretation patient's registered mobile number for verification. This mobile number can then
+become the primary source of communication.
+Core c. The system generates a unique patient identification number.
+Every healthcare organization uses a unique patient identifier for all its patients.
+Interpretation This number remains constant across all departments, services including
+laboratory and radiology processes, etc. and helps to identify the patient.
+Cored The system has the capability to configure the unique patient identifier as per the
+' healthcare organization's requirements.
+The unique patient identifier shall have a consistent format (numeric or
+alphanumeric). It can be configured on multiple parameters, some of the examples
+are:
+e Date (year, month etc.)
+Interpretation ¢ Hospital department
+e Hospital branch / location
+The unique patient identifier shall follow the predefined format across all locations
+of a given healthcare organization.
+~~ _ tee
+The system has the capability to generate and capture the ABHA number of the
+Core e. : we . ee ee
+patient and link it to the unique patient identifier.
+The system shall be able to generate and capture the ABHA number (Ayushman
+Bharat Health Account) which is a unique health identifier. This corresponds to
+: Milestone 1 (M1) of ABDM.
+Interpretation
+Additionally, the system should be able to link the ABHA number of the patient
+with their unique patient identifier.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,35 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+, =| The system sends notifications to patients and medical professionals when their
+Commitment. j.
+reports are ready.
+The system shall be able to send notifications to the OPD and IPD patients and
+, medical professionals as per the policy of healthcare organizations once the
+Interpretation : P .
+reports are ready. This can be done through email, chat platforms, online
+messaging platforms, SMS, or a notification on the patient portal.
+eae Ihe system allows patients to view/download their reports.
+The system shall also have the capability to allow the patients to download their
+reports. A link to the reports should be sent to the patients by email, online
+messaging platform, SMS, or patient portal. The link should provide secure access
+to patients to view and download their reports.
+Interpretation
+The system should also have the capability to allow the patients to view/download
+their reports. A link to the reports should be sent to the patients by email, online
+messaging platform, SMS, or patient portal. The link should provide secure access
+to patients to view and download their reports.
+Category Head Common/HIS [Mpyer
+, The system sends a notification when a test ordered is contraindicated based on
+Commitment I. gy gs
+the patient's condition.
+The system shall have the capability to raise an alert/ notification if the test ordered
+is contraindicated in certain conditions, e.g. some tests are not suitable for
+: pregnancy, chest x-rays to be avoided for patients with pacemakers, tests not
+Interpretation ; es : ae
+suitable for a specific gender, etc. The medical practitioner should also have the
+right to reject the alert based on the patient’s condition.
+This can substantially help in reducing medical errors.
+The system sends a notification when a test ordered is contraindicated based on
+Core I. oy ys
+the patient's condition.
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+« Record of any medication administered based on verbal orders.
+CoeTiiiciaemms The system maintains records of medical implants.
+The system shall maintain record batch number, serial number, etc. of medical
+implants (including stents, prosthetics).
+The system shall also capture additional details of implants such as (implant
+. identifier, type, size, manufacturer, lot number, and expiration date), The details
+Interpretation . ae _ . ‘
+should also include patient identifier and associated procedure details.
+This information should be documented in the patient’s medical record as well as
+in the discharge summary. This information is vital for tracking individual implants,
+implant performance tracking and recall management (where needed).
+Standard
+The system manages and supports the implementation of emergency
+medication protocols and maintains records.
+Objective Elements
+The system maintains record of emergency medications and supports regular
+Core a. : .
+updating of the list.
+The system shall have the capability to maintain records of emergency medications
+Interpretation at various locations and in crash carts. The inventory of these medications shall be
+P updated based on the policy of the healthcare organization. The system shall also
+be able to capture the usage and timely replacement of the emergency medications.
+Core b. The system generates records of medication errors.
+The system shall assist the hospital in maintaining records of medication errors
+. including near misses, medication errors and adverse drug reactions. The system
+Interpretation we . .
+shall also have the capability to do a detailed analysis of such errors for
+pharmacovigilance.
+|| Core || Commitment || Achievement || Excellence

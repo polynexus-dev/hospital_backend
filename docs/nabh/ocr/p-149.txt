@@ -1,0 +1,49 @@
+The Key performance indicators expected to be monitored by the healthcare organization Ey
+i
+S. Frequency of 8
+No. Standard | Indicator Definition Formula Unit data collation/ | Remarks HIS/EMR system Guide Si
+/ Monitoring a
+a
+=5
+This shall be captured either The system generates a time =
+through the HIS or through an stamp for the start time (time =
+audit. In case of an audit, the of the arrival of patient at the no
+sample size shall be as bed of the ward) and the end =
+specified in the sample size time (completion and roy
+7 calculation table. documentation of initial m
+ean Daycare patients are not assessment by doctor). The =
+time that the Suneiine included. initial assessment is deemed >
+patient has taken for the ee to be completed when the <
+; arrived at the pling: Yes data pertaining to chief Q
+Time for initial | bog of the ward assessment Sampling methodology: complaint, history, $
+1 PSQ 3a SSE until the time (DOG Minutes Monthly Stratified random examination findings, and . a
+of indoor that the initial provisional/ final diagnosis is
+patients SGSCESHAEUI! For data captured through HIS- | captured. Any edits done
+has been ; subsequently to any of these
+completed and Sampling: No fields shall not result in the
+documented by The system should track the alteration of the time stamp
+a doctor. number of records for which of the endpoint of the initial
+the initial assessment time assessment.
+could not be captured due to
+incomplete data. The denominator shall
+Total number of include all admissions except
+admissions daycare.
+This includes reporting errors The numerator shall include
+picked up after dispatch. any amendment or revision
+Number of This shall be captured in the carried out after the report
+reporting laboratory and radiology. has been signed, and
+errors Reporting errors include approved by the authorized
+Number of transcription errors. signatory and the system has
+reporting /1000 For better analysis, the released the same.
+2 PSQ 3a etrors/1000 X1000 tests Monthly organization could capture the
+investigations data separately for different :
+laboratory departments (For The denominator shall
+Number of example, Biochemistry/ include the total number of
+tests Microbiology/Pathology) and tests performed until
+erformed imaging modalities (for midnight of the last day of the
+p example, X- Ray/USG/CT/MRI). calendar month.
+©
+>
+wo
+=x
+4

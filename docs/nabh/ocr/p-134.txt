@@ -1,0 +1,70 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+Annexure-2 Patient-Reported Outcome Measures (PROMs).
+
+Patient Reported Outcome Measures (PROMs) are a valuable tool for measuring the effectiveness of
+
+healthcare interventions from the patient's perspective. PROMs are defined as any report of the status of
+
+a patient's health condition that comes directly from the patient, without interpretation by a clinician or
+
+anyone else. PROMs can be used to assess a wide range of health outcomes, including symptoms,
+
+functional status, quality of life, and satisfaction with care.
+
+Some of the commonly used PROMs include:
+
+1. The EQ-5D: This is a generic measure of health- related quality of life that assesses five dimensions of
+
+health: mobility, self-care, usual activities, pain/discomfort, and anxiety/depression. The EQ-5D is widely
+
+used in clinical trials and health economic evaluations.
+
+2. The SF-36: This is a generic measure of health-related quality of life that assesses eight domains of
+
+health: physical functioning, role limitations due to physical health, bodily pain, general health
+
+perceptions, vitality, social functioning, role limitations due to emotional problems, and mental health.
+
+3. The Oxford Hip Score: This is a disease-specific measure of hip function that assesses pain and function
+
+related to the hip joint.
+
+4. The Oxford Knee Score: This is a disease-specific measure of knee function that assesses pain and
+
+function related to the knee joint.
+
+5. The Patient Health Questionnaire (PHQ-9): This is a measure of depression that assesses the severity
+
+of depressive symptoms over the past two weeks.
+
+6. The Brief Pain Inventory (BPI): This is a measure of pain severity and interference with daily activities
+
+in patients with chronic pain.
+
+7. The EuroQol-Visual Analogue Scale (EQ-VAS): This is a measure of overall health status using a visual
+
+analogue scale where patients rate their health status on a scale from 0 to 100.
+
+8. The Chronic Obstructive Pulmonary Disease Assessment Test (CAT): This is a disease-specific measure
+
+of health status in patients with chronic obstructive pulmonary disease (COPD).
+
+9. The Functional Assessment of Cancer Therapy-General (FACT-G): This is a disease-specific measure of
+
+health-related quality of life in cancer patients that assesses physical, emotional, social, and functional
+
+well-being.
+
+10. The Minnesota Living with Heart Failure Questionnaire (MLHFQ): This is a disease-specific measure
+
+of health-related quality of life in patients with heart failure that assesses the impact of symptoms on
+
+daily activities and emotional well-being.
+
+Method: PROMs can be administered in various ways, including paper-based questionnaires, telephone
+
+interviews, and web-based surveys. Some PROMs are also available in different languages, making them
+
+accessible to patients from diverse cultural backgrounds.

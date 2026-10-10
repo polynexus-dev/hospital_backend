@@ -1,0 +1,31 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Core f The system has the capability to generate Computerized Provider Order Entry
+' (CPOE) for laboratory tests.
+The system shall allow medical practitioners to place laboratory orders for
+patients. This functionality empowers medical practitioners to electronically order
+a diverse array of laboratory tests.
+Computerized Provider Order Entry (CPOE) for laboratory services empowers
+Interpretation treating medical practitioners with access to the catalogue of available laboratory
+tests. Medical practitioners can select the suitable tests, thereby mitigating
+potential confusion within both laboratory and billing departments.
+The system should also provide the trend of levels of the drug for doze alteration.
+CPOE should also provide workflows to fulfill these orders and enable
+collaboration across facilities.
+Core The system has the capability to generate Computerized Provider Order Entry
+9- (CPOE) for radiological examinations.
+The system should have the capability to allow medical practitioners to place
+radiology orders for patients. This functionality empowers medical practitioners to
+electronically order a diverse array of radiology tests.
+Computerized Provider Order Entry (CPOE) for radiology services empowers
+treating medical practitioners with access to the catalogue of available radiology
+UiCiclillill tests. Medical practitioners can select suitable tests, thereby mitigating potential
+confusion within both radiology and billing departments.
+The system should give the schedules of the radiology tests while creating orders.
+The systemmay also providet he availability of slots for the use of radiology
+equipment/appointment list ofthe radiology department for preparation ofpatients
+for example time of fasting and shifting along with provision for special instructions.
+The system has the capability to generate e-prescription or Computerized Provider
+Core h. oe
+Order Entry for medicines.
+|| Core || Commitment || Achievement || Excellence

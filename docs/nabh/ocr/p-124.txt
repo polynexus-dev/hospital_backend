@@ -1,0 +1,56 @@
+NABH Standards for HIS and EMR Systems
+NABH
+
+54 | OWASP The Open Web Application Security Project (OWASP) is a
+non-profit organization that provides free and open-source
+tools, projects, and documentation for web application
+security. It’s an online community that produces freely
+available articles, methodologies, documentation, tools,
+and technologies in the fields of loT, system software, and
+web application security. One of the most well-known
+projects of OWASP is the OWASP Top 10. It’s a standard
+awareness document for developers and web application
+security. It represents a broad consensus about the most
+critical security risks to web applications. The OWASP Top
+10 is globally recognized by developers as the first step
+towards more secure coding.
+
+55 | Patient identifier A patient identifier is a unique data element that helps
+distinguish one patient from another, ensuring accurate
+identification and reducing the risk of medical errors. These
+identifiers help maintain patient safety and facilitate care
+coordination across healthcare settings.
+
+56 | Patient portal A patient portal is an application through which the patient
+can perform several functions like booking appointments,
+viewing test results, downloading reports etc.
+
+57 | PHI Protected Health Information (PHI) is any information that
+can be linked to an individual and relates to their health
+status, healthcare, or payment for healthcare services.
+
+58 | PREM PREM stands for Patient Reported Experience Measures.
+These measures are tools used to capture patients’
+experiences with healthcare services. Unlike Patient
+Reported Outcome Measures (PROMs), which focus on the
+results of healthcare treatments and the patients’ health
+status, PREMs are concerned with the patients’
+experiences and satisfaction with the healthcare process
+itself.
+
+59 Patient Reported Outcome Measures, commonly
+abbreviated as PROMS, are tools used in healthcare to
+gather information directly from patients about their
+health status, quality of life, and the outcomes of
+healthcare treatments. These measures are typically
+collected through questionnaires or surveys that patients
+complete themselves, providing valuable insights into their
+own perspectives and experiences.
+
+PSUs Public setting undertaking -PSUs are entities owned or
+controlled by the government in various sectors. They are
+created to fulfil social and economic objectives.
+
+61 | Referral In the medical context, a referral is the transfer of care for
+a patient from one clinician or clinic to another by request.
+It is a written order from a primary care physician arranging

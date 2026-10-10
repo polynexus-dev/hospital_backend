@@ -1,0 +1,45 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+System related notifications may include scheduled downtimes, and standardized
+
+process information and would usually be exchanged between the healthcare
+
+organization and the payer (to and from Payors, Patients, and any other interested
+parties (e.g., caregivers)).
+
+Workflow related notifications may include changes in the status of a claim step,
+
+need for additional information, etc., and would usually be sent to patients.
+
+To enable notification functionalities effectively, the system should ensure:
+
+e Receiving and Responding to Notifications: Capable of receiving and
+
+Interpretation responding to system-related notifications such as scheduled downtimes and
+standardized process information exchanged between the healthcare
+organization and the payer. Additionally, able to handle workflow-related
+notifications, such as changes in claim status or requests for additional
+information, which are typically sent to patients.
+
+e Triggering Notifications to Patients: Able to trigger notifications to patients
+regarding changes in their healthcare processes or statuses, ensuring timely
+and relevant communication.
+
+¢ Safeguarding Patient Information: Ensuring robust measures to protect the
+privacy and security of patient information during all stages of notification
+exchange
+
+Standard
+re The system supports insurance payment functions.
+Objective Elements
+Corea The system captures patients’ insurance details including their eligibility and
+’ coverage.
+The system shall capture insurance eligibility and coverage post-verification which
+. could be performed either digitally or manually. This includes confirming the patient’s
+
+Interpretation B . .
+
+insurance details such as policy number, coverage dates, co-payments, deductibles,
+and any applicable limitations or exclusions.
+|| Core || Commitment || Achievement || Excellence

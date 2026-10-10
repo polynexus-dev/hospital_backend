@@ -1,0 +1,50 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall configure rules for the staff recruitment process which can be
+facilitated through a staff recruitment module. This may include various recruitment
+processes including requisition approval, candidate screening, interview
+
+MCuaCeinee coordination, offer negotiation, and acceptance onboarding documentation,
+background verification etc. Configurable workflows and notifications can be
+incorporated to ensure adherence to the defined recruitment process rules.
+
+cane ese Type
+
+PXan igen The system configures and manages rules for the staff exit process.
+
+The system shall have the capability to manage the staff exit process. This module
+should feature an exit rule configuration that allows administrators to efficiently
+handle activities such as exit processing and may include exit interview
+
+. scheduling, equipment return verification, knowledge transfer documentation, final
+
+Interpretation se . .
+
+clearance approvals, account deactivation, and documentation requirements.
+Reporting capabilities provide insights into exit trends, reasons for departure, and
+compliance metrics. Configurable workflows and notifications can be integrated to
+ensure adherence to defined exit process rules.
+
+Standard
+
+us| The system manages the training needs of the staff.
+
+Objective Elements
+
+cane reas Tyre
+, The system maintains records of induction training and feedback from the new
+
+Achievement a. It
+
+joiners.
+The system shall capture onboarding training status and feedback of new joiners for
+effective onboarding. This feature enables the tracking of the progress of new staff
+through the onboarding process, ensuring completion of necessary orientation
+activities.
+
+Interpretation Additionally, the system should provide a platform for new staff to share their
+feedback on the onboarding process, helping the organization identify areas for
+improvement. Typically, this functionality is incorporated into the onboarding
+module, using forms and workflows to collect induction status updates and feedback.
+
+|| Core || Commitment || Achievement || Excellence

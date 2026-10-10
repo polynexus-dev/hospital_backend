@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Summary of Standards
+AAC.1. The system manages patient registration and referral processes.
+The system supports patient appointments and the medical practitioner
+AAC.2.
+schedules.
+AAC.3. The system handles laboratory test orders and samples.
+AAC.4. The system handles radiology test orders and images.
+AAC.5. The system supports patient admissions.
+AAC.6. The system manages patient discharge and transfer processes.
+AAC.7. The system has the capability to disseminate information to patients.
+AAC.8. The system manages patient feedback and complaints.
+Standard
+The system manages patient registration and referral processes.
+Objective Elements
+ee os tee
+Core a. The system registers a new patient and modifies the details as and when required.
+The system shall carry out patient registration. The system shall be able to
+configure mandatory & non-mandatory fields depending on the healthcare
+organization's requirements. Further the registration data can be qualified as
+editable/ non-editable by the healthcare organization. The system should be able
+to capture the essential details like demographics of the patients (e.g., date of birth,
+address, mobile number), their registered National ID details (for example, Adhaar,
+Interpretation ABHA (ABDM), driving license etc.), insurance details and payment preference.
+The mandatory and non-mandatory fields shall be clearly marked.
+Some of the mechanisms of digital patient registration could be through kiosks,
+website, ABDM Scan & Share, mobile app or QR code a long with the inbuilt patient
+registration feature of the system.
+|| Core || Commitment || Achievement || Excellence

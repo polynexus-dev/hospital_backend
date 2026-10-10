@@ -1,0 +1,69 @@
+NABH Standards for HIS and EMR Systems
+NABH
+Annexure-8 Key Performance Indicators (KPI) for 6" Edition Accreditation Standards for
+Hospitals
+
+The concept of performance in health services represents an instrument for bringing quality, efficiency,
+
+and efficacy together. Performance represents the extent to which set objectives are accomplished.
+Performance is a multidimensional one, covering various aspects, such as evidence-based practice
+
+(EBP), continuity and integration in healthcare services, health promotion, and orientation towards the
+
+needs and expectations of patients.
+
+Key Performance Indicators (KPIs) help to systematically monitor, evaluate, and continually improve
+
+service performance. By themselves, KPIs cannot improve performance. However, they do provide
+
+“signposts” that signal progress toward goals and objectives as well as opportunities for improvement.
+
+Well-designed KPIs should help the organization to do a number of things, including:
+
+- Establish baseline information, i.e., the current state of performance
+
+- Set performance standards and targets to motivate continual improvement
+
+- Measure and report improvements over time
+
+- Compare performance across geographic locations
+
+¢ Benchmark performance against regional and international peers or norms
+
+- Allow stakeholders to independently judge health sector performance.
+
+Healthcare organizations are encouraged to capture all data, which involves clinical and support
+
+services. The data needs to be analysed, and risks, rates, and trends for all the indicators must be
+
+demonstrated for appropriate action.
+
+The intent of the NABH KPIs is to have comprehensive involvement of the scope of services for which
+
+an institution has applied for the accreditation program. Standardized definitions for each indicator
+
+along with numerator and denominator, have been explained. Each Healthcare Organizations (HCO)
+
+can have the data set, analyze the data and appropriate correction, corrective, and preventive action
+
+can be formulated. Each institution can also design their own methodology of data collection, but a
+
+broad guidance note has been given to facilitate the organization's compliance. Guidance has also been
+
+provided to explain how the data could be captured from the system (HIS/EMR). In all instances where
+
+the system is unable tocollate the numerator and/or denominator, at a minimum the system should
+
+have a provision for manual entry of the numerator and denominator to ensure that the indicator value
+
+is calculated automatically. Further, there are a few indicators for which it may not be possible for the
+
+system to collate the data. For such indicators, a specific note has been provided in the guidance.
+
+The Department Specific key performance Indicators are to be captured from in- patients except where
+
+the indicator specifically mandates that all patients need to be included.
+
+The suggested minimum sample size to be taken for various audits and KPls as applicable has been
+
+specified.

@@ -1,0 +1,38 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+The system shall maintain digital records of intra operative notes for surgical
+procedures and interventions.
+At a minimum, the operative note shall include the surgery performed, the name
+of the surgeon (s), name of the anesthesiologist(s), nursing teams, salient steps
+of the procedure and the key findings intra-operative findings. The record shall
+provide information about the procedure performed, postoperative diagnosis and
+
+Interpretation the status of the patient before shifting and shall be documented by the
+surgeon/doctor member of the operating team.
+The system shall incorporate various resources utilized during surgery, and any
+specimens collected. The system shall incorporate post-op plan which should
+address, as required advice on IV fluids, medication, care of wound, nursing care,
+observing for any complications, etc. This plan should be documented by the
+operating surgeon or a member of the operating team.
+
+Standard
+cop.7 The system manages dietary consultation and specific nutritional
+_ therapy.
+Objective Elements
+
+The system captures dietary screening, manages dietary consultation and
+
+PXen-iie-ee Maintains records where relevant.
+The system shall incorporate validated screening and assessment tools to guide
+nutritional therapy. The system shall accommodate a range of diets, including
+specialized dietary requirements tailored for each in-patient. This ensures that all
+
+Interpretation consultations and dietary recommendations are meticulously documented and
+readily accessible to the concerned staff. The system provides necessary linkages
+across clinical departments and the kitchen to ensure that patients receive diets
+as per their nutritional needs and dietary preferences, where relevant.
+
+Xeon isem The system maintains a record of the therapeutic diet given to inpatients.
+
+|| Core || Commitment || Achievement || Excellence

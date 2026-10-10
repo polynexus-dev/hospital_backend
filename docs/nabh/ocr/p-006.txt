@@ -1,0 +1,14 @@
+Glossary 110
+Annexure-1 Patient-Reported Experience Measures (PREMs) 122
+Annexure-2 Patient Reported Outcome Measures 128
+Annexure-3 High-Risk Medications 131
+Annexure-4 Emergency Codes 132
+Annexure-5 Most frequent use cases for Clinical decision Support 133
+System in the healthcare system
+Annexure-6 Few Examples of Notifications/ Contraindicative Tests 137
+Alerts
+Annexure-7 Criteria for Admission in ICU 141
+Annexure-8 Key Performance Indicators (KPI) for 6" Edition 143
+Accreditation Standards for Hospitals
+Annexure-9 Key Performance Indicators (KPI) for 1%‘ Edition Digital Health 171
+Standards for Hospitals

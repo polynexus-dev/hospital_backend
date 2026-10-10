@@ -1,0 +1,22 @@
+NABH Standards for HIS and EMR Systems
+NABH
+References
+
+1. Jo Ravelingien, November 2020. Everything you need to know about PROMs and PREMs,
+https://www.remecare.eu/blog/everything-you-need-to-know-about-proms-and-prems
+
+2. Bos N, Sizmur S, Graham C, van Stel HF. The accident and emergency department
+questionnaire: a measure for patients' experiences in the accident and emergency
+department. BMJ Qual Saf. 2013;22(2):139-146.
+
+3. Patel S, Ghimire P, Lavrador JP, et al. Patient-reported experience measures in patients
+undergoing navigated transcranial magnetic stimulation (nTMS)the introduction of nTMS -
+PREMs. Acta neurochirurgica. 2020;162(7):1673-1681.
+
+4. CAHPS Patient Experience Surveys and Guidance. Content last reviewed May 2022. Agency
+for Healthcare Research and Quality, Rockville, MD. —_ https://www.ahrq.gov/cahps/surveys-
+guidance/index.html
+
+5. MRI safety https://www.radiologyinfo.org/en/info/safety-mr
+Consortium of Accredited Healthcare Organizations whitepaper on PREMs released on
+September 17, 2023 https://www.caho.in/files/CAHO-White-paper-on-validated-PREMs. pdf.

@@ -1,0 +1,25 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system should be configurable to incorporate a list of notifiable diseases
+applicable to specific states or union territories. A few examples of notifiable
+diseases include HIV/AIDS, tuberculosis, dengue fever, chikungunya, malaria,
+and others.
+: The system shall trigger an alert when a patient with a notifiable disease is
+Interpretation identified. The alert will ensure timely communication and compliance with
+notification requirements, thereby facilitating efficient coordination of care and
+adherence to regulatory guidelines.
+The systems shall also provide a consolidated list of all cases notified by the
+healthcare organization.
+Standard
+cons The system has the capability to create care plans.
+Objective Elements
+mXeil\V-ut-ie-me Ihe system has the capability to create customized care plans based on current
+standards of practice.
+The system shall be able to develop customized care plans for specific disease
+conditions in patients. For example, care plans for individuals with asthma,
+. diabetes, COPD, etc. Care plans shall also include elements of assessment and
+Interpretation . F : : roan ;
+evaluation, goal setting, interventions, monitoring and adjustments,
+documentation and communication, etc. They may also include aspects of
+preventive, promotive, curative, rehabilitative, and palliative care.
+|| Core || Commitment || Achievement || Excellence

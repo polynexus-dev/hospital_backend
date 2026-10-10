@@ -1,0 +1,25 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+. The system displays the available dates, times and the profile of the medical
+Commitment e. ae F .
+practitioners for booking appointments by the staff.
+The system shall display the available dates and time of medical practitioners for
+the purpose of booking appointments by the staff upon receiving requests from
+Interpretation the patients. The system shall also display the complete profile of the medical
+practitioners including the years of experience, detailed educational
+qualifications, specialty, and additional certifications (if any).
+: The patients are able to digitally book an appointment with a specific medical
+Cc it t f. a: ; :
+omen practitioner based on the dates and times displayed on the system.
+The system shall provide an interface through the healthcare organization’s website
+or patient portal to book appointments with a specific medical practitioner based on
+ityieye-\Eliteyie| request by a patient and the practitioner's availability. This also enables the patient
+to consult the same medical practitioner for follow-up visits, which can be important
+for care continuity.
+(oreyiliiuicaisepee| The system displays and prints the medical practitioner's schedule.
+: The system used in the healthcare organizations shall have the capability to
+Interpretation . . . ae
+display and print the schedule of medical practitioners.
+Achievement h. The system has the capability of queue management for various healthcare
+services.
+|| Core || Commitment || Achievement || Excellence

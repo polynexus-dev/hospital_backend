@@ -1,0 +1,51 @@
+Zz
+Ss. ’ / Frequency of fa
+No. Standard Indicator Definition Formula Unit data collation/ Remarks HIS/EMR system Guide =
+Monitoring 72)
+4
+5
+Waiting time for diagnostics is The system shall calculate Q
+Waiting time for Sum total time applicable only for outpatients the sum of total waiting time =
+diagnostics is (in minutes) and for laboratory and imaging. for patients for laboratory and O
+the time from imaging services. s
+which the patient In the case of appointment =
+has come to the 7 . patients, the time shall begin a
+Waiting time diagnostic nationte of out Minute Monthly with the scheduled appointment The denominator shall on
+23 PSQ 3c for service (the reported in time and end when the include the total number of 2
+diagnostics requisition form | Diagnostics diagnostic procedure begins. In | Out-patients who reported in Q
+has been cases where the patient's laboratory and imaging until m
+presented to the diagnostic test commences midnight of the last day of the =
+counter) until the ahead of the appointment time, calendar month. >
+time that the test the waiting time shall be taken <
+is initiated. as zero minutes. &
+Sampling: No Fy
+WOGIeIETGS 1 In case patients request The system shall calculate
+process is Sum of time additional time to leave the the sum of the time taken for
+deemed to have | taken for clinical unit that shall not be all the discharges.
+started when the | discharge (in added. The discharge is
+Tmocteanisy | Cam minutes) deemed to have been _
+24 PSQ 3c discharge formally Minute Monthly completed when the formalities
+9 approves for the same have been The denominator shall
+discharge and Number of completed. Day care patients include the total number of
+ends with the patients are not included. patients discharged until
+patient leaving discharged midnight of the last day of the
+the clinical unit Sampling: No calendar month.
+Informed a
+consent is a type | Number of If any of the essential Considering the challenges
+Percentage of | of consent in medical elements/requirements of of data capture for this
+medical which the health | records having consent is missing, it shall be indicator through the system,
+records care provider incomplete considered incomplete. there should be a provision
+2 having has a duty to and/ or for entering the manual/
+5 PSQ 3c incomplete inform his/her improper If any consent obtained is electronically collected (app/
+and/or patient about the | consent X100 Percent Monthly invalid/void (consent obtained online forms) data.
+improper procedure, its 9 from the wrong person/consent
+consent potential risk and obtained by the wrong person,
+benefits, etc.), it is considered improper.
+alternative
+procedures with Sampling: No
+their risk and
+©
+>
+wo
+=x
+4

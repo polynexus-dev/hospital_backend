@@ -1,0 +1,27 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Digital Operations Management (DOM)
+Intent of the Chapter:
+Given the need to build a robust HIS/EMR system, software development and support processes should
+need to adhere to best practices. Digital Operations Management chapter outlines the approach, controls,
+testing and documentation guidelines that software companies need to establish to ensure high quality
+deliverables.
+The HIS/EMR vendor should be capable of providing maintenance and support in a timely manner with
+clearly defined service level agreements (SLAs). This is very important for building trust and comfort within
+healthcare organizations while using these systems in providing critical care delivery.
+The software vendor should ensure the secure release of updates and patches to address identified
+software bugs and security issues. While systems go through ongoing enhancements, the vendor must
+be able to roll-back changes / upgrades, whenever they cause errors in operations or issues with system
+data.
+Healthcare data needs to be preserved over time, both for care delivery and compliance to legal
+requirements. The system must have the ability to backup and retrieve healthcare data in a timely and
+efficient manner whenever required.
+The system must also provide strong end-user controls e.g., password policy, auto-logout etc. to ensure
+that only authorized individuals are accessing the system.
+Documentation is the backbone of effective software management. System documentation should be
+emphasized throughout the development process, and user manuals to support easy implementation and
+use should be available.
+Finally, healthcare providers may desire to migrate to another HIS/EMR system based on their preferences
+or changing business needs. The HIS/EMR vendor must support the healthcare providers in achieving
+the migration to a new HIS/EMR system.
+|| Core || Commitment || Achievement || Excellence

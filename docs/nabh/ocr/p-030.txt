@@ -1,0 +1,30 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+Commitment b. The system creates/ modifies a new radiology request, generates a unique ID for
+the request, and link it to the patient’s unique ID.
+The system shall create a unique ID for a radiology request for every radiological
+test or procedure. It should be able to link this unique ID with the patient's unique
+identifier.
+Interpretation The system should also allow to book appointments of patients for investigation
+through the online portal (If available).
+This linkage helps create complete medical records for patients and provides
+better care.
+Commitment c. The system sends notifications to the radiology department as soon as any test is
+booked.
+The system shall send notifications to the radiology department as soon as any
+: test is booked in OPD or IPD. These notifications should include details like the
+Interpretation tog . . ae
+patient's name, age, type of test required, and the medical practitioner who has
+requested for the test.
+(oreyiiiuicimeae The system creates/ modifies templates for radiology reports.
+The radiology system shall have the capability to create and modify the reporting
+templates for different modalities (e.g., X-ray, Ultrasound, MRI, CT etc.). These
+Interpretation different templates should be configurable and editable in the system. The system
+shall also display the reference range in the templates for radiology tests as
+applicable and highlights abnormal and out of range results.
+Commitment e. The system captures and shows the radiological test status for every radiology
+test order.
+The system shall have the capability to show the status of radiology tests ordered
+Interpretation by the medical practitioners. The status options could include tests booked, on-
+going, completed, reported, etc.
+|| Core || Commitment || Achievement || Excellence

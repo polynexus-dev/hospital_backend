@@ -1,0 +1,56 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+Glossary
+S.no. Word Definition
+
+1 | ABHAID Ayushman Bharat Health Account (ABHA) or Health ID is an
+initiative of the Indian government under the Ayushman
+Bharat Digital Mission (ABDM) for Indian citizens to
+establish a centralized database of all their health-related
+data.
+
+2 | Access rights Access rights refer to the permissions an individual user or
+a computer application holds to perform specific
+operations on a computer file, object, or system. These
+permissions can include the ability to:
+
+Read from a file
+
+Write to a file
+
+Modify files or configurations
+Delete files
+
+Add or remove applications
+
+3 | Accreditation A self-assessment and external peer review process used
+by health and social care organisations to accurately assess
+their level of performance in relation to established
+standards and to implement ways to continuously improve
+the health or social care system.
+
+4 | Antibiotic usage policy An antibiotic usage policy is a set of guidelines designed to
+optimize the prescription and use of antibiotics. Some key
+components of an effective antibiotic usage policy are:
+Antibiotic Stewardship: This refers to coordinated efforts
+to improve and measure the appropriate use of antibiotics.
+The goal is to enhance patient health outcomes, reduce
+resistance to antibiotics, and decrease unnecessary costs.
+Evidence-Based Guidelines: Hospitals are required to
+implement at least two evidence-based guidelines to
+improve antibiotic use for the most common indications.
+Prescription Guidelines: Antibiotics should be prescribed
+only when there is likely to be a clear clinical benefit. For
+example, antibiotics should not be prescribed for viral sore
+throat, simple coughs and colds, and viral diarrhoea.
+
+Use of Generic Antibiotics: Whenever possible, simple
+generic antibiotics should be used first.
+
+Addressing Overuse and Lack of Access: The World Health
+Organization provides practical guidance such as the WHO
+Integrated Antimicrobial Stewardship toolkit, evidence-
+based policy recommendations, and tailored country-level
+support to optimize antimicrobial use through the
+implementation of antimicrobial stewardship (AMS)
+programs.

@@ -1,0 +1,58 @@
+Department Specific key performance Indicators g
+ies)
+=
+
+Frequency of 2
+o Standard | Indicator Definition Formula Unit cee Remarks HIS/EMR system 5
+No. collation/ Guide Si
+Monitoring a
+a
+a >
+Cardiology Q
+: =
+Mandatory if specialty | If itis possible to a
+is in the scope and retrieve data from o
+| this is applicable only | HIS/EMR, the data 4
+Number of patients for admitted patients. shall be captured =
+discharged with a The data has to be through the system. py
+diagnosis of CHF with captured from the However, bso]
+Percentage of ; ; reduced EF and discharge summary. Considering the L
+Beta-blocker Proportion of patients prescribed a beta The 2022 AHA/ ACC/ challenges of data rl
+a with Congestive Heart blocker at disch capture for this iy
+prescription : a OcKer at discharge i indicator through 3
+Failure for whom it is HFSA Guidance for fe)
+1 with a a X100 Percentage Monthly the Management of the system, there ©
+. . indicated beta blocker ag
+PSQ 3a diagnosis of rescription at the time Heart Failure. should bea
+CHF with prescrip! 1. ACE/ ARB provision for
+of discharge entering the
+reduced EF 2. Beta Blocker manual/
+Number of patients 3. Mineralocorticoid electronically
+. , (MRA) receptor
+discharged with a antagonist collected (app/
+diagnosis of CHF 4. SGLT Inhibitor Step | Online forms) data.
+Ladder therapy
+guidelines
+Mandatory if special oes ,
+is in the seope The i tit ‘s possible to
+Number of acute start time shall be retrieve data from
+myocardial infarction when the patient is HIS/EMR, the data
+(AMI) patients diagnosed with AMI | Shall be captured
+Percentage of ing pri (STEMI at first ECG through the system.
+7 : undergoing primary i However,
+patients with | after arrival at the aren
+- angioplasty for whom : Considering the
+myocardial . hospital) and the hall fd
+infarction f Door to balloon time of Clinician decides to challenges of lata
+2 Psa3a | aeuon ior 90 minutes is achieved X100 Percentage Monthly perform primary capture for this
+whom Door to angioplasty as the indicator through
+balloon time of first choice of the system, there
+90 minutes is treatment. The end provision for
+achieved time shall be the time °
+Total number of AMI of the first device entering the
+patients undergoing activation. Reference: manual i
+rimary angioplasty AHA Cardiac oerroniee z
+p yangiop outcome assessment olin tora ata >
+- wo
+program (COAP) =
+4

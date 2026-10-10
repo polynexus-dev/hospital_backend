@@ -1,0 +1,52 @@
+NABH Standards for HIS and EMR Systems 69)
+NABH
+HOW TO READ THE STANDARD?
+
+The standard focuses on the key points required for providing patient-centered, safe, high-quality care.
+The interests of various stakeholders have been incorporated into the standard. They provide a framework
+for quality assurance and quality improvement. The focus is on patient safety and quality of patient care.
+It sets forth the basic standards that organizations must achieve to improve the quality of care.
+The eight chapters are:
+
+1. Access, Assessment and Care of Patient (AAC)
+
+2. Care of Patients (COP)
+
+3. Management of Medication (MOM)
+
+4. Digital Applications Control (DAC)
+
+5. Digital Operations Management (DOM)
+
+6. Finance and Procurement Management (FPM)
+
+7. Human Resource Management (HRM)
+
+8. Information Management System (IMS)
+Every chapter begins with an ‘intent’. The intent states the broad requirements of what the organization
+needs to put in place and implement to improve the quality of care. This is followed by the ‘summary of
+standards’ which lists all the standards of that chapter. The standards and objective elements are
+explained after the summary.
+
+WHAT IS A STANDARD?
+
+A standard is a statement of expectation that defines the structures and processes that must be
+substantially in place in an organization to enhance the quality of care. The standards are numbered
+serially, and a uniform system is followed for numbering. The first three letters reflect the name of the
+chapter and the number following this reflects the order of the standard in the chapter. For example,
+AAC.1. would mean that it is the first standard of the chapter titled ‘Access, Assessment and Care of
+patient’.
+
+WHAT IS AN OBJECTIVE ELEMENT?
+It is that component of standard which can be measured objectively on a rating scale. Acceptable
+compliance with objective elements determines the overall compliance with a standard. The objective
+element is scored during assessments to arrive at the compliance. The objective element is numbered
+alphabetically in serial order. For example, AAC.1.c. would mean that it is the third objective element of
+the first standard of the chapter titled ‘Access, Assessment, and Care of patient’. Depending on the
+applicability of requirements, the objective elements have been identified as-
+
+e HIS which means applicable only to HIS.
+
+e EMR systems which means applicable only to EMR systems.
+
+e Common which means applicable to both HIS and EMR systems.

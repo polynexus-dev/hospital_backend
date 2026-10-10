@@ -1,0 +1,34 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+The system shall have the capability to connect with the display board and show
+the approximate waiting time for a patient for various healthcare services such as
+patient registration, OPD, pharmacy, laboratory, radiology, etc.
+Interpretation
+The patient should get the estimated wait time information either through a
+notification or ona display board. This helps in relieving patient’s anxiety and
+prevents overcrowding.
+Standard
+mos The system handles radiology test orders and samples.
+Objective Elements
+Core a The system configures clinical and administrative workflow for laboratory
+‘ management.
+Laboratory Management is an important part of a healthcare organization system,
+and this system should support the following features:
+Laboratory Management is vital for healthcare organizations, and the system
+Int tati should support:
+nterpretation e Workflows: Setup of master data, process configurations, and information flow
+between practitioners, the lab, and billing.
+© Quality Controls: Configuration of essential quality controls.
+e Report Generation: Ability to generate specialty-specific reports (e.g.,
+microbiology, biochemistry).
+The system automatically assigns a specimen number for every sample collected
+Core b. : . : a, . . _
+/ received and links it to the patient's unique identifier.
+A unique sample identifier is required to link each sample to its unique patient
+identifier. A unique sample identifier is crucial for laboratory testing to ensure
+accuracy, traceability, and accountability in the diagnostics process.
+Interpretation
+Each specimen number must be unique within the laboratory. The system shall
+generate a unique sample identifier based on some predefined rules. For
+example,
+|| Core || Commitment || Achievement || Excellence

@@ -1,0 +1,51 @@
+NABH Standards for HIS and EMR Systems @
+NABH
+
+Excellence b. The system supports risk assessment and outcomes of patients.
+
+The system shall support calculating the predicted mortality rate using a validated
+scale (APACHE, SOFA, SAPS, MPM, PRISM etc. ) for patients admitted in the
+Intensive care unit. The validated scale needs to be age - appropriate. The
+
+Interpretation outcomes could be discharge, transfer, re-admission or death. In case of
+readmission, the system shall capture the time difference between the
+discharge/transfer and readmission.
+
+PX uitiiaeme The system supports the integration of patient care data from monitoring devices.
+The system shall be capable of connecting and transferring data collected from
+various patient monitoring devices directly into the systems. This integration
+ensures that real-time and accurate patient data, such as vital signs, laboratory
+results, and other health metrics, are seamlessly incorporated into the patient's
+
+Interpretation digital health record. This capability enhances the continuity of care, allows for
+more comprehensive and up-to-date patient information, reduces the risk of data
+entry errors, and improves the efficiency of healthcare providers in monitoring and
+managing patient health.
+
+Sey ries’ dee
+
+Achievement d. The system supports the capture of various services provided as a part of patient
+care.
+
+The system shall be able to record and document important healthcare services
+and activities performed for patients. This includes but is not limited to:
+
+1. Input-Output Chart: The system can log the amount of fluids and
+nutrients a patient consumes (input) and the amount they excrete
+(output). This is crucial for monitoring a patient's fluid balance, electrolyte
+levels, and overall health status.
+
+2. Adherence to Care Bundles: The system can track and ensure that
+
+Interpretation standardized sets of evidence-based practices, known as care bundles,
+
+are followed. These bundles are designed to improve patient outcomes
+and reduce the risk of complications. For example, a care bundle for
+preventing infections might include steps like timely removal of catheters
+and maintaining sterile techniques.
+
+3. Change of Positions: The system can document the regular repositioning
+of patients, which is essential for preventing pressure ulcers and
+improving circulation, especially in bedridden or immobile patients.
+
+|| Core || Commitment || Achievement || Excellence
