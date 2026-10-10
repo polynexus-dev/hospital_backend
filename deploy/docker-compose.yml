@@ -1,0 +1,100 @@
+# Polynexus HMS — on-premise stack (Linux or Windows host with Docker).
+# Set up with install.sh (Linux) or install.ps1 (Windows); see RUNBOOK.md.
+name: hms
+
+x-app: &app
+  image: ${REGISTRY:-polynexus}/hms-backend:${HMS_VERSION:?HMS_VERSION is not set in .env}
+  restart: unless-stopped
+  env_file: .env
+  environment: &app-env
+    DATABASE_URL: postgres://${POSTGRES_USER:-hms}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-hms}
+    CACHE_URL: redis://redis:6379/1
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/0
+    # The machine fingerprint reads the host's identity files mounted below.
+    LICENSE_HOST_ROOT: /host
+  volumes:
+    - ./config:/app/config                # license.lic lives here (drop-in or upload)
+    - media:/app/media
+    - ${HOST_MACHINE_ID:-/etc/machine-id}:/host/etc/machine-id:ro
+    - ${HOST_PRODUCT_UUID:-/sys/class/dmi/id/product_uuid}:/host/sys/class/dmi/id/product_uuid:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  web:
+    <<: *app
+    # Runs migrations on start (RUN_MIGRATIONS defaults to 1); healthcheck is built into the image.
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "config", "worker", "--loglevel=info"]
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "0"
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 10 | grep -q pong"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  beat:
+    <<: *app
+    command: ["celery", "-A", "config", "beat", "--loglevel=info"]
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: ${REGISTRY:-polynexus}/hms-frontend:${HMS_VERSION:?}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro       # tls.crt + tls.key here turns HTTPS on
+    depends_on:
+      web:
+        condition: service_healthy
+    # healthcheck is built into the image (GET /healthz)
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hms}
+      POSTGRES_USER: ${POSTGRES_USER:-hms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
