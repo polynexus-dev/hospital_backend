@@ -75,7 +75,11 @@ Compose up -d postgres redis
 
 # --- 5. Licence ---------------------------------------------------------------
 if (-not (Test-Path config\license.lic) -or (Get-Item config\license.lic).Length -eq 0) {
-    $fp = (docker compose -f docker-compose.yml run --rm --no-deps -e RUN_MIGRATIONS=0 web python manage.py get_machine_fingerprint | Select-Object -Last 1)
+    Say "Reading this server's machine fingerprint (about 30 seconds)"
+    # -T: no terminal. The output is captured here, and a terminal session
+    # with captured output can hang docker compose run on Windows.
+    $fp = (docker compose -f docker-compose.yml run -T --rm --no-deps -e RUN_MIGRATIONS=0 web python manage.py get_machine_fingerprint | Select-Object -Last 1)
+    if (-not $fp -or $fp.Length -ne 64) { Die "Couldn't read the machine fingerprint (got: '$fp'). Run: docker compose run -T --rm web python manage.py get_machine_fingerprint" }
     $request = "Deployment ID: $($envVars['DEPLOYMENT_ID'])`nMachine fingerprint: $fp`n"
     Write-Host $request
     Write-Utf8NoBom "config\REQUEST-LICENCE.txt" $request

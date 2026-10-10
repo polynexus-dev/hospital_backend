@@ -58,7 +58,9 @@ $COMPOSE up -d postgres redis
 
 # --- 4. Licence ---------------------------------------------------------------
 if [ ! -s config/license.lic ]; then
-  FP=$($COMPOSE run --rm --no-deps -e RUN_MIGRATIONS=0 web python manage.py get_machine_fingerprint | tail -1)
+  say "Reading this server's machine fingerprint (about 30 seconds)"
+  FP=$($COMPOSE run -T --rm --no-deps -e RUN_MIGRATIONS=0 web python manage.py get_machine_fingerprint | tail -1)
+  [ ${#FP} -eq 64 ] || die "Couldn't read the machine fingerprint (got: '$FP')."
   printf 'Deployment ID: %s\nMachine fingerprint: %s\n' "$DEPLOYMENT_ID" "$FP" | tee config/REQUEST-LICENCE.txt
   say "Send the two lines above (saved in config/REQUEST-LICENCE.txt) to Polynexus to get your licence."
   read -rp "Path to your licence file (leave empty to stop here and re-run later): " LIC
