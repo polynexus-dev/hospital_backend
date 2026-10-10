@@ -143,7 +143,13 @@ def cmd_new(args, ask: Prompter, out):
     key = load_signing_key(args.key_file)  # fail before asking anything
     out.write("New licence\n-----------\n")
     customer = ask.text("Customer / hospital legal name")
-    deployment_id = ask.text("Deployment ID (blank = generate)", default="", required=False) or new_deployment_id()
+    while True:
+        deployment_id = ask.text("Deployment ID (from the customer's config/REQUEST-LICENCE.txt)", default="", required=False)
+        if deployment_id:
+            break
+        if ask.yes_no("No deployment ID entered. Generate a new one? (the customer must then put it in their .env)", default=False):
+            deployment_id = new_deployment_id()
+            break
     starts = ask.date("Licence start date (YYYY-MM-DD)", default=date.today())
     expires = ask.date("Licence expiry date (YYYY-MM-DD)", default=starts.replace(year=starts.year + 1) - timedelta(days=1), after=starts)
     grace = ask.integer("Grace period in days after expiry", default=14)
