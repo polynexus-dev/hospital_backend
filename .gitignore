@@ -30,6 +30,9 @@ dist/
 .env.*
 *.env
 !.env.example
+# Private keys (the licence signing key must never be committed)
+*.pem
+*.key
 
 # Media & Uploads (keep directory structure, ignore user uploads)
 media/*

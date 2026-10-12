@@ -33,6 +33,10 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
+      # Licence signing key, kept outside the repo on the SaaS server only.
+      # Put license_signing_key.pem in this folder and set, in .env:
+      #   LICENSE_SIGNING_KEY_PATH=/run/polynexus/license_signing_key.pem
+      - ${LICENSE_KEY_DIR:-/etc/polynexus}:/run/polynexus:ro
     ports:
       - "8001:8000"
     env_file: .env
