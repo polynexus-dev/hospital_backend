@@ -54,6 +54,7 @@ def lab_technician_client(api_client, lab_technician_user):
 
 # --- LabOrder lifecycle --------------------------------------------------
 
+# NABH COP.1.f (CPOE for laboratory)
 @pytest.mark.django_db
 def test_lab_order_api_create_stamps_ordered_by(auth_client, user, patient, lab_test):
     response = auth_client.post("/api/v1/laboratory/orders/", {

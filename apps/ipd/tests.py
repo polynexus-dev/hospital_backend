@@ -101,6 +101,7 @@ def test_admit_patient_rejects_an_already_occupied_bed(hospital, patient, doctor
 
 # --- Ward transfer: request + approve, bed sync ---------------------------
 
+# NABH AAC.6.d (transfers within the hospital)
 @pytest.mark.django_db
 def test_ward_transfer_approval_moves_the_admission_to_the_new_bed(hospital, admission, other_bed):
     transfer = request_ward_transfer(admission=admission, to_bed=other_bed, reason="Needs closer monitoring", requested_by=None)

@@ -133,6 +133,7 @@ def test_lookup_without_mobile_param_returns_400(auth_client):
 
 # --- timeline action ------------------------------------------------------
 
+# NABH COP.1.n (patient timeline)
 @pytest.mark.django_db
 def test_timeline_action_returns_events_for_the_patient(auth_client, patient):
     record_timeline_event(patient=patient, event_type="call", summary="Inbound enquiry call", occurred_at=datetime.datetime.now(datetime.timezone.utc))

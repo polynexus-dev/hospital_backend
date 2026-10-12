@@ -16,6 +16,7 @@ def _resources(bundle, rtype):
     return [e["resource"] for e in bundle["entry"] if e["resource"]["resourceType"] == rtype]
 
 
+# NABH COP.1.h (e-prescription)
 def test_prescription_bundle(auth_client, hospital, patient):
     rx = Prescription.objects.create(hospital=hospital, patient=patient, diagnosis="Hypertension", medications=[{"name": "Amlodipine 5mg", "frequency": "OD"}])
     b = auth_client.get(f"/api/v1/abdm-fhir/prescription/{rx.pk}/").json()
@@ -25,6 +26,7 @@ def test_prescription_bundle(auth_client, hospital, patient):
     assert _resources(b, "Patient")[0]["identifier"][0]["value"] == patient.uhid
 
 
+# NABH AAC.3.n (lab reports shared via ABHA bundles)
 def test_lab_bundle_with_loinc(auth_client, hospital, patient):
     from apps.laboratory.models import LabOrder, LabResult, LabTest
 
@@ -38,6 +40,7 @@ def test_lab_bundle_with_loinc(auth_client, hospital, patient):
     assert obs["valueQuantity"]["value"] == 10.2 and obs["interpretation"][0]["coding"][0]["code"] == "L"
 
 
+# NABH AAC.6.f (discharge summary linked to ABHA)
 def test_discharge_bundle_uses_icd10_coding(auth_client, hospital, patient):
     from apps.appointments.models import Doctor
     from apps.facilities.models import Bed, Room, Ward

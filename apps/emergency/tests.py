@@ -48,6 +48,7 @@ class EmergencyComprehensiveTestCase(TestCase):
         res = client.get("/api/v1/emergency/ed-visits/")
         self.assertEqual(res.status_code, 403)
 
+    # NABH COP.4.a (emergency registration and records)
     def test_triage_creation_and_audit(self):
         client = APIClient()
         client.force_authenticate(user=self.doctor_a)

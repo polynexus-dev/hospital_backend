@@ -267,6 +267,11 @@ class EmergencyAccessLog(models.Model):
         return f"Emergency access to {self.model_name}:{self.object_id} by {self.actor_id}"
 
 
+class FinalizedRecordError(ValueError):
+    """Raised when code tries to change a signed/finalised record's locked
+    fields. The API turns it into a 400 (apps.core.exceptions)."""
+
+
 class FinalizableModel(models.Model):
     """Mixin for clinical/financial records that must not be silently
     edited once finalized."""
@@ -287,7 +292,7 @@ class FinalizableModel(models.Model):
             if original is not None:
                 changed = [f for f in self.FINALIZED_LOCKED_FIELDS if getattr(self, f) != original[f]]
                 if changed:
-                    raise ValueError(
+                    raise FinalizedRecordError(
                         f"{type(self).__name__}.{', '.join(changed)} is finalized and cannot be edited "
                         f"directly — create an Amendment instead."
                     )

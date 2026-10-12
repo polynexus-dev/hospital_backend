@@ -1,4 +1,4 @@
-"""Field-level audit trail on clinical records (NABH DAC.2 / MoHFW EHR standards):
+"""Field-level audit trail on clinical records (NABH DAC.2.c, DOM.3.b; MoHFW EHR standards):
 who changed what, from what to what, and when — without encrypted values."""
 import json
 

@@ -59,6 +59,7 @@ def test_nhcx_transaction_create_returns_503_when_gateway_is_not_configured(auth
 # --- Happy path with a gateway actually wired up (a fake one, standing in
 # for whatever real ABDMGateway/NHCXGateway eventually gets implemented) --
 
+# NABH COP.1.o (records linked to ABHA)
 @pytest.mark.django_db
 def test_abha_link_full_flow_with_a_configured_gateway(auth_client, hospital, user, patient):
     with patch("apps.abdm.views.get_abdm_gateway") as get_gateway:

@@ -31,6 +31,7 @@ def test_order_number_and_duplicate_guard(auth_client, patient, glucose):
     assert _order(auth_client, patient, glucose, confirm_duplicate=True).status_code == 201
 
 
+# NABH AAC.3.c (specimen tracking), AAC.3.h (rejected samples marked)
 def test_specimen_number_tracking_and_rejection(auth_client, patient, glucose):
     order = _order(auth_client, patient, glucose).json()
     s = auth_client.post("/api/v1/laboratory/samples/", {"lab_order": order["id"], "sample_type": "Serum"}, format="json").json()
@@ -44,6 +45,7 @@ def test_specimen_number_tracking_and_rejection(auth_client, patient, glucose):
     assert label.status_code == 200 and label.content[:4] == b"%PDF"
 
 
+# NABH AAC.3.i (reference range, abnormal results highlighted)
 def test_auto_flag_and_critical_alert_to_orderer(auth_client, patient, glucose, user):
     order = _order(auth_client, patient, glucose).json()
     r = auth_client.post("/api/v1/laboratory/results/", {"lab_order": order["id"], "lab_test": glucose.pk, "value": "450", "flag": "normal"}, format="json")
@@ -97,6 +99,7 @@ def test_dicom_header_reader():
     assert tags["study_instance_uid"] == "1.2.840.113619.2.55.3" and tags["modality"] == "CT"
 
 
+# NABH COP.1.g (CPOE for radiology)
 def test_radiology_contraindication_blocks_until_override(auth_client, hospital, patient):
     from apps.clinical.models import ClinicalAssessment
     from apps.radiology.models import RadiologyProcedure
@@ -110,6 +113,7 @@ def test_radiology_contraindication_blocks_until_override(auth_client, hospital,
     assert ClinicalAlert.objects.filter(target_department="radiology").exists()
 
 
+# NABH AAC.4.f (radiology reports appended), AAC.4.i (amended reports flagged)
 def test_radiology_slot_booking_status_and_amendment(auth_client, hospital, patient):
     from django.utils import timezone
 

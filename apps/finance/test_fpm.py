@@ -13,6 +13,7 @@ def patient(hospital):
     return Patient.objects.create(hospital=hospital, first_name="Vikas", mobile="9000000601")
 
 
+# NABH FPM.3.d (patient bills for goods and services)
 def test_bill_quantity_bug_fixed_and_tariff_gst(auth_client, hospital, patient):
     bill = auth_client.post("/api/v1/billing/bills/", {"patient": patient.pk, "status": "unpaid"}, format="json").json()
     r = auth_client.post(f"/api/v1/billing/bills/{bill['id']}/add-item/", {"description": "Syringe", "quantity": 2, "unit_price": "500"}, format="json").json()
@@ -48,6 +49,7 @@ def test_journals_balance_tally_and_gst(auth_client, hospital, patient):
     assert statement["outstanding"] == 0.0
 
 
+# NABH FPM.2.d (supplier debit/credit notes)
 def test_vendor_invoice_three_way_match_payment_and_aging(auth_client, hospital):
     from apps.inventory.models import Item, ItemCategory, PurchaseOrder, POItem
 

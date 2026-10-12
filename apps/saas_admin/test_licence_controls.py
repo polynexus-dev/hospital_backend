@@ -1,4 +1,6 @@
-"""The controls that stop unauthorised licences (see licence_controls.py)."""
+"""The controls that stop unauthorised licences (see licence_controls.py).
+NABH DOM.4.c (blocking a user ends access), DOM.4.e (2FA on sensitive actions).
+"""
 import json
 
 import pytest

@@ -48,6 +48,7 @@ def test_unknown_number_gets_same_response_but_no_otp(hospital):
     assert not MobileOTP.objects.exists()
 
 
+# NABH AAC.3.l (patients view/download their reports)
 def test_portal_booking_and_reports_visibility(hospital, family, monkeypatch):
     from apps.laboratory.models import LabOrder
 
@@ -98,3 +99,17 @@ def test_teleconsult_flow(auth_client, hospital, family):
 
     assert ConsentRecord.objects.filter(patient=a, consent_type="telemedicine").exists()
     assert public.get(f"/api/v1/telemedicine/join/{token}x/").status_code == 404
+
+
+# NABH COP.1.l: patients can see their own prescriptions in the portal.
+def test_portal_lists_own_prescriptions(hospital, family, monkeypatch):
+    from apps.patients.models import Prescription
+
+    a, _ = family
+    Prescription.objects.create(hospital=hospital, patient=a, diagnosis="Hypertension", medications=[{"name": "Amlodipine 5mg"}])
+    c, _ = _portal_client(hospital, "9811100001", monkeypatch)
+    res = c.get(f"/api/v1/portal/prescriptions/?patient={a.pk}")
+    assert res.status_code == 200
+    body = res.json()
+    rows = body["results"] if isinstance(body, dict) and "results" in body else body
+    assert len(rows) == 1

@@ -99,6 +99,7 @@ def test_template_required_fields_enforced(auth_client, hospital, patient):
     assert res.status_code == 201 and res.json()["category"] == "antenatal"
 
 
+# NABH COP.1.h (signed e-prescription)
 def test_sign_prescription_and_detect_tampering(auth_client, hospital, patient, user):
     user.set_password("Sign$Passw0rd1")
     user.save()
@@ -128,6 +129,7 @@ def test_handover_acknowledged_by_receiver(auth_client, hospital, patient, user)
     assert res.json()["acknowledged_at"] is not None
 
 
+# NABH COP.1.n (past medical records for practitioners)
 def test_clinical_summary_links_records_to_uhid(auth_client, hospital, patient):
     Allergy.objects.create(hospital=hospital, patient=patient, allergen="sulfa")
     res = auth_client.get(f"/api/v1/clinical/patients/{patient.pk}/summary/")

@@ -1,4 +1,6 @@
-"""Security incident / breach register (CERT-In 2022, DPDP Act 2023) and 180-day log retention."""
+"""Security incident / breach register (CERT-In 2022, DPDP Act 2023) and 180-day log retention.
+NABH DOM.3.a (critical security incidents), DAC.2.c (log retention).
+"""
 import logging
 from datetime import date, timedelta
 

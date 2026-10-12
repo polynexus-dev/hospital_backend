@@ -371,6 +371,7 @@ def test_webhook_config_returns_hospital_token_and_payload(auth_client, hospital
     assert "sample_payload" in response.data
 
 
+# NABH FPM.3.c (estimates)
 @pytest.mark.django_db
 def test_treatment_estimate_lifecycle_and_pdf(auth_client, hospital):
     from apps.patients.models import Patient

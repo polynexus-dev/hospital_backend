@@ -76,6 +76,7 @@ def test_logout_blacklists_the_refresh_token_so_it_can_no_longer_be_used(api_cli
     assert replay.status_code == 401
 
 
+# NABH DOM.1.c (protection against external attacks)
 @pytest.mark.django_db
 def test_login_is_rate_limited_to_5_per_minute_per_ip(api_client, hospital, department):
     """config.settings.test disables DEFAULT_THROTTLE_CLASSES suite-wide

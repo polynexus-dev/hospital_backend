@@ -1,4 +1,6 @@
-"""DPDP Act 2023 consent register: notices per purpose, consent and its withdrawal."""
+"""DPDP Act 2023 consent register: notices per purpose, consent and its withdrawal.
+DPDP Act 2023 s.5-6 (notice and consent); supports NABH DAC.2.b.
+"""
 import pytest
 
 from apps.communications.models import ConsentOptOut

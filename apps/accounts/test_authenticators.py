@@ -1,4 +1,6 @@
-"""Several authenticator apps per account (phone, backup phone, tablet)."""
+"""Several authenticator apps per account (phone, backup phone, tablet).
+NABH DOM.4.e (multi-factor authentication).
+"""
 import pyotp
 import pytest
 

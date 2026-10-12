@@ -14,8 +14,15 @@ from collections import defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
-SOURCES = [ROOT / "backend" / "apps", ROOT / "Frontend" / "src"]
+BACKEND = HERE.parent.parent            # Backend/
+REPOS = BACKEND.parent                  # the folder holding Backend/ and Frontend/
+ROOT = REPOS
+SOURCES = [BACKEND / "apps", REPOS / "Frontend" / "src"]
+
+
+def is_test(path: Path) -> bool:
+    name = path.name
+    return name.startswith("test_") or name == "tests.py" or ".test." in name
 CHAPTERS = ["AAC", "COP", "MOM", "DAC", "DOM", "FPM", "HRM", "IMS", "MDC"]
 TAG = re.compile(r"\b(" + "|".join(CHAPTERS) + r")\.(\d+)((?:\.[a-z](?:/[a-z])*)?)")
 
@@ -26,34 +33,48 @@ def load_elements():
 
 
 def scan():
-    hits = defaultdict(set)
+    """{element: files}, separately for implementing code and for tests."""
+    hits, test_hits = defaultdict(set), defaultdict(set)
     for base in SOURCES:
+        if not base.exists():
+            raise SystemExit(f"Source folder not found: {base}. Run from a checkout with Backend/ and Frontend/ side by side.")
         for path in base.rglob("*"):
             if path.suffix not in {".py", ".ts", ".tsx"} or "migrations" in path.parts or "node_modules" in path.parts:
                 continue
             rel = path.relative_to(ROOT).as_posix()
+            bucket = test_hits if is_test(path) else hits
             for m in TAG.finditer(path.read_text(encoding="utf-8", errors="ignore")):
                 chapter, std, letters = m.groups()
                 if not letters:
-                    hits[f"{chapter}.{std}"].add(rel)  # whole standard
+                    bucket[f"{chapter}.{std}"].add(rel)  # whole standard
                     continue
                 for letter in letters[1:].split("/"):
-                    hits[f"{chapter}.{std}.{letter}"].add(rel)
-    return hits
+                    bucket[f"{chapter}.{std}.{letter}"].add(rel)
+    return hits, test_hits
+
+
+def files_for(code, hits):
+    std = code.rsplit(".", 1)[0]
+    # An element-specific tag counts on its own; a whole-standard tag only adds to one.
+    return sorted(hits.get(code, set()) | hits.get(std, set()) if code in hits else hits.get(code, set()))
+
+
+def short(files, limit=4):
+    return ", ".join(f"`{f}`" for f in files[:limit]) + (f" +{len(files) - limit}" if len(files) > limit else "")
 
 
 def main():
     elements = load_elements()
-    hits = scan()
+    hits, test_hits = scan()
     manual_path = HERE / "manual_evidence.json"
     manual = json.loads(manual_path.read_text(encoding="utf-8")) if manual_path.exists() else {}
 
-    rows, by_chapter, by_status = [], defaultdict(lambda: [0, 0]), defaultdict(int)
+    rows, by_chapter, by_status = [], defaultdict(lambda: [0, 0, 0]), defaultdict(int)
+    untested = []
     for code, level, text in elements:
-        std = code.rsplit(".", 1)[0]
-        files = sorted(hits.get(code, set()) | hits.get(std, set()) if code in hits else hits.get(code, set()))
-        evidence = ", ".join(f"`{f}`" for f in files[:4]) + (f" +{len(files) - 4}" if len(files) > 4 else "")
-        status = "Implemented" if evidence else "Gap"
+        evidence = short(files_for(code, hits))
+        tests = files_for(code, test_hits)
+        status = "Implemented" if evidence or tests else "Gap"
         if code in manual:
             entry = manual[code] if isinstance(manual[code], dict) else {"evidence": manual[code]}
             evidence = "; ".join(x for x in (evidence, entry["evidence"]) if x)
@@ -61,11 +82,15 @@ def main():
         chap = code.split(".")[0]
         by_chapter[chap][0] += 1
         by_chapter[chap][1] += status == "Implemented"
+        by_chapter[chap][2] += status == "Implemented" and bool(tests)
         by_status[status] += 1
-        rows.append(f"| {code} | {level if level != '?' else ''} | {text.strip()} | {status} | {evidence} |")
+        if status == "Implemented" and not tests:
+            untested.append(code)
+        rows.append(f"| {code} | {level if level != '?' else ''} | {text.strip()} | {status} | {evidence} | {short(tests, 3) or '—'} |")
 
     total = sum(v[0] for v in by_chapter.values())
     done = sum(v[1] for v in by_chapter.values())
+    tested = sum(v[2] for v in by_chapter.values())
     out = [
         "# NABH HIS/EMR compliance matrix",
         "",
@@ -74,26 +99,35 @@ def main():
         "",
         "Source: NABH Digital Health Standards for HIS/EMR (v1.2.1) and the Oncology annexure, with their test cases (PDFs in this folder).",
         "",
-        f"**{done} of {total} objective elements implemented.** "
+        f"**{done} of {total} objective elements implemented; {tested} of those have a tagged automated test.** "
         + " · ".join(f"{k}: {v}" for k, v in sorted(by_status.items()) if k != "Implemented"),
+        "",
+        "**Proved by test** lists test files that name the element. Elements implemented but without one rely on",
+        "code review or a manual demonstration until a test is tagged; they are listed at the end.",
         "",
         "Statuses: **Implemented** (code evidence); **Partial** (built, but part of it needs an outside step such as gateway onboarding);",
         "**Deferred** (postponed by product decision); **Organisational** (a process/certification the hospital or vendor holds, not a software feature);",
         "**Gap** (not built yet).",
         "",
-        "| Chapter | Elements | Implemented |",
-        "|---|---|---|",
-        *[f"| {c} | {by_chapter[c][0]} | {by_chapter[c][1]} |" for c in CHAPTERS if c in by_chapter],
+        "| Chapter | Elements | Implemented | With a tagged test |",
+        "|---|---|---|---|",
+        *[f"| {c} | {by_chapter[c][0]} | {by_chapter[c][1]} | {by_chapter[c][2]} |" for c in CHAPTERS if c in by_chapter],
         "",
         "Level is Core / Commitment / Achievement / Excellence where the standard's OCR gave it; blank where it could not be read.",
         "",
-        "| Element | Level | Requirement | Status | Evidence |",
-        "|---|---|---|---|---|",
+        "| Element | Level | Requirement | Status | Evidence (code) | Proved by test |",
+        "|---|---|---|---|---|---|",
         *rows,
+        "",
+        f"## Implemented without a tagged test ({len(untested)})",
+        "",
+        "Tag the test that demonstrates each of these (a comment or docstring naming the element) and re-run.",
+        "",
+        ", ".join(untested) or "None.",
         "",
     ]
     (HERE / "COMPLIANCE_MATRIX.md").write_text("\n".join(out), encoding="utf-8")
-    print(f"{done}/{total} implemented; {dict(by_status)}")
+    print(f"{done}/{total} implemented, {tested} with a tagged test; {dict(by_status)}")
     for row in rows:
         if "| Implemented |" not in row:
             print(row[:140])

@@ -10,6 +10,7 @@ from apps.patients.models import MobileOTP, Patient
 REG = {"first_name": "Sunita", "last_name": "Patil", "date_of_birth": "1990-05-05", "mobile": "9876500001"}
 
 
+# NABH AAC.1.c (unique patient ID), AAC.1.f
 def test_exact_duplicate_blocked_probable_flagged(auth_client):
     first = auth_client.post("/api/v1/patients/", REG, format="json")
     assert first.status_code == 201 and first.json()["uhid"]
@@ -64,6 +65,7 @@ def test_uhid_config_format(auth_client, hospital):
     assert auth_client.patch("/api/v1/patients/uhid-config/", {"pattern": "{PREFIX}"}, format="json").status_code == 400
 
 
+# NABH AAC.1.g (offline registration)
 def test_offline_sync_idempotent(auth_client):
     payload = {"patients": [{**REG, "mobile": "9000000405", "offline_client_id": "tab-1-0001"}]}
     first = auth_client.post("/api/v1/patients/offline-sync/", payload, format="json").json()["results"][0]
@@ -86,6 +88,7 @@ def test_queue_tokens_call_next_priority_and_public_board(auth_client, api_clien
     assert "Sunita" not in str(board)
 
 
+# NABH AAC.2.c (time stamps), AAC.2.g (print the practitioner's schedule)
 def test_consultation_start_stamps_kpi_time(auth_client, hospital):
     from apps.appointments.models import Appointment, Doctor, Slot
 

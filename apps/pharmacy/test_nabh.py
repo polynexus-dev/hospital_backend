@@ -56,6 +56,7 @@ def test_reorder_expiry_and_recall(auth_client, hospital, patient):
     assert auth_client.post("/api/v1/pharmacy/dispense-records/", {"batch": b.pk, "quantity": 1}, format="json").status_code == 409
 
 
+# NABH FPM.1.b (stock movement), FPM.1.c (indents)
 def test_indent_issue_fefo_and_emergency_stockout(auth_client, hospital):
     med = Medicine.objects.create(hospital=hospital, name="Ringer lactate")
     late = _batch(hospital, med, qty=5, days=300, number="LATE")

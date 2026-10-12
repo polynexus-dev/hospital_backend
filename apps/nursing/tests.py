@@ -57,6 +57,7 @@ def receptionist_client(api_client, hospital, department):
 
 # --- Generic-relation resolution via the admission-scoped serializer -----
 
+# NABH COP.2.a (nursing notes for inpatients)
 @pytest.mark.django_db
 def test_nursing_note_api_create_resolves_admission_to_the_generic_relation(nurse_client, nurse_user, admission):
     response = nurse_client.post("/api/v1/nursing/notes/", {"admission": admission.id, "note": "Patient resting comfortably."}, format="json")
