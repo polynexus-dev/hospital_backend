@@ -1,43 +1,51 @@
-# Compliance review — audit, encryption, DPDP Act 2023, NABH
+# Compliance review — audit, encryption, DPDP Act 2023, NABH, CERT-In
 
 Engineering review of what the code does today, to support (not replace) a
 formal assessment. **Nothing here is a certification or a legal opinion.**
-Reviewed 10 Oct 2026, branch `feature/dual-mode-licensing`.
+First reviewed 10 Oct 2026; updated 12 Oct 2026 after closing the gaps below.
+For the reviewer-facing version see `docs/compliance/EVIDENCE_PACK.md`.
 
 ## Audit trail
 
 | Requirement | Status |
 |---|---|
 | Every create / update / delete is logged: who, when, from where | **In place.** `AuditMiddleware` writes an `AuditLog` row for every mutating request (user, method, path, IP, status). The table is immutable at the database level (core migration 0003). |
-| What changed on patient records | **In place for the patient record** (added in this review): field-level diffs on create/update/delete of `Patient`. Encrypted fields are logged as *changed* without values. Also already in place for bills, payments, claims, blood bank. |
-| What changed on other clinical records | **Gap.** Documents, prescriptions, clinical notes, allergies, orders and similar records only have the request-level log (which record, who, when, where), not field diffs. Add `AuditedModelViewSetMixin` to those viewsets. |
+| What changed on patient and clinical records | **In place (12 Oct).** `AuditedModelViewSetMixin` records old/new values where the serializer saves, so every view and workflow action is covered; all fields are compared unless narrowed. It now covers encounters, vitals, notes, diagnoses, orders, admissions, transfers, lab and radiology orders/results/reports, dispensing, OT, ICU, nursing notes, medication administration, intake/output, documents, prescriptions and the patient record. Encrypted fields are recorded as changed without values; records with encrypted fields are named by type and id, never by their content. Test: `apps/core/test_clinical_audit.py`. |
 | Read access to patient records | Request-level reads of patient-record URLs are logged; per-record read capture is configurable per model (`AuditRule`, NABH DAC.2.c). |
+| Retention | Audit rules can't keep logs for less than 180 days (CERT-In). |
+| Legacy entries | Entries made before 12 Oct 2026 may name a record by its display text, which for prescriptions included the diagnosis. The table is immutable, so they remain. |
 
 ## Encryption at rest
 
 | Requirement | Status |
 |---|---|
-| Patient identifiers and contact details encrypted, keys from the environment | **In place for:** mobile, alternate mobile, address, national ID number, insurance policy number, attendant phone, document notes, diagnosis. Keys come from `FIELD_ENCRYPTION_KEY(S)` / `_V2` in the environment; production refuses to start with the development keys; rotation is supported. Exact-match lookups use a separate keyed hash (`FIELD_HASH_KEY`). |
-| Name, date of birth, email | **Gap.** Stored in plain text. They identify a person under DPDP. Encrypting names needs a search design (blind-index or tokenised search) because the front desk searches by name. |
+| Patient identifiers and contact details | **In place:** name, date of birth, email (12 Oct), mobile, alternate mobile, address, national ID number, insurance policy number, attendant phone, prescriptions' clinical content, document notes, diagnosis. AES-256-GCM with keys from the environment; production refuses development keys; rotation supported. |
+| Searching encrypted data | Exact-match keyed hashes for phone and email; for names, keyed hashes of each word's prefixes, so the front desk can type the start of any part of a name. Birth year stays plain for age-group queries. Test: `apps/patients/test_encrypted_identity.py`. |
+| Other records with names | **Gap.** Enquiries (leads), blood donors and referral records still hold names in plain text. |
 | Database / backups | Full-disk or volume encryption of the server and of `backups/` is the hospital's responsibility on-premise; state it in the deployment agreement. |
 
 ## DPDP Act 2023
 
 | Area | Status |
 |---|---|
+| Notice and consent per purpose, withdrawal | **In place (12 Oct).** Versioned consent notices per purpose and language; patient consents recorded against the notice version; one-step withdrawal; re-consent prompted when the notice changes; marketing/reminder withdrawals switch those messages off. |
 | Rights of the data principal | **In place:** `DataRightsRequest` (access, correction, erasure), grievances (`GrievanceTicket`), nominees (`Nominee`). |
-| Consent | **Partly.** Clinical consent records and per-channel communication consent / opt-out exist. **Gap:** no single consent notice record tying each processing purpose to the patient's consent and withdrawal, as section 6 expects. |
-| Purpose limitation / retention | **Partly.** `RetentionPolicy` covers backups and audit-log archiving. **Gap:** no per-category retention schedule for patient data, and erasure requests need a documented rule for records that clinical-records law requires the hospital to keep. |
-| Breach notification | **Not verified.** No workflow found for notifying the Data Protection Board and affected people. |
-| Data stays in the deployment | **In place.** Logs go to the console only (no external log service); AI uses a local Ollama model; on-premise, WhatsApp / IVR / ABDM connect only when licensed and configured, otherwise stubs. Remaining outbound path: SSO to the hospital's own identity provider, when configured. |
+| Breach notification | **In place (12 Oct).** `SecurityIncident` register with Board intimation, detailed report and patient notification recorded against deadlines; overdue alerts. Deadlines to be confirmed by counsel. |
+| Retention / erasure | **Partly.** Backups and audit-log retention are configurable. **Gap:** no per-category retention schedule for patient data, and no documented rule for erasure requests that conflict with record-keeping law. |
+| Children's data | **Partly.** Guardian consent is recorded by name. **Gap:** no verifiable parental-consent mechanism. |
+| Data stays in the deployment | **In place.** Logs stay local; AI uses a local model; on-premise, WhatsApp / IVR / ABDM connect only when licensed and configured. |
+
+## CERT-In Directions (April 2022)
+
+| Direction | Status |
+|---|---|
+| Report incidents within 6 hours | **In place (12 Oct):** deadline tracked in the incident register, with alerts. |
+| Keep logs 180 days | **In place (12 Oct):** daily log files per service, kept 180 days (on-premise `./logs`, SaaS `logs/`); audit retention floor of 180 days. |
+| NTP time sync with NIC/NPL | Deployment step (RUNBOOK section 10). |
 
 ## NABH Digital Health Standards
 
-Several NABH HIS/EMR controls are referenced in the code (audit capture rules
-DAC.2.c, password and lockout policy DOM.4, duplicate patient detection
-AAC.1.f, signed clinical documents COP.1.e). **Gap:** there is no maintained
-mapping from each NABH standard to the implementing feature and its test; the
-source standard is in `docs/nabh/`. Build that matrix before an assessment.
+The matrix (`docs/nabh/COMPLIANCE_MATRIX.md`) is generated from tags in the code and now separates implementing code from the tests that prove each element: 211 of 223 elements implemented, **every Core element has a tagged test**, 56 elements in total. The remaining implemented elements are listed for tagging.
 
 ## Tenancy (SaaS)
 

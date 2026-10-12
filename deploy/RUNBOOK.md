@@ -10,7 +10,7 @@ internet (Linux or Windows), renew a licence, and fix licence problems.
 | Polynexus (each customer) | [3. Issue a licence](#3-issue-a-licence-polynexus) |
 | Hospital IT | [4. Install on a new server](#4-install-on-a-new-server-hospital-it) |
 | Both | [5. Renew](#5-renew-a-licence), [6. Upgrade](#6-upgrade-to-a-new-version), [7. Troubleshoot](#7-troubleshooting) |
-| Hospital IT | [8. Domain and HTTPS](#8-domain-and-https), [9. Backups and restore](#9-backups-and-restore) |
+| Hospital IT | [8. Domain and HTTPS](#8-domain-and-https), [9. Backups and restore](#9-backups-and-restore), [10. Logs, time and incidents](#10-logs-time-and-incidents) |
 
 ---
 
@@ -244,3 +244,16 @@ docker compose cp backups/hms-db-<date>.dump postgres:/tmp/r.dump
 docker compose exec postgres sh -c "createdb -U hms restore_test && pg_restore -U hms -d restore_test --no-owner /tmp/r.dump; psql -U hms -d restore_test -c 'select name from core_hospital'; dropdb -U hms restore_test"
 ```
 It should list your hospital's name.
+
+## 10. Logs, time and incidents
+
+Indian rules (CERT-In Directions, April 2022) ask for logs kept 180 days, clocks synchronised with Indian time servers, and cyber incidents reported within 6 hours.
+
+**Logs.** The backend writes one file per service per day to the `logs` folder of the install (`web-2026-10-12.log`, `worker-…`, `beat-…`). Files older than 180 days are deleted automatically each night. Keep this folder on storage that is backed up, and inside India. If the folder can't be written, the log says *"Daily log files disabled"* once: on Linux fix it with `sudo chown 10001:10001 logs` and `docker compose restart web worker beat`.
+
+**Time.** Containers use the server's clock. Point the server's time sync at NIC or NPL time servers (for example `samay1.nic.in`, `samay2.nic.in`; check the current names with NIC):
+- Linux (systemd-timesyncd): set `NTP=samay1.nic.in samay2.nic.in` in `/etc/systemd/timesyncd.conf`, then `sudo systemctl restart systemd-timesyncd` and check `timedatectl`.
+- Windows: `w32tm /config /manualpeerlist:"samay1.nic.in samay2.nic.in" /syncfromflags:manual /update`, then `w32tm /resync`.
+
+**Incidents.** Any staff member reports one in **Settings → Report a security incident** (lost device, records seen by the wrong person, suspicious email, ransomware). Administrators handle it in **Security & Governance → Incidents & breaches**: contain it, report to CERT-In within 6 hours and record the reference, and if personal data is affected intimate the Data Protection Board, send the detailed report and tell the affected patients within 72 hours. Missed deadlines raise a critical alert and email the administrators. Don't delete anything related to an incident: logs and backups are the evidence.
+
