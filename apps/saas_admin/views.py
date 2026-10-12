@@ -268,6 +268,14 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
         error = otp_error(request.user, request.data.get("otp"))
         if error:
             return Response({"otp": [error]}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.has_saas_capability("license_approve"):
+            # Signed straight away: fail before recording anything if the key isn't usable.
+            from apps.licensing.issuing import SigningKeyMissing, signing_key
+
+            try:
+                signing_key()
+            except SigningKeyMissing as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         terms = {**params.validated_data, "deployment_id": str(params.validated_data["deployment_id"] or "")}
         lic_request = LicenseRequest.objects.create(hospital=hospital, params=terms, requested_by=request.user)
         gov.log_security_event(

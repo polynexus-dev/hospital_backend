@@ -154,3 +154,33 @@ def test_staff_get_a_permanent_code(db):
     assert staff.staff_code == f"PNX-{staff.pk:04d}"
     hospital_user = User.objects.create_user(email="doc@hospital.example", password="x")
     assert hospital_user.staff_code is None
+
+
+# --- the signing key on the SaaS server ------------------------------------------
+
+@pytest.mark.django_db
+def test_missing_key_is_reported_before_anything_is_recorded(owner, settings, hospital):
+    settings.LICENSE_SIGNING_KEY = settings.LICENSE_SIGNING_KEY_PATH = ""
+    res = owner.post(gen_url(hospital), {**TERMS, "otp": owner.otp()}, format="json")
+    assert res.status_code == 503 and "LICENSE_SIGNING_KEY_PATH is not set" in res.data["detail"]
+    assert not LicenseRequest.objects.exists()
+
+
+@pytest.mark.django_db
+def test_signing_key_problems_are_named(owner, settings, tmp_path):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from apps.licensing.issuing import SigningKeyMissing, signing_key
+
+    settings.LICENSE_SIGNING_KEY = ""
+    settings.LICENSE_SIGNING_KEY_PATH = str(tmp_path / "nope.pem")
+    with pytest.raises(SigningKeyMissing, match="isn't on this server"):
+        signing_key()
+    (tmp_path / "bad.pem").write_text("not a key")
+    settings.LICENSE_SIGNING_KEY_PATH = str(tmp_path / "bad.pem")
+    with pytest.raises(SigningKeyMissing, match="isn't a valid"):
+        signing_key()
+    (tmp_path / "other.pem").write_text(crypto.private_pem(Ed25519PrivateKey.generate()))
+    settings.LICENSE_SIGNING_KEY_PATH = str(tmp_path / "other.pem")
+    with pytest.raises(SigningKeyMissing, match="doesn't match"):
+        signing_key()

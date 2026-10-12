@@ -17,13 +17,36 @@ class SigningKeyMissing(Exception):
     pass
 
 
+SETUP_HINT = "See RUNBOOK section 1: put the key on the SaaS server and set LICENSE_SIGNING_KEY_PATH."
+
+
 def signing_key():
+    """The private key, checked against the public key built into the
+    product — a licence signed with any other key is rejected everywhere."""
+    from . import public_key
+    from .crypto import public_pem
+
     pem = settings.LICENSE_SIGNING_KEY
-    if not pem and settings.LICENSE_SIGNING_KEY_PATH:
-        pem = Path(settings.LICENSE_SIGNING_KEY_PATH).read_text()
+    path = settings.LICENSE_SIGNING_KEY_PATH
+    if not pem and path:
+        try:
+            pem = Path(path).read_text()
+        except FileNotFoundError:
+            raise SigningKeyMissing(f"The licence signing key file {path} isn't on this server (or its folder isn't mounted). {SETUP_HINT}")
+        except OSError as exc:
+            raise SigningKeyMissing(f"The licence signing key file {path} can't be read ({exc.strerror}). {SETUP_HINT}")
     if not pem:
-        raise SigningKeyMissing("License signing isn't configured (LICENSE_SIGNING_KEY).")
-    return load_private_key(pem.replace("\\n", "\n"))
+        raise SigningKeyMissing(
+            "License signing isn't configured on this server: LICENSE_SIGNING_KEY_PATH is not set. "
+            "Add it to the server's .env and recreate the backend (docker compose up -d web). " + SETUP_HINT
+        )
+    try:
+        key = load_private_key(pem.replace("\\n", "\n"))
+    except Exception:
+        raise SigningKeyMissing(f"The licence signing key isn't a valid Ed25519 private key. {SETUP_HINT}")
+    if public_key.PUBLIC_KEY_PEM and public_pem(key).strip() != public_key.PUBLIC_KEY_PEM.strip():
+        raise SigningKeyMissing("This signing key doesn't match the public key built into the product, so hospitals would reject its licences. Use the original license_signing_key.pem.")
+    return key
 
 
 def next_license_id(hospital, now):
