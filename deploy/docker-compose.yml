@@ -3,7 +3,7 @@
 name: hms
 
 x-app: &app
-  image: ${REGISTRY:-polynexus}/hms-backend:${HMS_VERSION:?HMS_VERSION is not set in .env}
+  image: ${REGISTRY:-polynexus}/hms-backend:${HMS_VERSION:?no .env here - run install.sh (Linux) or install.ps1 (Windows) first, not docker compose}
   restart: unless-stopped
   env_file: .env
   environment: &app-env
@@ -55,7 +55,7 @@ services:
       retries: 3
 
   nginx:
-    image: ${REGISTRY:-polynexus}/hms-frontend:${HMS_VERSION:?}
+    image: ${REGISTRY:-polynexus}/hms-frontend:${HMS_VERSION:?no .env here - run install.sh (Linux) or install.ps1 (Windows) first, not docker compose}
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
