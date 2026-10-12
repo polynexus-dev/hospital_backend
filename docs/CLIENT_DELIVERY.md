@@ -39,7 +39,7 @@ make bundle VERSION=1.0.1
 - `git lfs pull` downloads the 3D anatomy model (168 MB), which is built into the frontend. Without it the build stops and tells you to run it.
 - Use a new, higher version number for every release (1.0.1, 1.0.2, 1.1.0, ...).
 - The first build takes 15–30 minutes; later builds are faster.
-- Result: `Backend\dist\bundle-1.0.1.tar.gz` (about 430 MB).
+- Result: `Backend\dist\bundle-1.0.1.tar.gz` (about 530 MB).
 
 ## Part 2: Deliver the bundle
 
@@ -82,11 +82,35 @@ The installer asks for the **hostname or IP** staff will use, generates secrets,
 
 **The hospital sends you `REQUEST-LICENCE.txt`.**
 
+> **Always install with `install.sh` / `install.ps1`, never with `docker compose up`.** The installer creates `.env` and loads the program first; without it, Docker stops with *"no .env here - run install.sh (Linux) or install.ps1 (Windows) first"* (older bundles: *"HMS_VERSION is not set in .env"*). That message means only that the installer hasn't been run. Nothing is broken.
+>
+> On Windows, PowerShell must be opened **as administrator** (not Command Prompt). If the bundle was unpacked by right-click → *Extract All*, the files end up in `bundle-1.0.1\bundle-1.0.1`. Copy what's inside to `C:\hms` and run the installer from there.
+
 > The installer creates `.env`, which holds the keys that decrypt patient data. Tell the hospital to back up `.env` and keep it private.
 
 ## Part 4: Issue the licence
 
 Licences are created only in the **SaaS console**, by two people, each confirming with a **2FA code** from their authenticator app.
+
+**Where the console runs.** The SaaS console runs on the SaaS server, which holds the private signing key. Until that server is live, run the console on your PC with the key, in two Command Prompt windows kept open:
+
+```
+REM Window 1 - backend with the signing key
+cd /d E:\Aniket\next\Hospital\Hospital\Backend
+venv\Scripts\python.exe manage.py migrate
+set LICENSE_SIGNING_KEY_PATH=C:\Users\User\Desktop\key\license_signing_key.pem
+venv\Scripts\python.exe manage.py runserver 8000
+```
+
+```
+REM Window 2 - the console
+cd /d E:\Aniket\next\Hospital\Hospital\Frontend
+npm run dev
+```
+
+Open **http://localhost:3000** and sign in as the SaaS Owner. `migrate` is needed only after pulling new code; it's safe to run every time.
+
+**One-time: turn on 2FA.** In the console, open **Settings → Two-factor authentication**, scan the QR code with Google or Microsoft Authenticator and confirm a code. Without it, licences can't be requested or approved.
 
 **Who can do what**
 
@@ -112,6 +136,16 @@ An Owner allows someone in On-Premise Licences → **Licence team** → *Allow l
 Press **Request / Generate License**. If you are a SaaS Owner the licence is signed and downloads at once. Otherwise it says *Sent to a SaaS Owner for approval*, and the Owners get an email.
 
 **Step 2 — Approve (SaaS Owner).** On-Premise Licences → **Licence requests** → check the terms and that the hospital has paid → **Approve** → 2FA code. The `.lic` file downloads. Owners get an email for every licence issued, and the register flags any licence with **No paid invoice**.
+
+If a step fails:
+
+| Message | Fix |
+|---|---|
+| *Turn on two-factor authentication* | Do the one-time 2FA setup above |
+| *Enter the current 6-digit code* | The code expired; type the one showing now |
+| *Only SaaS Owners, and staff a SaaS Owner has authorised* | Sign in as an Owner, or ask an Owner to allow you |
+| *No signing key* | `set LICENSE_SIGNING_KEY_PATH` wasn't run before `runserver`. Stop it (Ctrl+C) and run both lines again |
+| Server error on the licence pages | `migrate` wasn't run after pulling new code |
 
 The licence has the requester's and approver's staff codes signed inside it. The hospital sees them in **Settings → License → Issued by**. Anyone can check a file (no key needed):
 
