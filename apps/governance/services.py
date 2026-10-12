@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 _CRITICAL = {
     SecurityEvent.EventType.LICENSE_ALERT,
+    SecurityEvent.EventType.INCIDENT_OVERDUE,
     SecurityEvent.EventType.ACCOUNT_LOCKED,
     SecurityEvent.EventType.USER_BLOCKED,
     SecurityEvent.EventType.LOCKED_LOGIN_ATTEMPT,
@@ -32,6 +33,7 @@ _CRITICAL = {
 }
 _WARNING = {
     SecurityEvent.EventType.LOGIN_FAILED,
+    SecurityEvent.EventType.INCIDENT_REPORTED,
     SecurityEvent.EventType.MFA_FAILED,
     SecurityEvent.EventType.ACCESS_DENIED,
     SecurityEvent.EventType.IP_BLOCKED,
@@ -288,6 +290,9 @@ def purge_expired_backups(now=None):
     return purged
 
 
+MIN_LOG_RETENTION_DAYS = 180  # CERT-In Directions, 28 Apr 2022
+
+
 def purge_expired_audit_logs(now=None):
     """DAC.2.c retention — AuditLog rows past the most permissive active
     rule's retention for their hospital are archived to a gzip file, then
@@ -303,7 +308,7 @@ def purge_expired_audit_logs(now=None):
         rules = AuditRule.objects.filter(hospital=hospital, is_active=True)
         if not rules.exists():
             continue
-        days = max(r.retention_days for r in rules)
+        days = max(MIN_LOG_RETENTION_DAYS, *(r.retention_days for r in rules))
         stale = AuditLog.objects.filter(hospital=hospital, created_at__lt=now - timedelta(days=days))
         if not stale.exists():
             continue
@@ -357,3 +362,40 @@ def revert_audited_update(audit_log, *, user=None, request=None):
         details={"audit_log_id": audit_log.pk, "model": audit_log.model_name, "object_id": audit_log.object_id, "fields": list(reverted), "skipped": skipped},
     )
     return reverted, skipped
+
+
+def incident_contacts(hospital_id) -> list[str]:
+    """Who hears about a new or overdue incident: the hospital's owners and administrators."""
+    from apps.accounts.models import User
+    from apps.accounts.permission_catalog import ADMIN_TEMPLATES
+
+    return list(
+        User.objects.filter(hospital_id=hospital_id, is_active=True, is_blocked=False, role__template__in=ADMIN_TEMPLATES)
+        .exclude(email="").values_list("email", flat=True)
+    )
+
+
+def flag_overdue_incidents(now=None) -> int:
+    """Raise a critical security event (and email the administrators) for
+    each open incident with a missed reporting deadline, once per step."""
+    from django.core.mail import send_mail
+
+    from .models import SecurityIncident
+
+    now = now or timezone.now()
+    flagged = 0
+    for incident in SecurityIncident.objects.exclude(status=SecurityIncident.Status.CLOSED):
+        late = incident.overdue(now)
+        already = set(
+            SecurityEvent.objects.filter(event_type=SecurityEvent.EventType.INCIDENT_OVERDUE, details__incident=incident.pk)
+            .values_list("details__step", flat=True)
+        )
+        for step in late:
+            if step in already:
+                continue
+            log_security_event(SecurityEvent.EventType.INCIDENT_OVERDUE, hospital_id=incident.hospital_id, details={"incident": incident.pk, "step": step})
+            recipients = incident_contacts(incident.hospital_id)
+            if recipients:
+                send_mail(f"[Overdue] Incident #{incident.pk}: {step.replace('_', ' ')} deadline missed", incident.title, None, recipients, fail_silently=True)
+            flagged += 1
+    return flagged

@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,9 +9,10 @@ from rest_framework.views import APIView
 from apps.core.crud import TenantCRUDViewSet
 from apps.core.models import AuditLog, Hospital
 from apps.core.permissions import CanReviewEmergencyAccess, IsSaaSAdmin
+from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 
 from . import services
-from .models import Accreditation, AuditRule, BackupRecord, HelpArticle, ReleaseNote, RetentionPolicy, SecurityEvent, SecurityPolicy
+from .models import Accreditation, AuditRule, BackupRecord, HelpArticle, ReleaseNote, RetentionPolicy, SecurityEvent, SecurityIncident, SecurityPolicy
 from .serializers import (
     AccreditationSerializer,
     AuditRuleSerializer,
@@ -19,6 +21,7 @@ from .serializers import (
     ReleaseNoteSerializer,
     RetentionPolicySerializer,
     SecurityEventSerializer,
+    SecurityIncidentSerializer,
     SecurityPolicySerializer,
 )
 
@@ -226,3 +229,79 @@ class ReleaseNoteViewSet(viewsets.ModelViewSet):
         if self.action in ("list", "retrieve"):
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsSaaSAdmin()]
+
+
+class SecurityIncidentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """Security incidents and personal-data breaches. Anyone signed in to
+    the hospital can report one (whoever notices first); hospital
+    administrators see the register and move incidents through it."""
+
+    serializer_class = SecurityIncidentSerializer
+    queryset = SecurityIncident.objects.select_related("reported_by", "owner")
+    filterset_fields = ["status", "severity", "category", "personal_data_affected"]
+    http_method_names = ["get", "post", "patch", "head", "options"]  # incidents are closed, never deleted
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsHospitalAdmin()]
+
+    def perform_create(self, serializer):
+        from django.core.mail import send_mail
+
+        incident = serializer.save(hospital=self.request.user.hospital, reported_by=self.request.user)
+        services.log_security_event(
+            SecurityEvent.EventType.INCIDENT_REPORTED, request=self.request, user=self.request.user,
+            details={"incident": incident.pk, "category": incident.category, "severity": incident.severity},
+        )
+        recipients = services.incident_contacts(incident.hospital_id)
+        if recipients:
+            send_mail(
+                f"[Security incident #{incident.pk}] {incident.title}",
+                f"Reported by {self.request.user.email}. Severity: {incident.get_severity_display()}.\n\n{incident.description}\n\n"
+                f"CERT-In report due by {incident.cert_in_due_at:%d %b %Y %H:%M} if reportable. Open Security & Governance > Incidents.",
+                None, recipients, fail_silently=True,
+            )
+
+    def _stamp(self, request, field, *, extra=None):
+        incident = self.get_object()
+        setattr(incident, field, timezone.now())
+        for key, value in (extra or {}).items():
+            setattr(incident, key, value)
+        incident.save()
+        self._log("update", incident)
+        return Response(SecurityIncidentSerializer(incident).data)
+
+    @action(detail=True, methods=["post"])
+    def contain(self, request, pk=None):
+        return self._stamp(request, "contained_at", extra={"status": SecurityIncident.Status.CONTAINED, "containment_actions": request.data.get("containment_actions", self.get_object().containment_actions)})
+
+    @action(detail=True, methods=["post"])
+    def resolve(self, request, pk=None):
+        return self._stamp(request, "resolved_at", extra={"status": SecurityIncident.Status.RESOLVED})
+
+    @action(detail=True, methods=["post"])
+    def close(self, request, pk=None):
+        incident = self.get_object()
+        missing = [step for step in incident.overdue() + incident.pending_reports() if step]
+        if missing:
+            return Response({"detail": f"Record these before closing: {', '.join(sorted(set(missing)))}."}, status=status.HTTP_400_BAD_REQUEST)
+        if not incident.root_cause:
+            return Response({"detail": "Record the root cause before closing."}, status=status.HTTP_400_BAD_REQUEST)
+        return self._stamp(request, "closed_at", extra={"status": SecurityIncident.Status.CLOSED})
+
+    @action(detail=True, methods=["post"], url_path="cert-in-reported")
+    def cert_in_reported(self, request, pk=None):
+        return self._stamp(request, "cert_in_reported_at", extra={"cert_in_reference": str(request.data.get("reference", ""))[:100]})
+
+    @action(detail=True, methods=["post"], url_path="dpb-intimated")
+    def dpb_intimated(self, request, pk=None):
+        return self._stamp(request, "dpb_intimated_at")
+
+    @action(detail=True, methods=["post"], url_path="dpb-report-submitted")
+    def dpb_report_submitted(self, request, pk=None):
+        return self._stamp(request, "dpb_report_submitted_at")
+
+    @action(detail=True, methods=["post"], url_path="patients-notified")
+    def patients_notified(self, request, pk=None):
+        return self._stamp(request, "patients_notified_at")

@@ -89,3 +89,28 @@ class ReleaseNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReleaseNote
         fields = "__all__"
+
+
+class SecurityIncidentSerializer(serializers.ModelSerializer):
+    reported_by_email = serializers.CharField(source="reported_by.email", read_only=True, default=None)
+    cert_in_due_at = serializers.DateTimeField(read_only=True)
+    dpb_report_due_at = serializers.DateTimeField(read_only=True)
+    overdue = serializers.SerializerMethodField()
+    pending_reports = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import SecurityIncident
+
+        model = SecurityIncident
+        exclude = ["hospital"]
+        read_only_fields = [
+            "status", "reported_by", "contained_at", "resolved_at", "closed_at",
+            "cert_in_reported_at", "cert_in_reference", "dpb_intimated_at", "dpb_report_submitted_at", "patients_notified_at",
+            "created_at", "updated_at",
+        ]
+
+    def get_overdue(self, obj):
+        return obj.overdue()
+
+    def get_pending_reports(self, obj):
+        return obj.pending_reports()

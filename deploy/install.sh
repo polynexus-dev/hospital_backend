@@ -50,8 +50,8 @@ if [ ! -f .env ]; then
 fi
 set -a; . ./.env; set +a
 
-mkdir -p config certs backups
-chown 10001:10001 config 2>/dev/null || true   # the app runs as uid 10001 and writes uploaded licences here
+mkdir -p config certs backups logs
+chown 10001:10001 config logs 2>/dev/null || true   # the app runs as uid 10001: uploaded licences, daily logs
 
 say "Starting the database"
 $COMPOSE up -d postgres redis

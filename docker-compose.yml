@@ -48,6 +48,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # CERT-In: daily log files in ./logs, kept 180 days.
+      LOG_DIR: /app/logs
+      LOG_NAME: web
     depends_on:
       db:
         condition: service_healthy
@@ -69,6 +72,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # CERT-In: daily log files in ./logs, kept 180 days.
+      LOG_DIR: /app/logs
+      LOG_NAME: worker
     depends_on:
       db:
         condition: service_healthy
@@ -92,6 +98,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # CERT-In: daily log files in ./logs, kept 180 days.
+      LOG_DIR: /app/logs
+      LOG_NAME: beat
     depends_on:
       db:
         condition: service_healthy

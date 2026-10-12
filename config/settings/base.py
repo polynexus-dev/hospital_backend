@@ -551,6 +551,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.quality.tasks.publish_previous_quarter_kpis",
         "schedule": crontab(hour=5, minute=0),
     },
+    "check-incident-deadlines": {
+        "task": "apps.governance.tasks.check_incident_deadlines",
+        "schedule": crontab(minute=15),
+    },
     "enforce-backup-and-audit-retention": {
         "task": "apps.governance.tasks.enforce_retention",
         "schedule": crontab(hour=4, minute=0),
@@ -716,3 +720,18 @@ LOGGING = {
         },
     },
 }
+
+# CERT-In: keep application logs for 180 days. Set LOG_DIR (a mounted folder)
+# to also write daily files there; LOG_NAME tells the services apart.
+LOG_DIR = env.str("LOG_DIR", default="")
+LOG_RETENTION_DAYS = max(180, env.int("LOG_RETENTION_DAYS", default=180))
+if LOG_DIR:
+    LOGGING["handlers"]["daily_file"] = {
+        "class": "apps.core.logging_handlers.DailyFileHandler",
+        "directory": LOG_DIR,
+        "name": env.str("LOG_NAME", default="app"),
+        "formatter": "default",
+    }
+    LOGGING["root"]["handlers"].append("daily_file")
+    for _logger in LOGGING["loggers"].values():
+        _logger["handlers"].append("daily_file")

@@ -61,7 +61,7 @@ if (Test-Path images.tar) {
 # --- 3. Machine identity (for the licence fingerprint) ------------------------
 # Linux containers can't read Windows' identity, so it's written to files the
 # containers mount. Refreshed on every run.
-New-Item -ItemType Directory -Force -Path config\host-identity, certs, backups | Out-Null
+New-Item -ItemType Directory -Force -Path config\host-identity, certs, backups, logs | Out-Null
 $machineGuid = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Cryptography" -Name MachineGuid).MachineGuid
 $biosUuid = (Get-CimInstance Win32_ComputerSystemProduct).UUID
 if (-not $machineGuid) { Die "Couldn't read this machine's MachineGuid." }

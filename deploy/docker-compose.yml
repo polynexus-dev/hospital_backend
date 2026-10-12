@@ -13,8 +13,11 @@ x-app: &app
     CELERY_RESULT_BACKEND: redis://redis:6379/0
     # The machine fingerprint reads the host's identity files mounted below.
     LICENSE_HOST_ROOT: /host
+    # Application logs as daily files in ./logs, kept 180 days (CERT-In).
+    LOG_DIR: /var/log/hms
   volumes:
     - ./config:/app/config                # license.lic lives here (drop-in or upload)
+    - ./logs:/var/log/hms
     - media:/app/media
     - ${HOST_MACHINE_ID:-/etc/machine-id}:/host/etc/machine-id:ro
     - ${HOST_PRODUCT_UUID:-/sys/class/dmi/id/product_uuid}:/host/sys/class/dmi/id/product_uuid:ro
@@ -27,6 +30,9 @@ x-app: &app
 services:
   web:
     <<: *app
+    environment:
+      <<: *app-env
+      LOG_NAME: web
     # Runs migrations on start (RUN_MIGRATIONS defaults to 1); healthcheck is built into the image.
 
   worker:
@@ -35,6 +41,7 @@ services:
     environment:
       <<: *app-env
       RUN_MIGRATIONS: "0"
+      LOG_NAME: worker
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 10 | grep -q pong"]
       interval: 60s
@@ -48,6 +55,7 @@ services:
     environment:
       <<: *app-env
       RUN_MIGRATIONS: "0"
+      LOG_NAME: beat
     healthcheck:
       test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
       interval: 60s

@@ -29,7 +29,18 @@ def run_scheduled_backups():
 
 @shared_task
 def enforce_retention():
+    from django.conf import settings
+
+    from apps.core.logging_handlers import purge_old_logs
+
     return {
         "backups_purged": services.purge_expired_backups(),
         "audit_logs_archived": services.purge_expired_audit_logs(),
+        "log_files_removed": purge_old_logs(settings.LOG_DIR, settings.LOG_RETENTION_DAYS),
     }
+
+
+@shared_task
+def check_incident_deadlines():
+    """Hourly: flag security incidents whose CERT-In / DPDP reporting deadline has passed."""
+    return services.flag_overdue_incidents()

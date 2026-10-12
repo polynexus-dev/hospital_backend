@@ -11,11 +11,13 @@ from .views import (
     ReleaseNoteViewSet,
     RetentionPolicyView,
     SecurityEventViewSet,
+    SecurityIncidentViewSet,
     SecurityPolicyView,
 )
 
 router = DefaultRouter()
 router.register("security-events", SecurityEventViewSet, basename="securityevent")
+router.register("incidents", SecurityIncidentViewSet, basename="securityincident")
 router.register("audit-rules", AuditRuleViewSet, basename="auditrule")
 router.register("backups", BackupViewSet, basename="backup")
 router.register("help", HelpArticleViewSet, basename="helparticle")

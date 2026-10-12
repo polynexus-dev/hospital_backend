@@ -4,7 +4,10 @@ IT-governance controls from the NABH HIS/EMR standard's DOM/DAC chapters
 configurable audit-capture/retention rules, backups, the in-app help
 centre, accreditations shown on the login page, and vendor release notes.
 """
+from datetime import timedelta
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -89,6 +92,8 @@ class SecurityEvent(models.Model):
         PERMISSIONS_CHANGED = "permissions_changed", "Permissions changed"
         LICENSE_ISSUED = "license_issued", "Licence requested, approved, issued or revoked"
         LICENSE_ALERT = "license_alert", "Licence security alert"
+        INCIDENT_REPORTED = "incident_reported", "Security incident reported"
+        INCIDENT_OVERDUE = "incident_overdue", "Incident reporting deadline missed"
 
     class Severity(models.TextChoices):
         INFO = "info", "Info"
@@ -127,7 +132,8 @@ class AuditRule(TenantScopedModel):
     model_name = models.CharField(max_length=100, default="*")
     actions = models.JSONField(default=list, help_text='Subset of ["create","update","delete","read","request","export"]; empty = all.')
     capture_reads = models.BooleanField(default=False)
-    retention_days = models.PositiveIntegerField(default=2555, help_text="≈7 years by default.")
+    # CERT-In Directions (28 Apr 2022): logs of ICT systems kept for at least 180 days.
+    retention_days = models.PositiveIntegerField(default=2555, validators=[MinValueValidator(180)], help_text="≈7 years by default; never less than 180 days (CERT-In).")
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -243,3 +249,107 @@ class ReleaseNote(TimeStampedModel):
 
     def __str__(self):
         return f"{self.version} — {self.summary}"
+
+
+class SecurityIncident(TenantScopedModel):
+    """A security incident or personal-data breach, from first report to
+    closure, with the reporting deadlines Indian law sets from the moment
+    the hospital becomes aware of it:
+
+      - CERT-In Directions (28 Apr 2022): report cyber incidents within 6 hours;
+      - DPDP Act 2023 / Rules 2025: intimate the Data Protection Board without
+        delay and send the detailed report within 72 hours, and tell each
+        affected patient without delay.
+
+    Confirm the deadlines with the hospital's legal adviser; they are kept in
+    one place here (DEADLINES) so they can be adjusted."""
+
+    DEADLINES = {"cert_in": timedelta(hours=6), "dpb_report": timedelta(hours=72)}
+
+    class Category(models.TextChoices):
+        UNAUTHORISED_ACCESS = "unauthorised_access", "Unauthorised access to records"
+        DATA_BREACH = "data_breach", "Personal data disclosed or stolen"
+        RANSOMWARE = "ransomware", "Ransomware or malware"
+        PHISHING = "phishing", "Phishing or account compromise"
+        LOST_DEVICE = "lost_device", "Lost or stolen device or media"
+        DATA_LOSS = "data_loss", "Data lost or corrupted"
+        OUTAGE = "outage", "System outage or attack on availability"
+        OTHER = "other", "Other"
+
+    class Severity(models.TextChoices):
+        LOW = "low", "Low"
+        MEDIUM = "medium", "Medium"
+        HIGH = "high", "High"
+        CRITICAL = "critical", "Critical"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        CONTAINED = "contained", "Contained"
+        RESOLVED = "resolved", "Resolved"
+        CLOSED = "closed", "Closed"
+
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    category = models.CharField(max_length=24, choices=Category.choices)
+    severity = models.CharField(max_length=10, choices=Severity.choices, default=Severity.MEDIUM)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN)
+    detected_at = models.DateTimeField(default=timezone.now, help_text="When the hospital became aware of it; deadlines run from here.")
+    occurred_at = models.DateTimeField(null=True, blank=True)
+    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    personal_data_affected = models.BooleanField(default=False, help_text="Patient or staff personal data was, or may have been, exposed.")
+    records_affected = models.PositiveIntegerField(null=True, blank=True)
+    data_categories = models.CharField(max_length=255, blank=True, help_text="e.g. names, phone numbers, diagnoses, lab reports")
+
+    containment_actions = models.TextField(blank=True)
+    root_cause = models.TextField(blank=True)
+    remediation = models.TextField(blank=True)
+
+    cert_in_reportable = models.BooleanField(default=True)
+    cert_in_reported_at = models.DateTimeField(null=True, blank=True)
+    cert_in_reference = models.CharField(max_length=100, blank=True)
+    dpb_intimated_at = models.DateTimeField(null=True, blank=True)
+    dpb_report_submitted_at = models.DateTimeField(null=True, blank=True)
+    patients_notified_at = models.DateTimeField(null=True, blank=True)
+    contained_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-detected_at"]
+
+    def __str__(self):
+        return f"Incident #{self.pk}: {self.title}"
+
+    @property
+    def cert_in_due_at(self):
+        return self.detected_at + self.DEADLINES["cert_in"] if self.cert_in_reportable else None
+
+    @property
+    def dpb_report_due_at(self):
+        return self.detected_at + self.DEADLINES["dpb_report"] if self.personal_data_affected else None
+
+    def pending_reports(self) -> list[str]:
+        """Reporting steps that apply to this incident and aren't recorded yet."""
+        pending = []
+        if self.cert_in_reportable and not self.cert_in_reported_at:
+            pending.append("cert_in")
+        if self.personal_data_affected:
+            pending += [step for step, done in (("dpb_intimation", self.dpb_intimated_at), ("dpb_report", self.dpb_report_submitted_at), ("patients", self.patients_notified_at)) if not done]
+        return pending
+
+    def overdue(self, now=None) -> list[str]:
+        """Reporting steps whose deadline has passed and that aren't done."""
+        now = now or timezone.now()
+        late = []
+        if self.cert_in_reportable and not self.cert_in_reported_at and now > self.cert_in_due_at:
+            late.append("cert_in")
+        if self.personal_data_affected:
+            if not self.dpb_intimated_at and now > self.detected_at + timedelta(hours=24):
+                late.append("dpb_intimation")
+            if not self.dpb_report_submitted_at and now > self.dpb_report_due_at:
+                late.append("dpb_report")
+            if not self.patients_notified_at and now > self.dpb_report_due_at:
+                late.append("patients")
+        return late

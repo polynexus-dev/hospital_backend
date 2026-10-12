@@ -24,7 +24,7 @@ $OldVersion = $envVars["HMS_VERSION"]
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
 # --- 1. Backup first ------------------------------------------------------------
-New-Item -ItemType Directory -Force -Path backups | Out-Null
+New-Item -ItemType Directory -Force -Path backups, logs | Out-Null
 Say "Backing up the database (version $OldVersion)"
 Compose up -d postgres
 do { Start-Sleep -Seconds 2; docker compose -f docker-compose.yml exec -T postgres pg_isready -U $envVars["POSTGRES_USER"] *> $null } while ($LASTEXITCODE -ne 0)

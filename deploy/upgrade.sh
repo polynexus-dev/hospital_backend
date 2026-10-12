@@ -20,7 +20,8 @@ OLD_VERSION="$HMS_VERSION"
 
 # --- 1. Backup first ------------------------------------------------------------
 STAMP=$(date +%Y%m%d-%H%M%S)
-mkdir -p backups
+mkdir -p backups logs
+chown 10001:10001 logs 2>/dev/null || true   # daily application logs (written by the app's uid)
 say "Backing up the database (version $OLD_VERSION)"
 $COMPOSE up -d postgres
 until $COMPOSE exec -T postgres pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; do sleep 2; done
