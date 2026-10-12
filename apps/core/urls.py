@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .location_views import DistrictListView, PinCodeLookupView, StateListView
 from .tenant_public_views import PublicTenantBrandingView
 from .views import AuditLogViewSet, DepartmentViewSet, EmergencyAccessLogViewSet, SessionKeyView
 
@@ -12,5 +13,8 @@ router.register("emergency-access-logs", EmergencyAccessLogViewSet, basename="em
 urlpatterns = router.urls + [
     path("session-key/", SessionKeyView.as_view(), name="session-key"),
     path("public/tenant-branding/", PublicTenantBrandingView.as_view(), name="tenant-branding"),
+    path("locations/states/", StateListView.as_view(), name="location-states"),
+    path("locations/districts/", DistrictListView.as_view(), name="location-districts"),
+    path("locations/pincode/<str:pincode>/", PinCodeLookupView.as_view(), name="location-pincode"),
 ]
 

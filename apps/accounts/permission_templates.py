@@ -223,6 +223,8 @@ CLINICAL_ROLES = {
 VERIFY_PERM_ROLES = {
     "verify_labresult": {"lab_manager", "doctor", "owner", "admin", "hospital_administrator"},
     "verify_radiologyreport": {"radiologist", "doctor", "owner", "admin", "hospital_administrator"},
+    # Discounts above the front-desk limit: managers, never the counter that asks.
+    "authorize_discount": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager"},
 }
 
 

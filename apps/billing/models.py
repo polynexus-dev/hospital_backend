@@ -26,6 +26,9 @@ class Bill(TenantScopedModel):
     bill_number = models.CharField(max_length=30, blank=True, editable=False)
     patient_category = models.CharField(max_length=12, default="general", help_text="general | private | insurance | corporate")
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Paise dropped when the net is rounded down to the rupee (front-desk policy).
+    round_off = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    discount_reason = models.CharField(max_length=255, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.bill_number and self.hospital_id:
@@ -158,3 +161,65 @@ class InsuranceClaim(TenantScopedModel):
 
     def __str__(self):
         return f"InsuranceClaim for Bill #{self.bill_id} ({self.insurance_company}) - {self.status}"
+
+
+class PatientAdvance(TenantScopedModel):
+    """The patient's advance-deposit ledger: money received in advance, used
+    against bills, or refunded. Balance = deposits - adjustments - refunds."""
+
+    class Kind(models.TextChoices):
+        DEPOSIT = "deposit", "Deposit received"
+        ADJUSTMENT = "adjustment", "Used against a bill"
+        REFUND = "refund", "Refunded"
+
+    patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name="advances")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, blank=True, help_text="How a deposit was received or a refund paid.")
+    reference = models.CharField(max_length=100, blank=True)
+    bill = models.ForeignKey(Bill, on_delete=models.PROTECT, null=True, blank=True, related_name="advance_adjustments")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    receipt_number = models.CharField(max_length=30, blank=True, editable=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.receipt_number and self.hospital_id and self.kind == self.Kind.DEPOSIT:
+            from django.utils import timezone as tz
+
+            n = PatientAdvance.objects.filter(hospital_id=self.hospital_id, kind=self.Kind.DEPOSIT, receipt_number__startswith=f"ADV{tz.localdate():%y}").count() + 1
+            self.receipt_number = f"ADV{tz.localdate():%y}{n:06d}"
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def balance(cls, patient):
+        from decimal import Decimal
+
+        from django.db.models import Sum
+
+        totals = dict(cls.objects.filter(patient=patient).values_list("kind").annotate(total=Sum("amount")))
+        return (totals.get(cls.Kind.DEPOSIT) or Decimal("0")) - (totals.get(cls.Kind.ADJUSTMENT) or Decimal("0")) - (totals.get(cls.Kind.REFUND) or Decimal("0"))
+
+
+class DiscountApproval(TenantScopedModel):
+    """A discount above the front-desk limit, and who authorised it."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Waiting for approval"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="discount_approvals")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    percent = models.DecimalField(max_digits=5, decimal_places=2)
+    reason = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    approver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    approved_at_counter = models.BooleanField(default=False, help_text="The approver confirmed with their password at the counter.")
+
+    class Meta:
+        ordering = ["-created_at"]
+        permissions = [("authorize_discount", "Can authorise discounts above the front-desk limit")]

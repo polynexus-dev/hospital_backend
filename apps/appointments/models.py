@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import Department, TenantScopedModel
 from apps.patients.models import Patient
@@ -161,3 +162,65 @@ class Waitlist(TenantScopedModel):
 
     def __str__(self):
         return f"{self.patient} waiting for {self.doctor} ({self.get_status_display()})"
+
+
+class OPDVisit(TenantScopedModel):
+    """One OPD registration at the front desk: who, which doctor, new or
+    follow-up, who pays and at what rates, who referred them, and the bill.
+    The Appointment underneath carries the queue token and visit status."""
+
+    class VisitType(models.TextChoices):
+        NEW = "new", "New visit"
+        FOLLOW_UP = "follow_up", "Follow-up (paid)"
+        FREE_FOLLOW_UP = "free_follow_up", "Follow-up (free)"
+
+    class CaseType(models.TextChoices):
+        NEW_COMPLAINT = "new_complaint", "New complaint"
+        OLD_COMPLAINT = "old_complaint", "Same complaint as before"
+
+    class PayerType(models.TextChoices):
+        SELF = "self", "Self-pay"
+        CORPORATE = "corporate", "Corporate"
+        TPA = "tpa", "TPA"
+        INSURANCE = "insurance", "Insurance"
+        SCHEME = "scheme", "Government scheme"
+        HEALTH_CAMP = "health_camp", "Health camp"
+
+    visit_number = models.CharField(max_length=24, blank=True, editable=False, db_index=True)
+    patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name="opd_visits")
+    doctor = models.ForeignKey(Doctor, on_delete=models.PROTECT, related_name="opd_visits")
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    appointment = models.OneToOneField(Appointment, on_delete=models.PROTECT, related_name="opd_visit")
+    visit_type = models.CharField(max_length=16, choices=VisitType.choices)
+    case_type = models.CharField(max_length=16, choices=CaseType.choices, default=CaseType.NEW_COMPLAINT)
+    is_new_patient = models.BooleanField(default=False)
+
+    payer_type = models.CharField(max_length=12, choices=PayerType.choices, default=PayerType.SELF)
+    rate_category = models.CharField(max_length=20, default="general", help_text="Tariff rate column, e.g. general, private, insurance, corporate.")
+    corporate_client = models.ForeignKey("packages.CorporateClient", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    tpa = models.ForeignKey("tpa.TPACompany", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    insurance_policy = models.ForeignKey("finance.InsurancePolicy", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    scheme = models.ForeignKey("schemes.GovtScheme", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    campaign = models.ForeignKey("packages.Campaign", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    referred_by = models.ForeignKey("referrals.ReferringDoctor", on_delete=models.SET_NULL, null=True, blank=True, related_name="opd_visits")
+    referral_note = models.CharField(max_length=255, blank=True)
+    marketing_person = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+                                         help_text="For referral payouts only; gives no access to the patient's record.")
+
+    bill = models.ForeignKey("billing.Bill", on_delete=models.SET_NULL, null=True, blank=True, related_name="opd_visits")
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["hospital", "patient", "doctor"])]
+
+    def save(self, *args, **kwargs):
+        if not self.visit_number and self.hospital_id:
+            day = timezone.localdate()
+            n = OPDVisit.objects.filter(hospital_id=self.hospital_id, created_at__date=day).count() + 1
+            self.visit_number = f"OP{day:%y%m%d}-{n:04d}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.visit_number} {self.get_visit_type_display()}"

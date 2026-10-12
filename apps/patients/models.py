@@ -90,11 +90,14 @@ class Patient(TenantScopedModel, SoftDeleteModel):
 
     # Name, date of birth and email are encrypted at rest (DPDP Act 2023):
     # searched through name_search / email_hash, aged through birth_year.
+    title = models.CharField(max_length=12, blank=True, help_text="Mr, Mrs, Ms, Master, Baby, Dr …")
     first_name = EncryptedCharField(max_length=150)
     last_name = EncryptedCharField(max_length=150, blank=True)
     date_of_birth = EncryptedDateField(null=True, blank=True)
     name_search = models.TextField(blank=True, editable=False)
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True, editable=False, db_index=True)
+    # Registered by age only ("about 45"): the date of birth is 1 July of the derived year.
+    dob_is_estimated = models.BooleanField(default=False)
     gender = models.CharField(max_length=16, choices=Gender.choices, blank=True)
 
     # Encrypted at rest (Part A #2)
@@ -103,10 +106,23 @@ class Patient(TenantScopedModel, SoftDeleteModel):
     mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
     alternate_mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
     email = EncryptedCharField(max_length=254, blank=True, validators=[EmailValidator()])
+    whatsapp = EncryptedCharField(max_length=20, blank=True, help_text="Blank = same as the mobile number.")
     email_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
 
     address = EncryptedTextField(blank=True)
     city = models.CharField(max_length=120, blank=True)
+    # Structured address (MoHFW EHR / MDDS demographic set). Kept plain so
+    # reports can group by area; the street address above stays encrypted.
+    country = models.CharField(max_length=2, default="IN", help_text="ISO 3166-1 alpha-2")
+    state = models.CharField(max_length=80, blank=True, db_index=True)
+    district = models.CharField(max_length=80, blank=True)
+    sub_district = models.CharField(max_length=80, blank=True, help_text="Taluka / tehsil / mandal")
+    village_or_area = models.CharField(max_length=120, blank=True)
+    pincode = models.CharField(max_length=6, blank=True, db_index=True)
+    nationality = models.CharField(max_length=2, default="IN", help_text="ISO 3166-1 alpha-2")
+    passport_number = EncryptedCharField(max_length=20, blank=True, help_text="Foreign nationals only.")
+    is_vvip = models.BooleanField(default=False, help_text="Shown only to roles that may see VIP flags.")
+    tags = models.JSONField(default=list, blank=True, help_text='e.g. ["senior citizen", "staff family"]')
 
     national_id_type = models.CharField(max_length=32, blank=True, help_text="e.g. Aadhaar, PAN, Passport")
     national_id_number = EncryptedCharField(max_length=64, blank=True)

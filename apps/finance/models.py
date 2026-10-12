@@ -80,3 +80,4 @@ from .models_fpm import (  # noqa: E402,F401
     VendorPayment,
 )
 from .models_payout import DoctorPayout, DoctorPayoutLine, DoctorPayoutRule  # noqa: E402,F401
+from .models_frontdesk import ConsultationFeeRule, FrontDeskPolicy  # noqa: E402,F401

@@ -326,3 +326,37 @@ class Amendment(TenantScopedModel):
 
     def __str__(self):
         return f"Amendment to {self.content_type.model}:{self.object_id}.{self.field_name}"
+
+
+class IndianState(models.Model):
+    """States and union territories, for the structured address (MoHFW EHR
+    standards). Seeded by migration; shared by every hospital."""
+
+    name = models.CharField(max_length=80, unique=True)
+    is_union_territory = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class PinCode(models.Model):
+    """One post office from India Post's All-India Pincode Directory
+    (data.gov.in). Several offices share a PIN; together they give the
+    district, sub-district and areas a PIN covers. Loaded with
+    `manage.py import_pincodes <csv>`; shared by every hospital."""
+
+    pincode = models.CharField(max_length=6, db_index=True)
+    office_name = models.CharField(max_length=120)
+    sub_district = models.CharField(max_length=80, blank=True)
+    district = models.CharField(max_length=80)
+    state = models.CharField(max_length=80)
+
+    class Meta:
+        ordering = ["pincode", "office_name"]
+        constraints = [models.UniqueConstraint(fields=["pincode", "office_name"], name="unique_post_office_per_pincode")]
+
+    def __str__(self):
+        return f"{self.pincode} {self.office_name}"

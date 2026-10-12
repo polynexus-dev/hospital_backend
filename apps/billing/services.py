@@ -10,7 +10,7 @@ def recalculate_bill(bill: Bill) -> Bill:
     items = list(bill.items.all())
     bill.total_amount = sum((i.total_price for i in items), Decimal("0"))
     bill.tax_amount = sum((i.tax_amount for i in items), Decimal("0"))
-    bill.net_amount = bill.total_amount + bill.tax_amount - Decimal(bill.discount_amount or 0)
+    bill.net_amount = bill.total_amount + bill.tax_amount - Decimal(bill.discount_amount or 0) - Decimal(bill.round_off or 0)
     fields = ["total_amount", "tax_amount", "net_amount"]
     if bill.status in (Bill.Status.UNPAID, Bill.Status.PARTIALLY_PAID, Bill.Status.PAID):
         paid = sum((p.amount for p in bill.payments.all()), Decimal("0"))

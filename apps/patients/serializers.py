@@ -9,8 +9,10 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            "id", "first_name", "last_name", "full_name", "date_of_birth", "gender",
-            "mobile", "alternate_mobile", "email", "address", "city",
+            "id", "title", "first_name", "last_name", "full_name", "date_of_birth", "dob_is_estimated", "gender",
+            "mobile", "alternate_mobile", "whatsapp", "email", "address", "city",
+            "country", "state", "district", "sub_district", "village_or_area", "pincode", "nationality", "passport_number",
+            "is_vvip", "tags",
             "national_id_type", "national_id_number",
             "insurance_provider", "insurance_policy_number", "employer",
             "attendant_name", "attendant_phone", "attendant_relation", "referring_doctor_name",
@@ -20,6 +22,14 @@ class PatientSerializer(serializers.ModelSerializer):
             "uhid", "mrn", "registration_type", "blood_group", "registration_channel", "payment_preference", "mobile_verified_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "uhid", "mobile_verified_at"]
+
+    def validate_pincode(self, value):
+        if value and (len(value) != 6 or not value.isdigit()):
+            raise serializers.ValidationError("A PIN code has 6 digits.")
+        return value
+
+    def validate_passport_number(self, value):
+        return value.strip().upper()
 
     def validate_guardian(self, guardian):
         if guardian is not None and self.instance is not None and guardian.pk == self.instance.pk:
