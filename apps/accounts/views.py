@@ -1,6 +1,7 @@
 import pyotp
 from django.contrib.auth import update_session_auth_hash
 from django.core.signing import BadSignature
+from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework import status, viewsets
@@ -12,13 +13,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.viewsets import TenantScopedViewSetMixin
 
-from .models import Role, User
+from .models import AuthenticatorDevice, Role, User
 from .permission_catalog import ADMIN_TEMPLATES, apply_grant, role_assignment_error, catalog, codes_of, grantable_by, hospital_bounds, permission_objects
 from apps.governance import services as gov
 from apps.governance.models import SecurityEvent
 
 from .serializers import (
     AdminSetPasswordSerializer,
+    AuthenticatorDeviceSerializer,
     ChangePasswordSerializer,
     ExpiredPasswordChangeSerializer,
     HospitalScopedTokenObtainPairSerializer,
@@ -348,43 +350,74 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="2fa/setup", permission_classes=[IsAuthenticated])
     def setup_2fa(self, request):
-        """Step 1 of enrollment (Part A #7): generates a new TOTP secret and
-        returns it plus a provisioning URI (for a QR code) — NOT yet
-        enabled. A generated-but-unconfirmed secret can't be used to log
-        in; is_2fa_enabled only flips on in enable_2fa below, once the user
-        proves they actually scanned it by supplying a valid code."""
+        """Step 1 of adding an authenticator app (Part A #7): body
+        {"name": "My phone"}, plus {"otp"} from an existing device when 2FA
+        is already on — so a stolen session alone can't add the thief's
+        phone. Returns the new secret and a provisioning URI (for a QR
+        code). Not usable until confirmed in enable_2fa with a code from it."""
         user = request.user
+        if user.is_2fa_enabled and not user.verify_otp(request.data.get("otp")):
+            return Response({"otp": "Enter a current code from one of your existing authenticator apps."}, status=status.HTTP_400_BAD_REQUEST)
+        name = str(request.data.get("name") or "").strip()[:60] or f"Authenticator {user.authenticators.filter(confirmed_at__isnull=False).count() + 1}"
+        user.authenticators.filter(confirmed_at__isnull=True).delete()  # one unfinished setup at a time
         secret = pyotp.random_base32()
-        user.totp_secret = secret
-        user.save(update_fields=["totp_secret"])
-        uri = pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Polynexus HMS")
-        return Response({"secret": secret, "provisioning_uri": uri})
+        device = AuthenticatorDevice.objects.create(user=user, name=name, secret=secret)
+        uri = pyotp.TOTP(secret).provisioning_uri(name=f"{user.email} ({name})", issuer_name="Polynexus HMS")
+        return Response({"device_id": device.pk, "name": name, "secret": secret, "provisioning_uri": uri})
 
     @action(detail=False, methods=["post"], url_path="2fa/enable", permission_classes=[IsAuthenticated])
     def enable_2fa(self, request):
+        """Step 2: {"otp"} from the new app confirms it and turns 2FA on."""
         user = request.user
-        if not user.totp_secret:
+        device = user.authenticators.filter(confirmed_at__isnull=True).last()
+        if device is None:
             return Response({"detail": "Call 2fa/setup first."}, status=status.HTTP_400_BAD_REQUEST)
-        otp = str(request.data.get("otp", "")).strip()
-        if not pyotp.TOTP(user.totp_secret).verify(otp, valid_window=1):
+        if not device.code_ok(request.data.get("otp")):
             return Response({"otp": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+        device.confirmed_at = device.last_used_at = timezone.now()
+        device.save(update_fields=["confirmed_at", "last_used_at"])
         user.is_2fa_enabled = True
         user.save(update_fields=["is_2fa_enabled"])
-        return Response({"is_2fa_enabled": True})
+        gov.log_security_event(SecurityEvent.EventType.MFA_DEVICE_ADDED, request=request, user=user, details={"device": device.name})
+        return Response({"is_2fa_enabled": True, "device": AuthenticatorDeviceSerializer(device).data})
+
+    @action(detail=False, methods=["get"], url_path="2fa/devices", permission_classes=[IsAuthenticated])
+    def list_2fa_devices(self, request):
+        devices = request.user.authenticators.filter(confirmed_at__isnull=False)
+        return Response(AuthenticatorDeviceSerializer(devices, many=True).data)
+
+    @action(detail=False, methods=["post"], url_path=r"2fa/devices/(?P<device_id>[0-9]+)/remove", permission_classes=[IsAuthenticated])
+    def remove_2fa_device(self, request, device_id=None):
+        """Remove one app (e.g. a lost phone). Needs the current password.
+        Removing the last one turns 2FA off."""
+        user = request.user
+        if not user.check_password(str(request.data.get("password", ""))):
+            return Response({"password": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
+        device = user.authenticators.filter(pk=device_id, confirmed_at__isnull=False).first()
+        if device is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        device.delete()
+        if not user.authenticators.filter(confirmed_at__isnull=False).exists():
+            user.is_2fa_enabled = False
+            user.save(update_fields=["is_2fa_enabled"])
+        gov.log_security_event(SecurityEvent.EventType.MFA_DEVICE_REMOVED, request=request, user=user,
+                               details={"device": device.name, "2fa_still_on": user.is_2fa_enabled})
+        return Response({"is_2fa_enabled": user.is_2fa_enabled})
 
     @action(detail=False, methods=["post"], url_path="2fa/disable", permission_classes=[IsAuthenticated])
     def disable_2fa(self, request):
-        """Requires the current password, not just an authenticated
-        session — this turns off a security control, which is exactly the
-        situation a stolen/left-open session shouldn't be able to exploit
-        on its own (mirrors change_password's own-credential check above)."""
+        """Removes every authenticator app. Requires the current password,
+        not just an authenticated session — this turns off a security
+        control, which is exactly the situation a stolen/left-open session
+        shouldn't be able to exploit on its own."""
         password = str(request.data.get("password", ""))
         if not request.user.check_password(password):
             return Response({"password": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
         user = request.user
+        user.authenticators.all().delete()
         user.is_2fa_enabled = False
-        user.totp_secret = ""
-        user.save(update_fields=["is_2fa_enabled", "totp_secret"])
+        user.save(update_fields=["is_2fa_enabled"])
+        gov.log_security_event(SecurityEvent.EventType.MFA_DEVICE_REMOVED, request=request, user=user, details={"device": "all"})
         return Response({"is_2fa_enabled": False})
 
 
@@ -414,10 +447,10 @@ class MFAVerifyView(APIView):
         except User.DoesNotExist:
             return Response({"detail": "Invalid or expired MFA challenge."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not user.is_2fa_enabled or not user.totp_secret:
+        if not user.is_2fa_enabled:
             return Response({"detail": "MFA is not enabled for this account."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not pyotp.TOTP(user.totp_secret).verify(otp, valid_window=1):
+        if not user.verify_otp(otp):
             gov.log_security_event(SecurityEvent.EventType.MFA_FAILED, request=request, user=user)
             return Response({"otp": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
 

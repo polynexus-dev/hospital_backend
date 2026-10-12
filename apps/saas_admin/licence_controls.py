@@ -13,7 +13,6 @@ without the company knowing:
 import logging
 from datetime import timedelta
 
-import pyotp
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -23,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 def otp_error(user, code) -> str | None:
     """Why `code` isn't a valid, current 2FA code for `user` (None if it is)."""
-    if not user.is_2fa_enabled or not user.totp_secret:
+    if not user.is_2fa_enabled:
         return "Turn on two-factor authentication for your account before issuing licences."
-    if not code or not pyotp.TOTP(user.totp_secret).verify(str(code).strip(), valid_window=1):
+    if not user.verify_otp(code):
         return "Enter the current 6-digit code from your authenticator app."
     return None
 

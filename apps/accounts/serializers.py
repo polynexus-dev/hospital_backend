@@ -185,7 +185,7 @@ class UserSerializer(serializers.ModelSerializer):
         # is_2fa_enabled/requires_mfa are read-only for the same reason —
         # they only change through UserViewSet's setup_2fa/enable_2fa/
         # disable_2fa actions (which prove control of the authenticator,
-        # or the current password), never a bare PATCH. totp_secret itself
+        # or the current password), never a bare PATCH. Authenticator secrets
         # is never serialized here at all — it's not in `fields` above.
         #
         # is_superuser/is_saas_admin are exposed (previously omitted from
@@ -314,3 +314,12 @@ class ExpiredPasswordChangeSerializer(serializers.Serializer):
 
 class AdminSetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
+
+
+class AuthenticatorDeviceSerializer(serializers.Serializer):
+    """An authenticator app, without its secret."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    last_used_at = serializers.DateTimeField(allow_null=True)

@@ -75,6 +75,8 @@ class SecurityEvent(models.Model):
         PASSWORD_CHANGED = "password_changed", "Password changed"
         PASSWORD_EXPIRED = "password_expired", "Password expired"
         MFA_FAILED = "mfa_failed", "MFA verification failed"
+        MFA_DEVICE_ADDED = "mfa_device_added", "Authenticator app added"
+        MFA_DEVICE_REMOVED = "mfa_device_removed", "Authenticator app removed"
         ACCESS_DENIED = "access_denied", "Unauthorized access attempt"
         IP_BLOCKED = "ip_blocked", "Login from disallowed network"
         SCREEN_UNLOCK_FAILED = "screen_unlock_failed", "Screen unlock failed"

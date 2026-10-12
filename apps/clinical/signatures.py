@@ -4,7 +4,6 @@ content, and finalizes the record if it's a FinalizableModel."""
 import hashlib
 import json
 
-import pyotp
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
 
@@ -31,7 +30,7 @@ def sign_document(instance, user, *, method, password="", otp="", signature_imag
         if not user.check_password(password):
             raise SignatureError("Password verification failed.")
     elif method == DigitalSignature.Method.TOTP:
-        if not (user.is_2fa_enabled and user.totp_secret and pyotp.TOTP(user.totp_secret).verify(str(otp), valid_window=1)):
+        if not user.verify_otp(otp):
             raise SignatureError("OTP verification failed.")
     elif method == DigitalSignature.Method.STYLUS:
         if signature_image is None and not user.signature_image:

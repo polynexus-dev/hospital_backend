@@ -190,8 +190,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text="Polynexus staff: may request on-premise licences (a SaaS Owner approves them). Granted only by a SaaS Owner.",
     )
+    # True while at least one confirmed AuthenticatorDevice exists.
     is_2fa_enabled = models.BooleanField(default=False)
-    totp_secret = EncryptedCharField(max_length=64, blank=True, editable=False)
     allowed_ip_ranges = models.JSONField(default=list, blank=True, help_text="CIDR ranges this user may log in from; empty = unrestricted.")
 
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -294,6 +294,13 @@ class User(AbstractBaseUser, PermissionsMixin):
             return bool({"tenant_manage", "tenant_view", "billing_manage"} & capabilities)
         return capability in capabilities
 
+    def verify_otp(self, code) -> bool:
+        """Whether `code` is a current code from any of this user's
+        confirmed authenticator apps. Records which device was used."""
+        if not self.is_2fa_enabled:
+            return False
+        return AuthenticatorDevice.verify_for(self, code)
+
     @property
     def is_saas_owner(self) -> bool:
         return self.is_superuser or self.saas_role == self.SaaSRole.OWNER
@@ -334,6 +341,42 @@ def assign_role(user: User, role: Role | None) -> None:
         user.groups.add(role.group)
     user.role = role
     user.save(update_fields=["role"])
+
+
+class AuthenticatorDevice(models.Model):
+    """One authenticator app (phone, tablet, password manager) registered
+    for 2FA. A user may have several, so losing one phone doesn't lock them
+    out; a code from any confirmed device is accepted."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="authenticators")
+    name = models.CharField(max_length=60)
+    secret = EncryptedCharField(max_length=64)
+    confirmed_at = models.DateTimeField(null=True, blank=True, help_text="Set once a code from it was entered; unconfirmed devices are ignored.")
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user.email}: {self.name}"
+
+    def code_ok(self, code) -> bool:
+        import pyotp
+
+        code = str(code or "").strip()
+        return bool(code) and pyotp.TOTP(self.secret).verify(code, valid_window=1)
+
+    @classmethod
+    def verify_for(cls, user, code) -> bool:
+        from django.utils import timezone
+
+        for device in cls.objects.filter(user=user, confirmed_at__isnull=False):
+            if device.code_ok(code):
+                device.last_used_at = timezone.now()
+                device.save(update_fields=["last_used_at"])
+                return True
+        return False
 
 
 from .models_sso import SSOIdentity, SSOLoginAttempt, SSOProvider  # noqa: E402,F401

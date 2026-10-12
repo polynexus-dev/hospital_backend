@@ -187,7 +187,12 @@ def make_saas_client(email="owner@platform.example", **extra):
     import pyotp
 
     secret = pyotp.random_base32()
-    user = User.objects.create_user(email=email, password="x", is_saas_admin=True, is_2fa_enabled=True, totp_secret=secret, **extra)
+    from django.utils import timezone
+
+    from apps.accounts.models import AuthenticatorDevice
+
+    user = User.objects.create_user(email=email, password="x", is_saas_admin=True, is_2fa_enabled=True, **extra)
+    AuthenticatorDevice.objects.create(user=user, name="Phone", secret=secret, confirmed_at=timezone.now())
     client = APIClient()
     client.force_authenticate(user=user)
     client.user = user
