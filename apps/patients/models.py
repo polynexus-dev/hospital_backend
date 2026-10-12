@@ -1,12 +1,14 @@
+from datetime import date
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator
+from django.core.validators import EmailValidator, FileExtensionValidator
 from django.db import models
 
-from apps.core.encryption import blind_index, normalize_phone
-from apps.core.fields import EncryptedCharField, EncryptedJSONField, EncryptedTextField
+from apps.core.encryption import blind_index, email_index, name_query_tokens, name_search_tokens, normalize_phone
+from apps.core.fields import EncryptedCharField, EncryptedDateField, EncryptedJSONField, EncryptedTextField
 from apps.core.managers import SoftDeleteManager, SoftDeleteQuerySet
 from apps.core.models import SoftDeleteModel, TenantScopedModel
 
@@ -30,9 +32,33 @@ class PatientQuerySet(SoftDeleteQuerySet):
             return self.none()
         return self.filter(models.Q(mobile_hash=digest) | models.Q(alternate_mobile_hash=digest))
 
+    def search_name(self, term):
+        """Patients whose name has a word starting with each word of `term`
+        (case-insensitive), e.g. "ash rao" finds "Ashwini Rao-Iyer"."""
+        tokens = name_query_tokens(term)
+        if not tokens:
+            return self.none()
+        qs = self
+        for token in tokens:
+            qs = qs.filter(name_search__contains=f" {token} ")
+        return qs
+
+    def by_email(self, email):
+        digest = email_index(email)
+        return self.filter(email_hash=digest) if digest else self.none()
+
 
 class PatientManager(SoftDeleteManager):
     queryset_class = PatientQuerySet
+
+    def by_mobile(self, mobile):
+        return self.get_queryset().by_mobile(mobile)
+
+    def search_name(self, term):
+        return self.get_queryset().search_name(term)
+
+    def by_email(self, email):
+        return self.get_queryset().by_email(email)
 
 
 class Patient(TenantScopedModel, SoftDeleteModel):
@@ -62,9 +88,13 @@ class Patient(TenantScopedModel, SoftDeleteModel):
         O_POSITIVE = "o_positive", "O+"
         O_NEGATIVE = "o_negative", "O-"
 
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
+    # Name, date of birth and email are encrypted at rest (DPDP Act 2023):
+    # searched through name_search / email_hash, aged through birth_year.
+    first_name = EncryptedCharField(max_length=150)
+    last_name = EncryptedCharField(max_length=150, blank=True)
+    date_of_birth = EncryptedDateField(null=True, blank=True)
+    name_search = models.TextField(blank=True, editable=False)
+    birth_year = models.PositiveSmallIntegerField(null=True, blank=True, editable=False, db_index=True)
     gender = models.CharField(max_length=16, choices=Gender.choices, blank=True)
 
     # Encrypted at rest (Part A #2)
@@ -72,7 +102,8 @@ class Patient(TenantScopedModel, SoftDeleteModel):
     alternate_mobile = EncryptedCharField(max_length=20, blank=True)
     mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
     alternate_mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
-    email = models.EmailField(blank=True)
+    email = EncryptedCharField(max_length=254, blank=True, validators=[EmailValidator()])
+    email_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
 
     address = EncryptedTextField(blank=True)
     city = models.CharField(max_length=120, blank=True)
@@ -137,6 +168,14 @@ class Patient(TenantScopedModel, SoftDeleteModel):
     def save(self, *args, **kwargs):
         self.mobile_hash = blind_index(normalize_phone(self.mobile))
         self.alternate_mobile_hash = blind_index(normalize_phone(self.alternate_mobile))
+        self.name_search = name_search_tokens(self.first_name, self.last_name)
+        self.email_hash = email_index(self.email)
+        dob = self.date_of_birth
+        if isinstance(dob, str):
+            dob = date.fromisoformat(dob) if dob else None
+        self.birth_year = dob.year if dob else None
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"name_search", "email_hash", "birth_year", "mobile_hash", "alternate_mobile_hash"}
         if not self.uhid and self.hospital_id:
             self.uhid = self._generate_uhid()
         super().save(*args, **kwargs)

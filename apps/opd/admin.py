@@ -7,7 +7,7 @@ from .models import ClinicalNote, Diagnosis, Encounter, InvestigationOrder, Vita
 class EncounterAdmin(admin.ModelAdmin):
     list_display = ["patient", "doctor", "department", "hospital", "created_at"]
     list_filter = ["hospital", "department"]
-    search_fields = ["patient__first_name", "patient__last_name", "doctor__name"]
+    search_fields = ["patient__uhid", "doctor__name"]
 
 
 @admin.register(VitalsReading)

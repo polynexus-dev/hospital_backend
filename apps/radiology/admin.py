@@ -13,7 +13,7 @@ class RadiologyProcedureAdmin(admin.ModelAdmin):
 class RadiologyOrderAdmin(admin.ModelAdmin):
     list_display = ["patient", "procedure", "status", "ordered_at"]
     list_filter = ["hospital", "status"]
-    search_fields = ["patient__first_name", "patient__last_name"]
+    search_fields = ["patient__uhid"]
 
 
 @admin.register(RadiologyReport)

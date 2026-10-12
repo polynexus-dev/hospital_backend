@@ -54,12 +54,9 @@ class FamilyView(BasePatientAPIView):
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         
-        if first_name and Patient.objects.filter(
-            guardian_id=patient_id, 
-            hospital_id=request.user.hospital_id,
-            first_name__iexact=first_name,
-            last_name__iexact=last_name
-        ).exists():
+        # Names are encrypted: narrow by the name search hashes, then compare decrypted.
+        same_name = lambda p: (p.first_name or "").casefold() == first_name.casefold() and (p.last_name or "").casefold() == last_name.casefold()  # noqa: E731
+        if first_name and any(same_name(p) for p in Patient.objects.filter(guardian_id=patient_id, hospital_id=request.user.hospital_id).search_name(first_name)):
             return Response(
                 {"error": "A family member with this name already exists in your profile."}, 
                 status=status.HTTP_400_BAD_REQUEST

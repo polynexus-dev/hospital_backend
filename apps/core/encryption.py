@@ -210,3 +210,42 @@ def blind_index(value: str) -> str:
 # Aliases for backward compatibility with migrations
 get_fernet = _get_fernet
 compute_blind_index = blind_index
+
+
+# --- Searching encrypted names and emails --------------------------------------
+#
+# Names are encrypted at rest, so the database can't search them. Each word's
+# prefixes ("as", "ash", "ashw", ...) are stored as short keyed hashes, so the
+# front desk can still type the start of any part of a name. The hashes reveal
+# only whether two names share a prefix, never the name itself.
+
+NAME_PREFIX_MAX = 20
+NAME_TOKEN_LENGTH = 16
+
+
+def name_words(*parts) -> list[str]:
+    import re
+    import unicodedata
+
+    text = unicodedata.normalize("NFKC", " ".join(str(p or "") for p in parts)).casefold()
+    return [w for w in re.split(r"[^\w]+", text) if w]
+
+
+def _name_token(prefix: str) -> str:
+    return blind_index("name:" + prefix)[:NAME_TOKEN_LENGTH]
+
+
+def name_search_tokens(*parts) -> str:
+    """The stored search column: space-delimited hashes of every word prefix."""
+    tokens = {_name_token(w[:n]) for w in name_words(*parts) for n in range(1, min(len(w), NAME_PREFIX_MAX) + 1)}
+    return " " + " ".join(sorted(tokens)) + " " if tokens else ""
+
+
+def name_query_tokens(term) -> list[str]:
+    """One token per word typed; a record matches when it holds them all."""
+    return [_name_token(w[:NAME_PREFIX_MAX]) for w in name_words(term)]
+
+
+def email_index(email) -> str:
+    email = str(email or "").strip().casefold()
+    return blind_index("email:" + email) if email else ""

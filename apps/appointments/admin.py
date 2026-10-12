@@ -26,4 +26,4 @@ class SlotAdmin(admin.ModelAdmin):
 class AppointmentAdmin(admin.ModelAdmin):
     list_display = ["patient", "doctor", "slot", "status", "source"]
     list_filter = ["hospital", "status", "source", "doctor"]
-    search_fields = ["patient__first_name", "patient__last_name", "patient__mobile"]
+    search_fields = ["patient__uhid"]

@@ -84,3 +84,27 @@ class EncryptedJSONField(models.JSONField):
                 return ast.literal_eval(value)
             except (ValueError, SyntaxError):
                 return value
+
+
+class EncryptedDateField(models.DateField):
+    """A date stored encrypted (ISO text inside the ciphertext). Like the
+    other encrypted fields it can't be filtered or ordered in the database:
+    keep a coarse companion column (e.g. a birth year) for range queries."""
+
+    def db_type(self, connection):
+        return "text"
+
+    def get_internal_type(self):
+        # Stored as text: stops database backends (SQLite) from parsing the
+        # ciphertext as a date before from_db_value can decrypt it.
+        return "TextField"
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        value = self.to_python(value)
+        return encrypt_value(value.isoformat()) if value else None
+
+    def from_db_value(self, value, expression, connection):
+        if value in (None, ""):
+            return None
+        value = decrypt_value(value)
+        return self.to_python(value)

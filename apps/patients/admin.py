@@ -17,7 +17,7 @@ class PatientAdmin(admin.ModelAdmin):
     # mobile/alternate_mobile are encrypted at rest (Part A #2) and excluded
     # here — admin search does an icontains against the DB column, which
     # matches nothing against ciphertext.
-    search_fields = ["first_name", "last_name", "email"]
+    search_fields = ["uhid"]  # names and email are encrypted; search by UHID
     inlines = [DocumentInline]
 
     def get_queryset(self, request):

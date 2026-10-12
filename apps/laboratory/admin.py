@@ -20,7 +20,7 @@ class LabTestPackageAdmin(admin.ModelAdmin):
 class LabOrderAdmin(admin.ModelAdmin):
     list_display = ["patient", "status", "ordered_by", "ordered_at"]
     list_filter = ["hospital", "status"]
-    search_fields = ["patient__first_name", "patient__last_name"]
+    search_fields = ["patient__uhid"]
 
 
 @admin.register(SampleCollection)

@@ -7,7 +7,7 @@ from .models import Admission, BedAllocation, DischargeSummary, DoctorProgressNo
 class AdmissionAdmin(admin.ModelAdmin):
     list_display = ["patient", "admitting_doctor", "bed", "status", "admission_type", "admitted_at", "discharged_at"]
     list_filter = ["hospital", "status", "admission_type"]
-    search_fields = ["patient__first_name", "patient__last_name"]
+    search_fields = ["patient__uhid"]
 
 
 @admin.register(BedAllocation)

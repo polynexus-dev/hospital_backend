@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.encryption import blind_index, normalize_phone
+from apps.core.encryption import blind_index, name_query_tokens, normalize_phone
 
 from .models import MobileOTP, Patient, UHIDConfig
 
@@ -39,10 +39,14 @@ def find_duplicates(hospital_id, *, first_name="", last_name="", date_of_birth=N
     cond = Q()
     if digest:
         cond |= Q(mobile_hash=digest) | Q(alternate_mobile_hash=digest)
-    if first_name:
-        cond |= Q(first_name__iexact=first_name.strip())
+    # Names and dates of birth are encrypted: narrow by their search hashes
+    # and birth year, then compare the decrypted values below.
+    if first_name and name_query_tokens(first_name):
+        cond |= Q(pk__in=Patient.objects.filter(hospital_id=hospital_id).search_name(first_name).values("pk"))
     if date_of_birth:
-        cond |= Q(date_of_birth=date_of_birth)
+        year = str(date_of_birth)[:4]
+        if year.isdigit():
+            cond |= Q(birth_year=int(year))
     if not cond:
         return []
     out = []

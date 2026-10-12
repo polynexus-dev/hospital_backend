@@ -108,7 +108,7 @@ class InboundWebhookView(APIView):
 
         patient = Patient.objects.filter(hospital_id=hospital_id).by_mobile(address).first()
         if patient is None and "@" in address:
-            patient = Patient.objects.filter(hospital_id=hospital_id, email=address).first()
+            patient = Patient.objects.filter(hospital_id=hospital_id).by_email(address).first()
 
         if patient is None:
             return Response({"detail": "No matching patient for this address; message dropped."}, status=status.HTTP_202_ACCEPTED)
@@ -242,8 +242,8 @@ class BroadcastCampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         ).count()
         follow_up_leads = Enquiry.objects.filter(hospital=hospital, follow_up_date__isnull=False).count()
         
-        sixty_years_ago = date.today() - timedelta(days=365.25 * 60)
-        senior_citizens = Patient.objects.filter(hospital=hospital, date_of_birth__lte=sixty_years_ago).count()
+        # Dates of birth are encrypted; birth year is enough to pick out seniors.
+        senior_citizens = Patient.objects.filter(hospital=hospital, birth_year__lte=date.today().year - 60).count()
         chronic_care = Patient.objects.filter(hospital=hospital).exclude(blood_group="").count() or max(1, all_patients // 4)
 
         return Response({
@@ -282,9 +282,9 @@ class BroadcastCampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         elif campaign.target_audience == BroadcastCampaign.TargetAudience.FOLLOW_UP_LEADS:
             recipients_count = Enquiry.objects.filter(hospital=hospital, follow_up_date__isnull=False).count()
         elif campaign.target_audience == BroadcastCampaign.TargetAudience.SENIOR_CITIZENS:
-            sixty_years_ago = date.today() - timedelta(days=365.25 * 60)
-            recipients_count = Patient.objects.filter(hospital=hospital, date_of_birth__lte=sixty_years_ago).count()
-            target_patients = list(Patient.objects.filter(hospital=hospital, date_of_birth__lte=sixty_years_ago)[:200])
+            seniors = Patient.objects.filter(hospital=hospital, birth_year__lte=date.today().year - 60)
+            recipients_count = seniors.count()
+            target_patients = list(seniors[:200])
         else:
             recipients_count = Patient.objects.filter(hospital=hospital).count()
             target_patients = list(Patient.objects.filter(hospital=hospital)[:200])
