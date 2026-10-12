@@ -37,7 +37,7 @@ from .services import (
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class AdmissionViewSet(AdmissionWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class AdmissionViewSet(AdmissionWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"discharge": "ipd.change_admission"}
     serializer_class = AdmissionSerializer
@@ -89,7 +89,7 @@ class BedAllocationViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewS
     filterset_fields = ["admission", "bed"]
 
 
-class WardTransferViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class WardTransferViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     action_permissions = {"approve": "ipd.change_wardtransfer"}
     serializer_class = WardTransferSerializer

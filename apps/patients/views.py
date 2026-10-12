@@ -143,7 +143,7 @@ class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDel
 
 
 
-class DocumentViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class DocumentViewSet(AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     queryset = Document.objects.all()
     # Same reasoning as PatientViewSet.permission_classes above — Document
@@ -158,7 +158,7 @@ class DocumentViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets
         serializer.save(hospital=hospital, uploaded_by=self.request.user)
 
 
-class PrescriptionViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PrescriptionViewSet(AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx)."""
 
     from .models import Prescription

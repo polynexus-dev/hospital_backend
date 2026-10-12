@@ -47,7 +47,7 @@ class LabTestPackageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["name"]
 
 
-class LabOrderViewSet(LabOrderWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class LabOrderViewSet(LabOrderWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = LabOrderSerializer
     # select_related: LabOrderSerializer.patient_name (source="patient.full_name")
@@ -59,7 +59,7 @@ class LabOrderViewSet(LabOrderWorkflowMixin, TenantScopedViewSetMixin, viewsets.
         serializer.save(hospital=hospital, ordered_by=self.request.user)
 
 
-class SampleCollectionViewSet(SampleWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class SampleCollectionViewSet(SampleWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = SampleCollectionSerializer
     queryset = SampleCollection.objects.all()

@@ -1,15 +1,15 @@
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.core.permissions import RequiresViewPermission, RoleBasedModelPermissions
-from apps.core.viewsets import SoftDeleteViewSetMixin, TenantScopedViewSetMixin
+from apps.core.viewsets import AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
-from .models import DataRightsRequest, GrievanceTicket, Nominee
-from .serializers import DataRightsRequestSerializer, GrievanceTicketSerializer, NomineeSerializer
-from .services import collect_patient_data, complete_erasure
+from .models import ConsentNotice, ConsentPurpose, DataRightsRequest, GrievanceTicket, Nominee, PatientConsent
+from .serializers import ConsentNoticeSerializer, DataRightsRequestSerializer, GrievanceTicketSerializer, NomineeSerializer, PatientConsentSerializer
+from .services import collect_patient_data, complete_erasure, current_consents, sync_messaging_opt_out
 
 # DPDP Act 2023 data-rights/grievance/nominee records are restricted to
 # owner/admin/hospital_administrator by design (see
@@ -108,3 +108,90 @@ class NomineeViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
         nominee.verified_by = request.user
         nominee.save(update_fields=["verified_at", "verified_by"])
         return Response(NomineeSerializer(nominee).data)
+
+
+# --- DPDP consent register ------------------------------------------------------
+
+
+class CanPublishNotices(BasePermission):
+    """Anyone in the hospital can read the notices (they're shown to
+    patients at registration); only privacy administrators publish them."""
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user.has_perm("privacy.add_consentnotice")
+
+
+class CanRecordConsent(BasePermission):
+    """Front desk records consent at registration, so this follows the
+    patient record permissions rather than the admin-only privacy app."""
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        return request.user.has_perm("patients.view_patient" if request.method in SAFE_METHODS else "patients.change_patient")
+
+
+class ConsentNoticeViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    serializer_class = ConsentNoticeSerializer
+    queryset = ConsentNotice.objects.all()
+    permission_classes = [CanPublishNotices]
+    filterset_fields = ["purpose", "language", "is_active"]
+    http_method_names = ["get", "post", "patch", "head", "options"]  # notices are retired, never deleted
+
+    def perform_create(self, serializer):
+        serializer.save(hospital=self.request.user.hospital, published_by=self.request.user)
+
+
+class PatientConsentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    serializer_class = PatientConsentSerializer
+    queryset = PatientConsent.objects.select_related("notice", "captured_by")
+    permission_classes = [CanRecordConsent]
+    filterset_fields = ["patient", "purpose", "status"]
+    http_method_names = ["get", "post", "head", "options"]  # recorded once; withdrawal is its own action
+
+    def perform_create(self, serializer):
+        consent = serializer.save(hospital=self.request.user.hospital, captured_by=self.request.user)
+        sync_messaging_opt_out(consent, self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def withdraw(self, request, pk=None):
+        """POST {"reason": "..."}. DPDP section 6(4): withdrawing must be as easy as consenting."""
+        consent = self.get_object()
+        if consent.status != PatientConsent.Status.GRANTED:
+            return Response({"detail": "Only a granted consent can be withdrawn."}, status=status.HTTP_400_BAD_REQUEST)
+        consent.status = PatientConsent.Status.WITHDRAWN
+        consent.withdrawn_at = timezone.now()
+        consent.withdrawn_by = request.user
+        consent.withdrawal_reason = str(request.data.get("reason", ""))[:255]
+        consent.save(update_fields=["status", "withdrawn_at", "withdrawn_by", "withdrawal_reason", "updated_at"])
+        self._log("update", consent)
+        sync_messaging_opt_out(consent, request.user)
+        return Response(PatientConsentSerializer(consent).data)
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        """GET ?patient=<id>: the current answer for every purpose, and the
+        notice to show for any purpose not asked yet (or asked under an
+        older version of the notice)."""
+        from apps.patients.models import Patient
+
+        patient = Patient.objects.filter(pk=request.query_params.get("patient"), hospital_id=request.user.hospital_id).first()
+        if patient is None:
+            return Response({"detail": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
+        language = request.query_params.get("language", "en")
+        notices = {n.purpose: n for n in ConsentNotice.objects.filter(hospital_id=patient.hospital_id, is_active=True, language=language)}
+        rows = []
+        for purpose, consent in current_consents(patient).items():
+            notice = notices.get(purpose)
+            rows.append({
+                "purpose": purpose,
+                "purpose_label": ConsentPurpose(purpose).label,
+                "consent": PatientConsentSerializer(consent).data if consent else None,
+                "current_notice": ConsentNoticeSerializer(notice).data if notice else None,
+                "outdated": bool(consent and notice and consent.notice_id != notice.id and consent.status == PatientConsent.Status.GRANTED),
+            })
+        return Response(rows)

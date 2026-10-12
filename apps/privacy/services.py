@@ -71,3 +71,39 @@ def complete_erasure(data_rights_request, *, actor):
     irreversible one)."""
     patient = data_rights_request.patient
     patient.delete(actor=actor, reason=f"DPDP erasure request #{data_rights_request.pk}")
+
+
+# --- DPDP consent register --------------------------------------------------
+
+# Withdrawing these purposes switches off the matching messages through the
+# communications opt-out ledger that every send already checks.
+_MESSAGING_PURPOSES = {"marketing": "marketing", "reminders": "transactional"}
+
+
+def current_consents(patient) -> dict:
+    """{purpose: latest PatientConsent or None} for one patient."""
+    from .models import ConsentPurpose, PatientConsent
+
+    latest = {}
+    for consent in PatientConsent.objects.filter(patient=patient).select_related("notice").order_by("-created_at"):
+        latest.setdefault(consent.purpose, consent)
+    return {purpose: latest.get(purpose) for purpose in ConsentPurpose.values}
+
+
+def has_consent(patient, purpose: str) -> bool:
+    consent = current_consents(patient).get(purpose)
+    return bool(consent and consent.status == consent.Status.GRANTED)
+
+
+def sync_messaging_opt_out(consent, user=None) -> None:
+    from apps.communications.models import Channel, ConsentOptOut
+
+    opt_purpose = _MESSAGING_PURPOSES.get(consent.purpose)
+    if not opt_purpose:
+        return
+    opted_out = consent.status != consent.Status.GRANTED
+    for channel in (Channel.WHATSAPP, Channel.SMS, Channel.EMAIL):
+        ConsentOptOut.objects.update_or_create(
+            hospital_id=consent.hospital_id, patient=consent.patient, channel=channel, purpose=opt_purpose,
+            defaults={"is_opted_out": opted_out, "recorded_by": user},
+        )

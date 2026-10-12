@@ -25,7 +25,7 @@ from .serializers import (
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class EncounterViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class EncounterViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     """Encounters are created automatically at appointment check-in (see
     apps.opd.signals) — this ViewSet is read/admin-correction only in
     practice, but left as a full ModelViewSet rather than ReadOnly so a
@@ -40,7 +40,7 @@ class EncounterViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     assignment_scope_field = "doctor__user"
 
 
-class VitalsReadingViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class VitalsReadingViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = VitalsReadingSerializer
     queryset = VitalsReading.objects.all()
@@ -103,7 +103,7 @@ class DiagnosisViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
         return Response(DiagnosisSerializer(diagnosis).data)
 
 
-class InvestigationOrderViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class InvestigationOrderViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = InvestigationOrderSerializer
     queryset = InvestigationOrder.objects.all()

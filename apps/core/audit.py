@@ -6,6 +6,18 @@ from .models import AuditLog
 from .tenancy import get_current_hospital_id
 
 
+def safe_repr(instance) -> str:
+    """How a record is named in the audit log. A model's own __str__ often
+    includes encrypted content (a prescription's diagnosis, a patient's
+    name), which must not reappear in plain text in the log — such records
+    are named by type and id only."""
+    from .fields import EncryptedCharField, EncryptedJSONField, EncryptedTextField
+
+    if any(isinstance(f, (EncryptedCharField, EncryptedTextField, EncryptedJSONField)) for f in instance._meta.concrete_fields):
+        return f"{instance._meta.verbose_name.capitalize()} #{getattr(instance, 'pk', '')}"[:255]
+    return str(instance)[:255]
+
+
 def audit_rule_allows(hospital_id, model_name, action):
     """NABH DAC.2.c configurable capture rules (apps.governance.AuditRule).
     No active rules for a hospital = capture everything (the safe default).
@@ -43,7 +55,7 @@ def log_action(*, actor, action, instance, changes=None, request=None, force=Fal
         action=action,
         model_name=model_name,
         object_id=str(getattr(instance, "pk", "")),
-        object_repr=str(instance)[:255],
+        object_repr=safe_repr(instance),
         changes=changes or {},
         method=getattr(request, "method", ""),
         path=getattr(request, "path", ""),

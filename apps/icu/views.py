@@ -13,7 +13,7 @@ from .serializers import ICUAdmissionSerializer, ICUDailyProgressNoteSerializer,
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class ICUAdmissionViewSet(ICUAdmissionWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class ICUAdmissionViewSet(ICUAdmissionWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = ICUAdmissionSerializer
     queryset = ICUAdmission.objects.all()
@@ -24,7 +24,7 @@ class ICUAdmissionViewSet(ICUAdmissionWorkflowMixin, TenantScopedViewSetMixin, v
         serializer.save(hospital=hospital)
 
 
-class VentilatorLogViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class VentilatorLogViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = VentilatorLogSerializer
     queryset = VentilatorLog.objects.all()

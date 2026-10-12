@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDetailPermission, RoleBasedModelPermissions
-from apps.core.viewsets import TenantScopedViewSetMixin
+from apps.core.viewsets import TenantScopedViewSetMixin, AuditedModelViewSetMixin
 from apps.patients.models import Prescription
 
 from .models import DispenseRecord, Medicine, MedicineBatch, StockAdjustment, Supplier
@@ -48,7 +48,7 @@ class MedicineBatchViewSet(BatchWorkflowMixin, TenantScopedViewSetMixin, viewset
     filterset_fields = ["medicine", "supplier"]
 
 
-class DispenseRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class DispenseRecordViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     """Dispensing reveals what a patient is being medicated for — gated
     like every other clinical ViewSet, unlike the catalogue ViewSets above."""
 
@@ -85,7 +85,7 @@ class DispenseRecordViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return Response(DispenseRecordSerializer(record).data, status=status.HTTP_201_CREATED)
 
 
-class StockAdjustmentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class StockAdjustmentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = StockAdjustmentSerializer
     queryset = StockAdjustment.objects.all()

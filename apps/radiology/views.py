@@ -23,7 +23,7 @@ class RadiologyProcedureViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet)
     search_fields = ["name"]
 
 
-class RadiologyOrderViewSet(RadiologyOrderWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class RadiologyOrderViewSet(RadiologyOrderWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = RadiologyOrderSerializer
     # select_related: RadiologyOrderSerializer's patient_name/procedure_name

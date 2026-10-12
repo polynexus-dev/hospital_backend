@@ -75,38 +75,85 @@ class SoftDeleteViewSetMixin:
         instance.delete(actor=self.request.user, reason=reason)
 
 
+AUDIT_SKIPPED_FIELDS = {"id", "hospital_id", "created_at", "updated_at"}
+AUDIT_VALUE_LIMIT = 2000
+
+
 class AuditedModelViewSetMixin:
-    """Wires apps.core.audit.log_action() field-level diffs into a
-    ViewSet's create/update/destroy."""
+    """Field-level audit trail (who changed what, old and new value) for a
+    ViewSet's creates, updates and deletes.
+
+    Changes are captured where the serializer saves, so it works whichever
+    perform_create/perform_update or custom action does the saving. Every
+    field is compared unless `audited_fields` narrows it; encrypted fields
+    (and `audit_redacted_fields`) are recorded as changed without values,
+    so identifiers never reappear in plain text in the audit log."""
 
     audited_fields: tuple = ()
     # Fields recorded as changed but never by value — encrypted identifiers
     # and contact details must not reappear in plain text in the audit log.
     audit_redacted_fields: tuple = ()
 
+    def _audit_fields(self, instance):
+        if self.audited_fields:
+            return self.audited_fields
+        return tuple(f.attname for f in instance._meta.concrete_fields if f.attname not in AUDIT_SKIPPED_FIELDS)
+
+    def _redacted(self, instance):
+        from apps.core.fields import EncryptedCharField, EncryptedJSONField, EncryptedTextField
+
+        encrypted = {
+            name
+            for f in instance._meta.concrete_fields
+            if isinstance(f, (EncryptedCharField, EncryptedTextField, EncryptedJSONField))
+            for name in (f.name, f.attname)
+        }
+        return encrypted | set(self.audit_redacted_fields)
+
+    @staticmethod
+    def _value(value):
+        text = str(value)
+        return text if len(text) <= AUDIT_VALUE_LIMIT else text[:AUDIT_VALUE_LIMIT] + "…"
+
     def _log(self, action, instance, old=None):
         from apps.core.audit import log_action
 
+        # One entry per record and action per request: explicit _log calls in
+        # viewsets don't duplicate what the serializer hook already recorded.
+        logged = self.__dict__.setdefault("_audit_logged", set())
+        key = (action, type(instance).__name__, getattr(instance, "pk", None))
+        if key in logged:
+            return
+        fields, redacted = self._audit_fields(instance), self._redacted(instance)
         changes = {}
         if action == "update" and old is not None:
-            for field in self.audited_fields:
-                old_value = getattr(old, field)
-                new_value = getattr(instance, field)
+            for field in fields:
+                old_value, new_value = getattr(old, field, None), getattr(instance, field, None)
                 if old_value != new_value:
-                    changes[field] = {"changed": True} if field in self.audit_redacted_fields else {"old": str(old_value), "new": str(new_value)}
+                    changes[field] = {"changed": True} if field in redacted else {"old": self._value(old_value), "new": self._value(new_value)}
+            if not changes:
+                return  # saved without changing anything
         elif action == "create":
-            changes = {
-                field: ("[redacted]" if field in self.audit_redacted_fields else str(getattr(instance, field)))
-                for field in self.audited_fields
-            }
-
-        if action == "update" and not changes:
-            return
+            changes = {field: "[redacted]" if field in redacted else self._value(getattr(instance, field, None)) for field in fields}
+        elif action == "update":
+            changes = {"via": getattr(self, "action", "") or "update"}  # a workflow step that saved the record itself
+        logged.add(key)
         log_action(actor=self.request.user, action=action, instance=instance, changes=changes, request=self.request)
 
-    def perform_create(self, serializer):
-        super().perform_create(serializer)
-        self._log("create", serializer.instance)
+    def get_serializer(self, *args, **kwargs):
+        serializer = super().get_serializer(*args, **kwargs)
+        if "data" in kwargs or (len(args) > 1):
+            original_save = serializer.save
+
+            def audited_save(**save_kwargs):
+                instance = serializer.instance
+                old = type(instance)._base_manager.filter(pk=instance.pk).first() if instance is not None and instance.pk else None
+                saved = original_save(**save_kwargs)
+                self._log("update" if old is not None else "create", saved, old=old)
+                return saved
+
+            serializer.save = audited_save
+        return serializer
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
@@ -122,11 +169,6 @@ class AuditedModelViewSetMixin:
         if getattr(self, "action", None) == "retrieve":
             self._retrieved_instance = obj
         return obj
-
-    def perform_update(self, serializer):
-        old = type(serializer.instance).objects.get(pk=serializer.instance.pk)
-        super().perform_update(serializer)
-        self._log("update", serializer.instance, old=old)
 
     def perform_destroy(self, instance):
         self._log("delete", instance)

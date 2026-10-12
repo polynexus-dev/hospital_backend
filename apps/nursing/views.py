@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDetailPermission, RoleBasedModelPermissions
-from apps.core.viewsets import TenantScopedViewSetMixin
+from apps.core.viewsets import TenantScopedViewSetMixin, AuditedModelViewSetMixin
 from apps.ipd.models import Admission
 
 from .models import IntakeOutput, MedicationAdministration, NursingNote
@@ -26,7 +26,7 @@ class AdmissionFilteredMixin:
         return queryset
 
 
-class NursingNoteViewSet(AdmissionFilteredMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class NursingNoteViewSet(AdmissionFilteredMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = NursingNoteSerializer
     queryset = NursingNote.objects.all()
@@ -36,7 +36,7 @@ class NursingNoteViewSet(AdmissionFilteredMixin, TenantScopedViewSetMixin, views
         serializer.save(hospital=hospital, nurse=self.request.user)
 
 
-class MedicationAdministrationViewSet(AdmissionFilteredMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class MedicationAdministrationViewSet(AdmissionFilteredMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = MedicationAdministrationSerializer
     queryset = MedicationAdministration.objects.all()
@@ -46,7 +46,7 @@ class MedicationAdministrationViewSet(AdmissionFilteredMixin, TenantScopedViewSe
         serializer.save(hospital=hospital, nurse=self.request.user)
 
 
-class IntakeOutputViewSet(AdmissionFilteredMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class IntakeOutputViewSet(AdmissionFilteredMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = IntakeOutputSerializer
     queryset = IntakeOutput.objects.all()

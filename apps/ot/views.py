@@ -29,7 +29,7 @@ from .serializers import (
 CLINICAL_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, ActionPermissionRequired, RequiresClinicalDetailPermission]
 
 
-class SurgeryRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class SurgeryRequestViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = SurgeryRequestSerializer
     queryset = SurgeryRequest.objects.all()
@@ -40,7 +40,7 @@ class SurgeryRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.save(hospital=hospital, requested_by=self.request.user)
 
 
-class OTScheduleViewSet(OTScheduleWorkflowMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class OTScheduleViewSet(OTScheduleWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = OTScheduleSerializer
     queryset = OTSchedule.objects.all()
@@ -53,7 +53,7 @@ class OTScheduleViewSet(OTScheduleWorkflowMixin, TenantScopedViewSetMixin, views
         instance.surgery_request.save(update_fields=["status"])
 
 
-class PreOpChecklistViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PreOpChecklistViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = PreOpChecklistSerializer
     queryset = PreOpChecklist.objects.all()
@@ -102,7 +102,7 @@ class AnaesthesiaRecordViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixi
         return Response(self.get_serializer(record).data)
 
 
-class ConsumableUsageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class ConsumableUsageViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = ConsumableUsageSerializer
     queryset = ConsumableUsage.objects.all()
@@ -113,7 +113,7 @@ class ConsumableUsageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         serializer.save(hospital=hospital)
 
 
-class ImplantUsageViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class ImplantUsageViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = ImplantUsageSerializer
     queryset = ImplantUsage.objects.all()
