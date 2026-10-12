@@ -178,3 +178,28 @@ def test_roles_without_registration_rights_are_refused(setup, hospital, departme
     client = APIClient()
     client.force_authenticate(user=hr)
     assert client.post(URL, body(setup["doctor"]), format="json").status_code == 403
+
+
+@pytest.mark.django_db
+def test_register_only_without_a_visit(auth_client, setup, hospital):
+    """+ New Patient on the Patients page: registration without a visit,
+    charging the registration fee if the hospital has one."""
+    preview = auth_client.get("/api/v1/frontdesk/preview/", {"register_only": 1}).data
+    assert [c["description"] for c in preview["charges"]] == ["Registration fee"] and preview["total"] == Decimal("100")
+
+    data = body(setup["doctor"], register_only=True, billing={"payments": [{"method": "cash", "amount": 100}]})
+    data.pop("visit")
+    res = auth_client.post(URL, data, format="json")
+    assert res.status_code == 201, res.data
+    assert res.data["visit"] is None and res.data["bill"]["net"] == Decimal("100") and res.data["bill"]["status"] == "paid"
+    assert not OPDVisit.objects.exists()
+    assert auth_client.get(res.data["links"]["receipt"]).content[:4] == b"%PDF"
+    assert auth_client.get(res.data["links"]["card"]).content[:4] == b"%PDF"
+
+    # No registration fee configured: nothing to bill.
+    FrontDeskPolicy.objects.filter(hospital=hospital).update(registration_fee_tariff=None)
+    free = auth_client.post(URL, {**data, "patient": {**data["patient"], "mobile": "9876500077", "first_name": "Kiran"}, "billing": {}}, format="json")
+    assert free.status_code == 201 and free.data["bill"] is None and free.data["links"]["receipt"] is None
+
+    existing = auth_client.post(URL, {"register_only": True, "patient_id": res.data["patient"]["id"]}, format="json")
+    assert existing.status_code == 400

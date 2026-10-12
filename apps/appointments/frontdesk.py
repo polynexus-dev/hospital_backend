@@ -164,12 +164,97 @@ def estimated_dob(age_years, age_months=0, today=None) -> date:
 
 
 @transaction.atomic
+def bill_and_settle(*, request, patient, charges, rate_category, payer_type, billing, policy):
+    """Bill `charges`, apply any discount (with approval above the limit),
+    round, and settle: pay now (split payments, advance), credit, or wait
+    for discount approval. Returns (bill, pending DiscountApproval or None)."""
+    from apps.billing.models import Bill, BillItem, DiscountApproval, Payment, PatientAdvance
+    from apps.billing.services import recalculate_bill
+
+    user = request.user
+    hospital = user.hospital
+
+    # --- bill
+    bill = Bill.objects.create(hospital=hospital, patient=patient, status=Bill.Status.DRAFT, patient_category=rate_category[:12])
+    for c in charges:
+        BillItem.objects.create(
+            bill=bill, description=c.description[:255], quantity=1, unit_price=c.amount, tariff=c.tariff, doctor=c.doctor,
+            hsn_sac=getattr(c.tariff, "hsn_sac", "") or "", gst_rate=getattr(c.tariff, "gst_rate", 0) or 0,
+            service_date=timezone.localdate(), source=c.source, source_ref=c.source_ref,
+        )
+    recalculate_bill(bill)
+    gross = bill.total_amount + bill.tax_amount
+
+    # --- discount
+    discount = money(billing.get("discount_amount"))
+    if billing.get("discount_percent") not in (None, "") and not billing.get("discount_amount"):
+        discount = (gross * Decimal(str(billing["discount_percent"])) / Decimal("100")).quantize(Decimal("0.01"))
+    if discount < 0 or discount > gross:
+        raise ValidationError({"discount": "The discount can't be negative or more than the bill."})
+    awaiting_approval = None
+    if discount > 0:
+        percent = (discount * 100 / gross).quantize(Decimal("0.01")) if gross else Decimal("100")
+        reason = str(billing.get("discount_reason", "")).strip()
+        if not reason:
+            raise ValidationError({"discount_reason": "Give a reason for the discount."})
+        bill.discount_amount, bill.discount_reason = discount, reason[:255]
+        if percent > policy.discount_limit_percent:
+            approval = DiscountApproval(hospital=hospital, bill=bill, amount=discount, percent=percent, reason=reason[:255], requested_by=user)
+            if billing.get("approver"):
+                approval.approver = authorise_discount_at_counter(hospital_id=hospital.pk, approver_id=billing["approver"], approver_password=billing.get("approver_password"))
+                approval.status, approval.decided_at, approval.approved_at_counter = DiscountApproval.Status.APPROVED, timezone.now(), True
+            approval.save()
+            if approval.status == DiscountApproval.Status.PENDING:
+                awaiting_approval = approval
+
+    # --- rounding
+    net = gross - bill.discount_amount
+    bill.round_off = (net - net.quantize(Decimal("1"), rounding=ROUND_DOWN)) if policy.round_down_to_rupee else ZERO
+    bill.save(update_fields=["discount_amount", "discount_reason", "round_off"])
+    recalculate_bill(bill)
+
+    # --- settlement
+    settlement = billing.get("settlement") or "receipt"
+    payments = billing.get("payments") or []
+    if awaiting_approval is not None:
+        if payments:
+            raise ValidationError({"payments": "Take payment after the discount is approved."})
+    elif settlement == "credit":
+        if payer_type not in (policy.credit_payer_types or []):
+            raise ValidationError({"settlement": f"{OPDVisit.PayerType(payer_type).label} patients pay at the counter, not on credit."})
+        bill.status = Bill.Status.UNPAID
+        bill.save(update_fields=["status"])
+    elif bill.net_amount > 0:
+        total_paid = ZERO
+        for p in payments:
+            amount = money(p.get("amount"))
+            method = p.get("method") or Payment.PaymentMethod.CASH
+            if amount <= 0:
+                continue
+            if method not in Payment.PaymentMethod.values:
+                raise ValidationError({"payments": f"Unknown payment mode: {method}."})
+            if method == Payment.PaymentMethod.ADVANCE:
+                if amount > PatientAdvance.balance(patient):
+                    raise ValidationError({"payments": "That's more than the patient's advance balance."})
+                PatientAdvance.objects.create(hospital=hospital, patient=patient, kind=PatientAdvance.Kind.ADJUSTMENT, amount=amount, bill=bill, recorded_by=user)
+            Payment.objects.create(hospital=hospital, bill=bill, amount=amount, payment_method=method, transaction_id=str(p.get("reference", ""))[:100])
+            total_paid += amount
+        if total_paid != bill.net_amount:
+            raise ValidationError({"payments": f"Payments total ₹{total_paid}; the bill is ₹{bill.net_amount}."})
+        bill.status = Bill.Status.PAID
+        bill.save(update_fields=["status"])
+    else:
+        bill.status = Bill.Status.PAID  # nothing to pay (free follow-up)
+        bill.save(update_fields=["status"])
+
+    return bill, awaiting_approval
+
+
+@transaction.atomic
 def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
     """Everything after the patient record exists: consents, visit,
     appointment, bill, discount, payments. Raises ValidationError with
     field-keyed messages the form can show."""
-    from apps.billing.models import Bill, BillItem, DiscountApproval, Payment, PatientAdvance
-    from apps.billing.services import recalculate_bill
     from apps.core.audit import log_action
     from apps.finance.models import FrontDeskPolicy
 
@@ -217,78 +302,10 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
         marketing_person_id=visit.get("marketing_person") or None, registered_by=user,
     )
 
-    # --- bill
-    bill = Bill.objects.create(hospital=hospital, patient=patient, status=Bill.Status.DRAFT, patient_category=rate_category[:12])
-    for c in sheet.charges:
-        BillItem.objects.create(
-            bill=bill, description=c.description[:255], quantity=1, unit_price=c.amount, tariff=c.tariff, doctor=c.doctor,
-            hsn_sac=getattr(c.tariff, "hsn_sac", "") or "", gst_rate=getattr(c.tariff, "gst_rate", 0) or 0,
-            service_date=timezone.localdate(), source=c.source, source_ref=c.source_ref,
-        )
-    recalculate_bill(bill)
-    gross = bill.total_amount + bill.tax_amount
-
-    # --- discount
-    discount = money(billing.get("discount_amount"))
-    if billing.get("discount_percent") not in (None, "") and not billing.get("discount_amount"):
-        discount = (gross * Decimal(str(billing["discount_percent"])) / Decimal("100")).quantize(Decimal("0.01"))
-    if discount < 0 or discount > gross:
-        raise ValidationError({"discount": "The discount can't be negative or more than the bill."})
-    awaiting_approval = None
-    if discount > 0:
-        percent = (discount * 100 / gross).quantize(Decimal("0.01")) if gross else Decimal("100")
-        reason = str(billing.get("discount_reason", "")).strip()
-        if not reason:
-            raise ValidationError({"discount_reason": "Give a reason for the discount."})
-        bill.discount_amount, bill.discount_reason = discount, reason[:255]
-        if percent > policy.discount_limit_percent:
-            approval = DiscountApproval(hospital=hospital, bill=bill, amount=discount, percent=percent, reason=reason[:255], requested_by=user)
-            if billing.get("approver"):
-                approval.approver = authorise_discount_at_counter(hospital_id=hospital.pk, approver_id=billing["approver"], approver_password=billing.get("approver_password"))
-                approval.status, approval.decided_at, approval.approved_at_counter = DiscountApproval.Status.APPROVED, timezone.now(), True
-            approval.save()
-            if approval.status == DiscountApproval.Status.PENDING:
-                awaiting_approval = approval
-
-    # --- rounding
-    net = gross - bill.discount_amount
-    bill.round_off = (net - net.quantize(Decimal("1"), rounding=ROUND_DOWN)) if policy.round_down_to_rupee else ZERO
-    bill.save(update_fields=["discount_amount", "discount_reason", "round_off"])
-    recalculate_bill(bill)
-
-    # --- settlement
-    settlement = billing.get("settlement") or "receipt"
-    payments = billing.get("payments") or []
-    if awaiting_approval is not None:
-        if payments:
-            raise ValidationError({"payments": "Take payment after the discount is approved."})
-    elif settlement == "credit":
-        if payer_type not in (policy.credit_payer_types or []):
-            raise ValidationError({"settlement": f"{OPDVisit.PayerType(payer_type).label} visits are paid at the counter, not on credit."})
-        bill.status = Bill.Status.UNPAID
-        bill.save(update_fields=["status"])
-    elif bill.net_amount > 0:
-        total_paid = ZERO
-        for p in payments:
-            amount = money(p.get("amount"))
-            method = p.get("method") or Payment.PaymentMethod.CASH
-            if amount <= 0:
-                continue
-            if method not in Payment.PaymentMethod.values:
-                raise ValidationError({"payments": f"Unknown payment mode: {method}."})
-            if method == Payment.PaymentMethod.ADVANCE:
-                if amount > PatientAdvance.balance(patient):
-                    raise ValidationError({"payments": "That's more than the patient's advance balance."})
-                PatientAdvance.objects.create(hospital=hospital, patient=patient, kind=PatientAdvance.Kind.ADJUSTMENT, amount=amount, bill=bill, recorded_by=user)
-            Payment.objects.create(hospital=hospital, bill=bill, amount=amount, payment_method=method, transaction_id=str(p.get("reference", ""))[:100])
-            total_paid += amount
-        if total_paid != bill.net_amount:
-            raise ValidationError({"payments": f"Payments total ₹{total_paid}; the bill is ₹{bill.net_amount}."})
-        bill.status = Bill.Status.PAID
-        bill.save(update_fields=["status"])
-    else:
-        bill.status = Bill.Status.PAID  # nothing to pay (free follow-up)
-        bill.save(update_fields=["status"])
+    bill, awaiting_approval = bill_and_settle(
+        request=request, patient=patient, charges=sheet.charges, rate_category=rate_category,
+        payer_type=payer_type, billing=billing, policy=policy,
+    )
 
     record.bill = bill
     record.save(update_fields=["bill"])
@@ -297,8 +314,42 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
     return {"visit": record, "bill": bill, "assessment": sheet.assessment, "warnings": sheet.warnings, "awaiting_discount_approval": awaiting_approval}
 
 
-def check_registration_permissions(user):
-    needed = ("patients.add_patient", "appointments.add_appointment", "billing.add_bill")
+@transaction.atomic
+def register_patient_only(*, request, patient, is_new_patient, data) -> dict:
+    """Registration without a visit (an appointment later, lab or pharmacy
+    only). Bills the registration fee for a new patient if the hospital
+    charges one; otherwise there's nothing to bill."""
+    from apps.core.audit import log_action
+    from apps.finance.models import FrontDeskPolicy
+
+    policy = FrontDeskPolicy.for_hospital(request.user.hospital_id)
+    rate_category = (data.get("visit") or {}).get("rate_category") or policy.default_rate_category
+    charges = []
+    if is_new_patient and policy.registration_fee_tariff_id:
+        t = policy.registration_fee_tariff
+        charges.append(Charge(t.name, money(t.rate_for(rate_category)), tariff=t, source="registration"))
+    bill = awaiting = None
+    if charges:
+        bill, awaiting = bill_and_settle(request=request, patient=patient, charges=charges, rate_category=rate_category,
+                                         payer_type=OPDVisit.PayerType.SELF, billing=data.get("billing") or {}, policy=policy)
+    log_action(actor=request.user, action="create", instance=patient, request=request,
+               changes={"registered_without_visit": True, "bill": bill.bill_number if bill else ""})
+    return {"bill": bill, "awaiting_discount_approval": awaiting}
+
+
+def registration_fee_preview(hospital_id, rate_category=""):
+    """The charges for registering a new patient without a visit."""
+    from apps.finance.models import FrontDeskPolicy
+
+    policy = FrontDeskPolicy.for_hospital(hospital_id)
+    if not policy.registration_fee_tariff_id:
+        return []
+    t = policy.registration_fee_tariff
+    return [Charge(t.name, money(t.rate_for(rate_category or policy.default_rate_category)), tariff=t, source="registration")]
+
+
+def check_registration_permissions(user, with_visit=True):
+    needed = ("patients.add_patient", "appointments.add_appointment", "billing.add_bill") if with_visit else ("patients.add_patient",)
     missing = [p for p in needed if not user.has_perm(p)]
     if missing:
         raise PermissionDenied("Your role can't register OPD visits.")

@@ -16,7 +16,9 @@ from apps.core.viewsets import TenantScopedViewSetMixin
 from apps.patients.models import Patient
 
 from . import frontdesk_print
-from .frontdesk import build_charges, check_registration_permissions, estimated_dob, money, register_opd_visit
+from .frontdesk import (
+    build_charges, check_registration_permissions, estimated_dob, money, register_opd_visit, register_patient_only, registration_fee_preview,
+)
 from .models import Doctor, OPDVisit
 
 
@@ -62,11 +64,24 @@ class PreviewView(APIView):
         from apps.finance.models import FrontDeskPolicy
 
         q = request.query_params
+        policy = FrontDeskPolicy.for_hospital(request.user.hospital_id)
+        policy_data = {
+            "discount_limit_percent": policy.discount_limit_percent,
+            "credit_payer_types": policy.credit_payer_types,
+            "round_down_to_rupee": policy.round_down_to_rupee,
+            "default_rate_category": policy.default_rate_category,
+        }
+        if q.get("register_only"):
+            charges = [] if q.get("patient") else registration_fee_preview(request.user.hospital_id, q.get("rate_category", ""))
+            return Response({
+                "visit_type": None, "visit_type_label": "Registration only", "reason": "No visit: registration only",
+                "last_paid_visit": None, "charges": [{"description": c.description, "amount": c.amount, "source": c.source} for c in charges],
+                "total": sum((c.amount for c in charges), Decimal("0")), "warnings": [], "advance_balance": Decimal("0"), "policy": policy_data,
+            })
         doctor = Doctor.objects.filter(pk=q.get("doctor"), hospital_id=request.user.hospital_id, is_active=True).first()
         if doctor is None:
             raise ValidationError({"doctor": "Choose a doctor."})
         patient = _patient(request, q["patient"]) if q.get("patient") else None
-        policy = FrontDeskPolicy.for_hospital(request.user.hospital_id)
         packages = [p for p in q.get("packages", "").split(",") if p.strip().isdigit()]
         sheet = build_charges(
             hospital_id=request.user.hospital_id, patient=patient, doctor=doctor, rate_category=q.get("rate_category") or policy.default_rate_category,
@@ -82,12 +97,7 @@ class PreviewView(APIView):
             "total": sheet.total,
             "warnings": sheet.warnings,
             "advance_balance": PatientAdvance.balance(patient) if patient else Decimal("0"),
-            "policy": {
-                "discount_limit_percent": policy.discount_limit_percent,
-                "credit_payer_types": policy.credit_payer_types,
-                "round_down_to_rupee": policy.round_down_to_rupee,
-                "default_rate_category": policy.default_rate_category,
-            },
+            "policy": policy_data,
         })
 
 
@@ -113,8 +123,11 @@ class RegistrationView(APIView):
         from apps.patients.registration import find_duplicates
         from apps.patients.serializers import PatientSerializer
 
-        check_registration_permissions(request.user)
         data = request.data
+        register_only = bool(data.get("register_only"))
+        check_registration_permissions(request.user, with_visit=not register_only)
+        if register_only and data.get("patient_id"):
+            raise ValidationError({"patient_id": "This patient is already registered. Choose a doctor to open a visit."})
         with transaction.atomic():
             if data.get("patient_id"):
                 patient = _patient(request, data["patient_id"])
@@ -144,20 +157,23 @@ class RegistrationView(APIView):
 
             self._abha(request, patient, data.get("abha_number"))
             self._consents(request, patient, data.get("consents") or [])
-            result = register_opd_visit(request=request, patient=patient, is_new_patient=is_new, data=data)
+            if register_only:
+                result = register_patient_only(request=request, patient=patient, is_new_patient=is_new, data=data)
+            else:
+                result = register_opd_visit(request=request, patient=patient, is_new_patient=is_new, data=data)
 
-        visit, bill = result["visit"], result["bill"]
+        visit, bill = result.get("visit"), result["bill"]
         approval = result["awaiting_discount_approval"]
         return Response({
             "patient": PatientSerializer(patient).data,
-            "visit": OPDVisitSerializer(visit).data,
+            "visit": OPDVisitSerializer(visit).data if visit else None,
             "bill": {"id": bill.pk, "bill_number": bill.bill_number, "status": bill.status, "total": bill.total_amount + bill.tax_amount,
-                     "discount": bill.discount_amount, "round_off": bill.round_off, "net": bill.net_amount},
-            "assessment": result["assessment"].reason,
-            "warnings": result["warnings"],
+                     "discount": bill.discount_amount, "round_off": bill.round_off, "net": bill.net_amount} if bill else None,
+            "assessment": result["assessment"].reason if visit else "Registered without a visit",
+            "warnings": result.get("warnings", []),
             "awaiting_discount_approval": approval.pk if approval else None,
             "links": {
-                "receipt": f"/api/v1/frontdesk/visits/{visit.pk}/receipt/",
+                "receipt": f"/api/v1/frontdesk/visits/{visit.pk}/receipt/" if visit else (f"/api/v1/billing/bills/{bill.pk}/download/" if bill else None),
                 "card": f"/api/v1/frontdesk/patients/{patient.pk}/card/",
                 "sticker": f"/api/v1/frontdesk/patients/{patient.pk}/sticker/",
             },
