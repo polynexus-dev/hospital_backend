@@ -92,7 +92,7 @@ def test_upgrade_encrypts_existing_plaintext_rows(asha):
     legacy = Patient.objects.get(pk=asha.pk)
     assert legacy.first_name == "Meena" and legacy.date_of_birth == date(1970, 1, 2)  # plaintext still readable
 
-    migration = importlib.import_module("apps.patients.migrations.0016_encrypt_name_dob_email")
+    migration = importlib.import_module("apps.patients.migrations.0018_encrypt_existing_patients")
     migration.encrypt_existing(django_apps, None)
 
     first, _, dob, email, _ = raw_row(asha.pk)

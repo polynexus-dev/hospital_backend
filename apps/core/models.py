@@ -360,3 +360,19 @@ class PinCode(models.Model):
 
     def __str__(self):
         return f"{self.pincode} {self.office_name}"
+
+
+class PinDirectoryRefresh(models.Model):
+    """One run of refreshing the PIN directory from data.gov.in."""
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    started_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, related_name="+")
+    pincodes_before = models.PositiveIntegerField(default=0)
+    pincodes_after = models.PositiveIntegerField(null=True, blank=True)
+    offices_before = models.PositiveIntegerField(default=0)
+    offices_after = models.PositiveIntegerField(null=True, blank=True)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]

@@ -636,6 +636,10 @@ WEBRTC_SIP_AUTH_USER = env("WEBRTC_SIP_AUTH_USER", default="")
 WEBRTC_SIP_PASSWORD = env("WEBRTC_SIP_PASSWORD", default="")
 WEBRTC_SIP_DISPLAY_NAME = env("WEBRTC_SIP_DISPLAY_NAME", default="Reception")
 
+# data.gov.in Open Government Data API key: only for refreshing the bundled
+# PIN directory (import_pincodes --from-api). Lookups never call the API.
+DATA_GOV_IN_API_KEY = env("DATA_GOV_IN_API_KEY", default="")
+
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")

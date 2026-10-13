@@ -4,26 +4,6 @@ import apps.core.fields
 from django.db import migrations, models
 
 
-SEARCH_INDEXES = {'name_search': ('name', ['name']), 'phone_hash': ('phone', ['phone'])}
-
-
-def encrypt_existing(apps, schema_editor):
-    """Re-save every row so its personal fields are written encrypted (reads
-    fall back to the old plaintext until then), and fill the search columns.
-    One-way: to undo, restore the pre-upgrade backup."""
-    from datetime import date
-
-    from apps.core.encryption import search_index_value
-
-    Model = apps.get_model("bloodbank", "Donor")
-    for row in Model._base_manager.all().iterator(chunk_size=500):
-        if isinstance(getattr(row, "date_of_birth", None), str):
-            row.date_of_birth = date.fromisoformat(row.date_of_birth) if row.date_of_birth else None
-        for column, (kind, sources) in SEARCH_INDEXES.items():
-            setattr(row, column, search_index_value(kind, *[getattr(row, f) or "" for f in sources]))
-        row.save(update_fields=['name', 'phone', 'date_of_birth', 'name_search', 'phone_hash'])
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -60,5 +40,4 @@ class Migration(migrations.Migration):
             name='phone',
             field=apps.core.fields.EncryptedCharField(blank=True, max_length=20),
         ),
-        migrations.RunPython(encrypt_existing, migrations.RunPython.noop),
     ]

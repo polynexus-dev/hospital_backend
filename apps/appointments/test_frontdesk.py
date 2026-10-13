@@ -222,3 +222,35 @@ def test_bundled_pincode_directory_loads_once(tmp_path):
     assert PinCode.objects.get(pincode="411038").state == "Maharashtra"
     call_command("import_pincodes", "--if-empty")  # already loaded: the bundled file is not read
     assert PinCode.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_refresh_pin_directory_from_the_api(monkeypatch, settings, saas_admin_client):
+    """The Refresh button fetches from data.gov.in in the background and reports what it added."""
+    from apps.core import tasks
+    from apps.core.management.commands import import_pincodes
+
+    auth_client = saas_admin_client  # the directory is shared: Polynexus staff refresh it in SaaS
+
+    settings.DATA_GOV_IN_API_KEY = ""
+    url = "/api/v1/locations/pincode-directory/"
+    assert auth_client.post(url).status_code == 400  # no key configured
+
+    settings.DATA_GOV_IN_API_KEY = "test-key"
+    PinCode.objects.create(pincode="411038", office_name="Kothrud", district="Pune", state="Maharashtra")
+    fake = [{"officename": "Kothrud S.O", "pincode": "411038", "taluk": "Pune City", "districtname": "PUNE", "statename": "MAHARASHTRA"},
+            {"officename": "Hinjawadi S.O", "pincode": "411057", "taluk": "Mulshi", "districtname": "PUNE", "statename": "MAHARASHTRA"}]
+    monkeypatch.setattr(import_pincodes, "api_rows", lambda key, out: iter(fake))
+    monkeypatch.setattr(tasks.refresh_pin_directory, "delay", lambda run_id: tasks.refresh_pin_directory(run_id))
+
+    res = auth_client.post(url)
+    assert res.status_code == 202
+    status = auth_client.get(url).data
+    assert status["pincodes"] == 2 and status["last_refresh"]["added_pincodes"] == 1 and not status["last_refresh"]["error"]
+    assert PinCode.objects.get(pincode="411057").office_name == "Hinjawadi"
+
+
+@pytest.mark.django_db
+def test_only_platform_staff_refresh_the_shared_pin_directory_in_saas(setup, hospital, department):
+    client, _ = front_desk_client(hospital, department)
+    assert client.get("/api/v1/locations/pincode-directory/").status_code == 403

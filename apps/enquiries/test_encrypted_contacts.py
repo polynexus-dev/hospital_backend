@@ -70,6 +70,6 @@ def test_upgrade_encrypts_existing_leads(hospital):
     lead = Enquiry.objects.create(hospital=hospital, name="placeholder", mobile="9000000000", source="walk_in")
     with connection.cursor() as cursor:
         cursor.execute("UPDATE enquiries_enquiry SET name=%s, mobile=%s, mobile_hash='', name_search='' WHERE id=%s", ["Asha Rao", "9811111111", lead.pk])
-    importlib.import_module("apps.enquiries.migrations.0008_encrypt_personal_data").encrypt_existing(django_apps, None)
+    importlib.import_module("apps.enquiries.migrations.0009_encrypt_existing_enquiries").encrypt_existing(django_apps, None)
     assert "Asha" not in raw("enquiries_enquiry", ["name"], lead.pk)[0]
     assert list(find_duplicates(hospital, mobile="9811111111")) == [Enquiry.objects.get(pk=lead.pk)]

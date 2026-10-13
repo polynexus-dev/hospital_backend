@@ -5,26 +5,6 @@ import django.core.validators
 from django.db import migrations, models
 
 
-def encrypt_existing(apps, schema_editor):
-    """Re-save every patient so name, date of birth and email are written
-    encrypted (reads fall back to the old plaintext until then), and fill
-    the search columns. One-way: to undo, restore the pre-upgrade backup."""
-    from datetime import date
-
-    from apps.core.encryption import email_index, name_search_tokens
-
-    Patient = apps.get_model("patients", "Patient")
-    for patient in Patient._base_manager.all().iterator(chunk_size=500):
-        dob = patient.date_of_birth
-        if isinstance(dob, str):
-            dob = date.fromisoformat(dob) if dob else None
-        patient.date_of_birth = dob
-        patient.name_search = name_search_tokens(patient.first_name, patient.last_name)
-        patient.email_hash = email_index(patient.email)
-        patient.birth_year = dob.year if dob else None
-        patient.save(update_fields=["first_name", "last_name", "date_of_birth", "email", "name_search", "email_hash", "birth_year"])
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -67,5 +47,4 @@ class Migration(migrations.Migration):
             name='last_name',
             field=apps.core.fields.EncryptedCharField(blank=True, max_length=150),
         ),
-        migrations.RunPython(encrypt_existing, migrations.RunPython.noop),
     ]

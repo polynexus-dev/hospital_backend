@@ -180,7 +180,11 @@ def decrypt_value(token):
         # list view that touches it — but it does mean a rotated-away
         # key's data reads back as ciphertext garbage rather than failing
         # loudly, so this is logged for someone to notice and re-encrypt.
-        logger.warning("Could not decrypt an encrypted field value — returning raw stored value.")
+        # Only a value that *looks* encrypted is a problem worth a warning (a
+        # rotated-away key). Plain legacy text is expected while an upgrade
+        # migration encrypts existing rows, and would otherwise log once per row.
+        if isinstance(token, str) and (token.startswith(_GCM_PREFIX) or token.startswith("gAAAA")):
+            logger.warning("Could not decrypt an encrypted field value — returning raw stored value.")
         return token
 
 
