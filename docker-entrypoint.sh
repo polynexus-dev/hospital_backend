@@ -9,6 +9,7 @@ done
 
 echo "Applying database migrations..."
 python manage.py migrate --noinput
+python manage.py import_pincodes --if-empty
 
 echo "Seeding demo data & accounts (idempotent)..."
 python manage.py seed_demo_data --admin-password changeme123 || true

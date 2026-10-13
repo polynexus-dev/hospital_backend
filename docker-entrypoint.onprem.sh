@@ -10,6 +10,7 @@ done
 
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   python manage.py migrate --noinput
+  python manage.py import_pincodes --if-empty
 fi
 
 exec "$@"

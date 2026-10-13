@@ -1,6 +1,8 @@
 """Load India Post's All-India Pincode Directory for PIN-code lookup.
 
-Download the CSV from data.gov.in ("All India Pincode Directory"), then:
+The directory (data.gov.in, Government Open Data Licence - India) ships with
+the product in apps/core/data/india_pincodes.csv.gz and is loaded on start-up
+(`import_pincodes --if-empty`). To load a newer CSV from data.gov.in:
 
     python manage.py import_pincodes all_india_pincode_directory.csv
 
@@ -9,10 +11,14 @@ case-insensitively: pincode, officename, district (or districtname),
 statename, and taluk / sub-district when present.
 """
 import csv
+import gzip
+from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.core.models import IndianState, PinCode
+
+BUNDLED = Path(__file__).resolve().parents[2] / "data" / "india_pincodes.csv.gz"
 
 ALIASES = {
     "the dadra and nagar haveli and daman and diu": "Dadra and Nagar Haveli and Daman and Diu",
@@ -44,12 +50,16 @@ class Command(BaseCommand):
     help = "Load India Post's pincode directory (CSV from data.gov.in) for PIN-code lookup."
 
     def add_arguments(self, parser):
-        parser.add_argument("csv_path")
+        parser.add_argument("csv_path", nargs="?", default=str(BUNDLED), help="CSV or .csv.gz (default: the bundled directory)")
+        parser.add_argument("--if-empty", action="store_true", help="Do nothing if PIN codes are already loaded (used on start-up).")
 
     def handle(self, csv_path, **options):
+        if options["if_empty"] and PinCode.objects.exists():
+            return
         states = {s.name.lower(): s.name for s in IndianState.objects.all()}
         try:
-            handle = open(csv_path, encoding="utf-8-sig", newline="")
+            opener = gzip.open if str(csv_path).endswith(".gz") else open
+            handle = opener(csv_path, "rt", encoding="utf-8-sig", newline="")
         except OSError as exc:
             raise CommandError(f"Can't open {csv_path}: {exc.strerror}")
         batch, unknown_states, read = [], set(), 0

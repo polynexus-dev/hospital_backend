@@ -203,3 +203,22 @@ def test_register_only_without_a_visit(auth_client, setup, hospital):
 
     existing = auth_client.post(URL, {"register_only": True, "patient_id": res.data["patient"]["id"]}, format="json")
     assert existing.status_code == 400
+
+
+@pytest.mark.django_db
+def test_bundled_pincode_directory_loads_once(tmp_path):
+    """The India Post directory ships with the product and loads on start-up."""
+    import gzip
+
+    from django.core.management import call_command
+
+    from apps.core.management.commands.import_pincodes import BUNDLED
+
+    with gzip.open(BUNDLED, "rt", encoding="utf-8") as f:
+        assert f.readline().strip() == "pincode,officename,taluk,districtname,statename"
+    sample = tmp_path / "pins.csv"
+    sample.write_text("pincode,officename,taluk,districtname,statename\n194101,Leh,Leh,Leh,Ladakh\n411038,Kothrud,Pune City,Pune,MAHARASHTRA\n")
+    call_command("import_pincodes", str(sample))
+    assert PinCode.objects.get(pincode="411038").state == "Maharashtra"
+    call_command("import_pincodes", "--if-empty")  # already loaded: the bundled file is not read
+    assert PinCode.objects.count() == 2
