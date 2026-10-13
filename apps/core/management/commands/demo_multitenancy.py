@@ -1,6 +1,8 @@
 import time
 from decimal import Decimal
 from django.core.management.base import BaseCommand
+
+from apps.core.encryption import get_or_create_encrypted
 from django.utils import timezone
 from apps.accounts.models import User
 from apps.appointments.models import Appointment, Doctor, Slot
@@ -55,14 +57,14 @@ class Command(BaseCommand):
         dep_kothrud, _ = Department.objects.get_or_create(hospital=h2, name="Orthopedics")
         dep_mumbai, _ = Department.objects.get_or_create(hospital=h3, name="Neurology")
 
-        p_baner, _ = Patient.objects.get_or_create(hospital=h1, mobile="9822001111", defaults={"first_name": "Rajesh", "last_name": "Patil"})
-        p_kothrud, _ = Patient.objects.get_or_create(hospital=h2, mobile="9822002222", defaults={"first_name": "Sunita", "last_name": "Joshi"})
-        p_mumbai, _ = Patient.objects.get_or_create(hospital=h3, mobile="9822003333", defaults={"first_name": "Amit", "last_name": "Shah"})
+        p_baner, _ = get_or_create_encrypted(Patient, hospital=h1, mobile="9822001111", defaults={"first_name": "Rajesh", "last_name": "Patil"})
+        p_kothrud, _ = get_or_create_encrypted(Patient, hospital=h2, mobile="9822002222", defaults={"first_name": "Sunita", "last_name": "Joshi"})
+        p_mumbai, _ = get_or_create_encrypted(Patient, hospital=h3, mobile="9822003333", defaults={"first_name": "Amit", "last_name": "Shah"})
 
         # Enquiries & Revenue
-        Enquiry.objects.get_or_create(hospital=h1, patient=p_baner, defaults={"name": p_baner.full_name, "mobile": "9822001111", "source": "walk_in", "stage": "completed", "estimated_value": Decimal("25000.00")})
-        Enquiry.objects.get_or_create(hospital=h2, patient=p_kothrud, defaults={"name": p_kothrud.full_name, "mobile": "9822002222", "source": "referral", "stage": "completed", "estimated_value": Decimal("40000.00")})
-        Enquiry.objects.get_or_create(hospital=h3, patient=p_mumbai, defaults={"name": p_mumbai.full_name, "mobile": "9822003333", "source": "website", "stage": "completed", "estimated_value": Decimal("65000.00")})
+        get_or_create_encrypted(Enquiry, hospital=h1, patient=p_baner, defaults={"name": p_baner.full_name, "mobile": "9822001111", "source": "walk_in", "stage": "completed", "estimated_value": Decimal("25000.00")})
+        get_or_create_encrypted(Enquiry, hospital=h2, patient=p_kothrud, defaults={"name": p_kothrud.full_name, "mobile": "9822002222", "source": "referral", "stage": "completed", "estimated_value": Decimal("40000.00")})
+        get_or_create_encrypted(Enquiry, hospital=h3, patient=p_mumbai, defaults={"name": p_mumbai.full_name, "mobile": "9822003333", "source": "website", "stage": "completed", "estimated_value": Decimal("65000.00")})
 
         # ----------------------------------------------------
         # PROOF 2: TENANT DATA ISOLATION PROOF

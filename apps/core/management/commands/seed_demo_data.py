@@ -1,6 +1,8 @@
 import datetime
 import uuid
 from django.core.management.base import BaseCommand
+
+from apps.core.encryption import get_or_create_encrypted
 from django.db import transaction
 from django.utils import timezone
 
@@ -22,6 +24,13 @@ from apps.saas_admin.models import TenantSubscription, TenantInvoice
 from apps.saas_admin.services import generate_invoice_number
 
 
+
+def first_or_create(model, defaults=None, **lookup):
+    """get_or_create that tolerates earlier runs having left more than one match."""
+    obj = model._default_manager.filter(**lookup).order_by("pk").first()
+    return (obj, False) if obj else (model._default_manager.create(**lookup, **(defaults or {})), True)
+
+
 class Command(BaseCommand):
     help = "Seeds 100% comprehensive demo data for ALL Hospital CRM modules (Users, Patients, Inbox/Threads, Prescriptions, HIS Visits/Bills, Workflows, Waitlists, Telephony, NPS, TPA, Packages, Referrals)."
 
@@ -35,7 +44,7 @@ class Command(BaseCommand):
         self.stdout.write("Seeding data across all modules...")
 
         # 1. Hospital Tenant & Branches
-        hospital, _ = Hospital.objects.get_or_create(
+        hospital, _ = first_or_create(Hospital, 
             slug="demo-hospital",
             defaults={
                 "name": "Polynexus Demo Hospital",
@@ -48,33 +57,33 @@ class Command(BaseCommand):
             },
         )
 
-        h_kothrud, _ = Hospital.objects.get_or_create(
+        h_kothrud, _ = first_or_create(Hospital, 
             slug="polynexus-kothrud",
             defaults={"name": "Polynexus Hospital (Kothrud Branch)", "city": "Pune", "state": "Maharashtra"},
         )
-        h_wakad, _ = Hospital.objects.get_or_create(
+        h_wakad, _ = first_or_create(Hospital, 
             slug="polynexus-wakad",
             defaults={"name": "Polynexus Hospital (Wakad Branch)", "city": "Pune", "state": "Maharashtra"},
         )
 
         # 2. Departments
-        opd, _ = Department.objects.get_or_create(hospital=hospital, name="OPD", defaults={"code": "OPD"})
-        cardiology, _ = Department.objects.get_or_create(hospital=hospital, name="Cardiology", defaults={"code": "CARD"})
-        ortho, _ = Department.objects.get_or_create(hospital=hospital, name="Orthopedics", defaults={"code": "ORTHO"})
-        diag, _ = Department.objects.get_or_create(hospital=hospital, name="Diagnostics", defaults={"code": "DIAG"})
-        ipd, _ = Department.objects.get_or_create(hospital=hospital, name="IPD", defaults={"code": "IPD"})
+        opd, _ = first_or_create(Department, hospital=hospital, name="OPD", defaults={"code": "OPD"})
+        cardiology, _ = first_or_create(Department, hospital=hospital, name="Cardiology", defaults={"code": "CARD"})
+        ortho, _ = first_or_create(Department, hospital=hospital, name="Orthopedics", defaults={"code": "ORTHO"})
+        diag, _ = first_or_create(Department, hospital=hospital, name="Diagnostics", defaults={"code": "DIAG"})
+        ipd, _ = first_or_create(Department, hospital=hospital, name="IPD", defaults={"code": "IPD"})
 
         # 3. Roles
-        owner_role, _ = Role.objects.get_or_create(hospital=hospital, name="Hospital Owner / Admin")
-        front_desk_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Front Desk Officer")
-        doctor_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="OPD Doctor")
-        operator_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Telephony Operator")
-        tpa_role, _ = Role.objects.get_or_create(hospital=hospital, department=ipd, name="TPA Desk Manager")
-        pro_role, _ = Role.objects.get_or_create(hospital=hospital, department=opd, name="Patient Relationship Officer")
+        owner_role, _ = first_or_create(Role, hospital=hospital, name="Hospital Owner / Admin")
+        front_desk_role, _ = first_or_create(Role, hospital=hospital, department=opd, name="Front Desk Officer")
+        doctor_role, _ = first_or_create(Role, hospital=hospital, department=opd, name="OPD Doctor")
+        operator_role, _ = first_or_create(Role, hospital=hospital, department=opd, name="Telephony Operator")
+        tpa_role, _ = first_or_create(Role, hospital=hospital, department=ipd, name="TPA Desk Manager")
+        pro_role, _ = first_or_create(Role, hospital=hospital, department=opd, name="Patient Relationship Officer")
 
         # 4. Demo Users
         def create_or_update_user(email, first_name, last_name, dept=None, role=None, is_staff=False, is_super=False, lang="en"):
-            user, created = User.objects.get_or_create(
+            user, created = first_or_create(User, 
                 email=email,
                 defaults={
                     "hospital": hospital,
@@ -113,17 +122,17 @@ class Command(BaseCommand):
         operator_user = create_or_update_user("operator@demo-hospital.example", "Amit", "Deshmukh (Call Center)", dept=opd, role=operator_role, lang="hi")
 
         # 5. Doctors
-        doc_kulkarni, _ = Doctor.objects.get_or_create(
+        doc_kulkarni, _ = first_or_create(Doctor, 
             hospital=hospital,
             name="Dr. Ramesh Kulkarni",
             defaults={"speciality": "General Medicine", "department": opd, "phone": "+919822011111", "email": "dr.kulkarni@demo-hospital.example"},
         )
-        doc_joshi, _ = Doctor.objects.get_or_create(
+        doc_joshi, _ = first_or_create(Doctor, 
             hospital=hospital,
             name="Dr. Anjali Joshi",
             defaults={"speciality": "Cardiology", "department": cardiology, "phone": "+919822022222", "email": "dr.joshi@demo-hospital.example"},
         )
-        doc_sharma, _ = Doctor.objects.get_or_create(
+        doc_sharma, _ = first_or_create(Doctor, 
             hospital=hospital,
             name="Dr. Rajesh Sharma",
             defaults={"speciality": "Orthopedics", "department": ortho, "phone": "+919822033333", "email": "dr.sharma@demo-hospital.example"},
@@ -132,7 +141,7 @@ class Command(BaseCommand):
         # 6. Slot Templates & Slot Generation
         for doc in [doc_kulkarni, doc_joshi, doc_sharma]:
             for day in [SlotTemplate.Weekday.MONDAY, SlotTemplate.Weekday.WEDNESDAY, SlotTemplate.Weekday.FRIDAY]:
-                tmpl, _ = SlotTemplate.objects.get_or_create(
+                tmpl, _ = first_or_create(SlotTemplate, 
                     hospital=hospital,
                     doctor=doc,
                     weekday=day,
@@ -141,7 +150,7 @@ class Command(BaseCommand):
                 generate_slots(tmpl, weeks_ahead=2)
 
         # 7. Patients & Profiles
-        p1, _ = Patient.objects.get_or_create(
+        p1, _ = get_or_create_encrypted(Patient, 
             hospital=hospital,
             mobile="9823012345",
             defaults={
@@ -162,7 +171,7 @@ class Command(BaseCommand):
             },
         )
 
-        p2, _ = Patient.objects.get_or_create(
+        p2, _ = get_or_create_encrypted(Patient, 
             hospital=hospital,
             mobile="9823023456",
             defaults={
@@ -180,7 +189,7 @@ class Command(BaseCommand):
             },
         )
 
-        p3, _ = Patient.objects.get_or_create(
+        p3, _ = get_or_create_encrypted(Patient, 
             hospital=hospital,
             mobile="9823034567",
             defaults={
@@ -193,7 +202,7 @@ class Command(BaseCommand):
             },
         )
 
-        p4, _ = Patient.objects.get_or_create(
+        p4, _ = get_or_create_encrypted(Patient, 
             hospital=hospital,
             mobile="9823045678",
             defaults={
@@ -206,7 +215,7 @@ class Command(BaseCommand):
             },
         )
 
-        p5, _ = Patient.objects.get_or_create(
+        p5, _ = get_or_create_encrypted(Patient, 
             hospital=hospital,
             mobile="9823056789",
             defaults={
@@ -220,21 +229,21 @@ class Command(BaseCommand):
         )
 
         # 8. Patient Document Vault & e-Prescriptions (Phase 1/2)
-        doc1, _ = Document.objects.get_or_create(
+        doc1, _ = first_or_create(Document, 
             hospital=hospital,
             patient=p1,
             title="Blood Test Report - Complete Blood Count (CBC)",
             defaults={"category": "report", "notes": "Hemoglobin 13.2 g/dL, Normal WBC & Platelets.", "uploaded_by": frontdesk_user},
         )
 
-        doc2, _ = Document.objects.get_or_create(
+        doc2, _ = first_or_create(Document, 
             hospital=hospital,
             patient=p1,
             title="Aadhaar ID Card Scan",
             defaults={"category": "id_proof", "notes": "Verified at front desk check-in.", "uploaded_by": frontdesk_user},
         )
 
-        doc3, _ = Document.objects.get_or_create(
+        doc3, _ = first_or_create(Document, 
             hospital=hospital,
             patient=p2,
             title="ECG Graph Report & Lipid Profile",
@@ -242,7 +251,7 @@ class Command(BaseCommand):
         )
 
         # Prescriptions
-        rx1, _ = Prescription.objects.get_or_create(
+        rx1, _ = first_or_create(Prescription, 
             hospital=hospital,
             patient=p1,
             diagnosis="Hypertension & Mild Upper Respiratory Infection",
@@ -259,7 +268,7 @@ class Command(BaseCommand):
             },
         )
 
-        rx2, _ = Prescription.objects.get_or_create(
+        rx2, _ = first_or_create(Prescription, 
             hospital=hospital,
             patient=p2,
             diagnosis="Suspected Coronary Artery Disease / Angina",
@@ -276,7 +285,7 @@ class Command(BaseCommand):
             },
         )
 
-        rx3, _ = Prescription.objects.get_or_create(
+        rx3, _ = first_or_create(Prescription, 
             hospital=hospital,
             patient=p3,
             diagnosis="Bilateral Osteoarthritis Knee (Grade II)",
@@ -302,7 +311,7 @@ class Command(BaseCommand):
         slots = list(Slot.objects.filter(hospital=hospital, is_blocked=False, appointment__isnull=True)[:10])
         if len(slots) >= 4:
             # Appt 1: Checked In
-            Appointment.objects.get_or_create(
+            first_or_create(Appointment, 
                 hospital=hospital,
                 slot=slots[0],
                 defaults={
@@ -318,7 +327,7 @@ class Command(BaseCommand):
             )
 
             # Appt 2: Confirmed
-            Appointment.objects.get_or_create(
+            first_or_create(Appointment, 
                 hospital=hospital,
                 slot=slots[1],
                 defaults={
@@ -333,7 +342,7 @@ class Command(BaseCommand):
             )
 
             # Appt 3: Completed
-            Appointment.objects.get_or_create(
+            first_or_create(Appointment, 
                 hospital=hospital,
                 slot=slots[2],
                 defaults={
@@ -349,7 +358,7 @@ class Command(BaseCommand):
             )
 
             # Appt 4: No Show
-            Appointment.objects.get_or_create(
+            first_or_create(Appointment, 
                 hospital=hospital,
                 slot=slots[3],
                 defaults={
@@ -365,7 +374,7 @@ class Command(BaseCommand):
             )
 
         # Waitlist entries
-        Waitlist.objects.get_or_create(
+        first_or_create(Waitlist, 
             hospital=hospital,
             patient=p3,
             doctor=doc_joshi,
@@ -376,7 +385,7 @@ class Command(BaseCommand):
                 "notes": "Patient requested urgent morning slot with Dr. Anjali Joshi if cancellation occurs.",
             },
         )
-        Waitlist.objects.get_or_create(
+        first_or_create(Waitlist, 
             hospital=hospital,
             patient=p4,
             doctor=doc_sharma,
@@ -390,7 +399,7 @@ class Command(BaseCommand):
 
         # 10. Communication Templates, Consent, Inbox Threads & Messages
         # Templates
-        tmpl_rem24, _ = Template.objects.get_or_create(
+        tmpl_rem24, _ = first_or_create(Template, 
             hospital=hospital,
             purpose="appointment_reminder_24h",
             channel="whatsapp",
@@ -402,7 +411,7 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        tmpl_rem24_en, _ = Template.objects.get_or_create(
+        tmpl_rem24_en, _ = first_or_create(Template, 
             hospital=hospital,
             purpose="appointment_reminder_24h",
             channel="whatsapp",
@@ -414,7 +423,7 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        tmpl_nps, _ = Template.objects.get_or_create(
+        tmpl_nps, _ = first_or_create(Template, 
             hospital=hospital,
             purpose="feedback_request",
             channel="sms",
@@ -428,13 +437,13 @@ class Command(BaseCommand):
         )
 
         # Consent Opt-Out ledger
-        ConsentOptOut.objects.get_or_create(
+        first_or_create(ConsentOptOut, 
             hospital=hospital,
             patient=p1,
             channel="whatsapp",
             defaults={"purpose": "transactional", "is_opted_out": False, "recorded_by": frontdesk_user},
         )
-        ConsentOptOut.objects.get_or_create(
+        first_or_create(ConsentOptOut, 
             hospital=hospital,
             patient=p2,
             channel="sms",
@@ -442,7 +451,7 @@ class Command(BaseCommand):
         )
 
         # Unified Inbox Threads
-        thread_p1_wa, _ = Thread.objects.get_or_create(
+        thread_p1_wa, _ = first_or_create(Thread, 
             hospital=hospital,
             patient=p1,
             channel="whatsapp",
@@ -454,7 +463,7 @@ class Command(BaseCommand):
                 "sla_due_at": timezone.now() + datetime.timedelta(minutes=45),
             },
         )
-        thread_p2_wa, _ = Thread.objects.get_or_create(
+        thread_p2_wa, _ = first_or_create(Thread, 
             hospital=hospital,
             patient=p2,
             channel="whatsapp",
@@ -465,7 +474,7 @@ class Command(BaseCommand):
                 "last_inbound_at": timezone.now() - datetime.timedelta(hours=2),
             },
         )
-        thread_p5_wa, _ = Thread.objects.get_or_create(
+        thread_p5_wa, _ = first_or_create(Thread, 
             hospital=hospital,
             patient=p5,
             channel="whatsapp",
@@ -476,7 +485,7 @@ class Command(BaseCommand):
                 "last_inbound_at": timezone.now() - datetime.timedelta(hours=4),
             },
         )
-        thread_p3_sms, _ = Thread.objects.get_or_create(
+        thread_p3_sms, _ = first_or_create(Thread, 
             hospital=hospital,
             patient=p3,
             channel="sms",
@@ -489,7 +498,7 @@ class Command(BaseCommand):
 
         # Messages in Inbox Threads (Multi-turn conversations)
         # Thread 1: Asha Patil (WhatsApp)
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p1,
             body="Hi Asha Patil, your OPD appointment with Dr. Ramesh Kulkarni is confirmed for tomorrow at 10:00 AM.",
@@ -504,7 +513,7 @@ class Command(BaseCommand):
                 "delivered_at": timezone.now() - datetime.timedelta(hours=24),
             },
         )
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p1,
             body="Thank you! Will arrive 10 minutes early. Do I need to bring my previous blood test reports?",
@@ -517,7 +526,7 @@ class Command(BaseCommand):
                 "sent_at": timezone.now() - datetime.timedelta(hours=23),
             },
         )
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p1,
             body="Yes, please bring your latest CBC blood test report or show it on the app.",
@@ -530,7 +539,7 @@ class Command(BaseCommand):
                 "sent_at": timezone.now() - datetime.timedelta(hours=22),
             },
         )
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p1,
             body="Got it! I am currently at the reception desk.",
@@ -545,7 +554,7 @@ class Command(BaseCommand):
         )
 
         # Thread 2: Sanjay Jagtap (WhatsApp - Lead Enquiry)
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p5,
             body="Hello, what are the charges for ECG and Cardiology consultation with Dr. Anjali Joshi?",
@@ -558,7 +567,7 @@ class Command(BaseCommand):
                 "sent_at": timezone.now() - datetime.timedelta(hours=4),
             },
         )
-        Message.objects.get_or_create(
+        first_or_create(Message, 
             hospital=hospital,
             patient=p5,
             body="Hello Sanjay! ECG consultation package is ₹750. Dr. Anjali Joshi is available Mon/Wed/Fri 9am-1pm.",
@@ -573,7 +582,7 @@ class Command(BaseCommand):
         )
 
         # 11. Enquiries & Lead Pipeline
-        Enquiry.objects.get_or_create(
+        get_or_create_encrypted(Enquiry, 
             hospital=hospital,
             mobile="9823012345",
             defaults={
@@ -589,7 +598,7 @@ class Command(BaseCommand):
                 "notes": "Inquired via IVR, booked OPD appointment.",
             },
         )
-        Enquiry.objects.get_or_create(
+        get_or_create_encrypted(Enquiry, 
             hospital=hospital,
             mobile="9823056789",
             defaults={
@@ -605,7 +614,7 @@ class Command(BaseCommand):
                 "notes": "Patient inquiring about chest tightness on WhatsApp. Priority lead.",
             },
         )
-        Enquiry.objects.get_or_create(
+        get_or_create_encrypted(Enquiry, 
             hospital=hospital,
             mobile="9890887766",
             defaults={
@@ -619,7 +628,7 @@ class Command(BaseCommand):
                 "notes": "Submitted contact form on hospital landing page.",
             },
         )
-        Enquiry.objects.get_or_create(
+        get_or_create_encrypted(Enquiry, 
             hospital=hospital,
             mobile="9890998877",
             defaults={
@@ -638,7 +647,7 @@ class Command(BaseCommand):
         )
 
         # 12. Telephony & Callback Tasks (RNR Queue)
-        call1, _ = Call.objects.get_or_create(
+        call1, _ = first_or_create(Call, 
             hospital=hospital,
             from_number="9823012345",
             defaults={
@@ -656,7 +665,7 @@ class Command(BaseCommand):
             },
         )
 
-        call2, _ = Call.objects.get_or_create(
+        call2, _ = first_or_create(Call, 
             hospital=hospital,
             from_number="9890998877",
             defaults={
@@ -669,7 +678,7 @@ class Command(BaseCommand):
             },
         )
 
-        CallbackTask.objects.get_or_create(
+        first_or_create(CallbackTask, 
             hospital=hospital,
             phone_number="9890998877",
             defaults={
@@ -684,12 +693,12 @@ class Command(BaseCommand):
         )
 
         # 13. Feedback, NPS Responses, Complaints & Service Recovery
-        nps_req1, _ = FeedbackRequest.objects.get_or_create(
+        nps_req1, _ = first_or_create(FeedbackRequest, 
             hospital=hospital,
             patient=p1,
             defaults={"doctor": doc_kulkarni, "department": opd, "status": "responded", "sent_at": timezone.now() - datetime.timedelta(days=1)},
         )
-        NPSResponse.objects.get_or_create(
+        first_or_create(NPSResponse, 
             hospital=hospital,
             feedback_request=nps_req1,
             defaults={
@@ -702,12 +711,12 @@ class Command(BaseCommand):
             },
         )
 
-        nps_req2, _ = FeedbackRequest.objects.get_or_create(
+        nps_req2, _ = first_or_create(FeedbackRequest, 
             hospital=hospital,
             patient=p3,
             defaults={"doctor": doc_sharma, "department": ortho, "status": "responded", "sent_at": timezone.now() - datetime.timedelta(hours=12)},
         )
-        nps_detractor, _ = NPSResponse.objects.get_or_create(
+        nps_detractor, _ = first_or_create(NPSResponse, 
             hospital=hospital,
             feedback_request=nps_req2,
             defaults={
@@ -720,7 +729,7 @@ class Command(BaseCommand):
             },
         )
 
-        srv_task, _ = ServiceRecoveryTask.objects.get_or_create(
+        srv_task, _ = first_or_create(ServiceRecoveryTask, 
             hospital=hospital,
             nps_response=nps_detractor,
             defaults={
@@ -731,7 +740,7 @@ class Command(BaseCommand):
             },
         )
 
-        Complaint.objects.get_or_create(
+        first_or_create(Complaint, 
             hospital=hospital,
             patient=p3,
             defaults={
@@ -744,7 +753,7 @@ class Command(BaseCommand):
         )
 
         # 14. Phase 2 Visual Workflow Builder & Automation Engine
-        wf1, _ = Workflow.objects.get_or_create(
+        wf1, _ = first_or_create(Workflow, 
             hospital=hospital,
             name="Missed Call Auto-WhatsApp Responder Workflow",
             defaults={
@@ -754,7 +763,7 @@ class Command(BaseCommand):
                 "created_by": admin_user,
             },
         )
-        WorkflowStep.objects.get_or_create(
+        first_or_create(WorkflowStep, 
             workflow=wf1,
             order=1,
             defaults={
@@ -764,7 +773,7 @@ class Command(BaseCommand):
                 "config": {"event": "call_missed"},
             },
         )
-        WorkflowStep.objects.get_or_create(
+        first_or_create(WorkflowStep, 
             workflow=wf1,
             order=2,
             defaults={
@@ -775,7 +784,7 @@ class Command(BaseCommand):
             },
         )
 
-        wf2, _ = Workflow.objects.get_or_create(
+        wf2, _ = first_or_create(Workflow, 
             hospital=hospital,
             name="NPS Detractor Immediate SLA Escalation",
             defaults={
@@ -786,7 +795,7 @@ class Command(BaseCommand):
             },
         )
 
-        WorkflowRun.objects.get_or_create(
+        first_or_create(WorkflowRun, 
             hospital=hospital,
             workflow=wf1,
             trigger_event="call_missed_event_9890998877",
@@ -798,7 +807,7 @@ class Command(BaseCommand):
         )
 
         # Automation Tasks & Escalation Rules
-        Task.objects.get_or_create(
+        first_or_create(Task, 
             hospital=hospital,
             title="Follow-up call with no-show patient (Rahul Shinde)",
             defaults={
@@ -810,7 +819,7 @@ class Command(BaseCommand):
                 "department": opd,
             },
         )
-        Task.objects.get_or_create(
+        first_or_create(Task, 
             hospital=hospital,
             title="Verify TPA Pre-Auth documents for Ramesh Deshmukh",
             defaults={
@@ -823,7 +832,7 @@ class Command(BaseCommand):
             },
         )
 
-        EscalationRule.objects.get_or_create(
+        first_or_create(EscalationRule, 
             hospital=hospital,
             name="Unanswered Call RNR SLA Escalation (15 Mins)",
             defaults={
@@ -836,7 +845,7 @@ class Command(BaseCommand):
         )
 
         # 15. HIS Integrations (Visit & Billing Cache)
-        HISVisit.objects.get_or_create(
+        first_or_create(HISVisit, 
             hospital=hospital,
             external_visit_id="HIS-VISIT-1001",
             defaults={
@@ -848,7 +857,7 @@ class Command(BaseCommand):
                 "raw_payload": {"his_code": "GEN-01", "vitals": {"bp": "140/90", "pulse": 78}},
             },
         )
-        HISVisit.objects.get_or_create(
+        first_or_create(HISVisit, 
             hospital=hospital,
             external_visit_id="HIS-VISIT-1002",
             defaults={
@@ -861,7 +870,7 @@ class Command(BaseCommand):
             },
         )
 
-        HISBillingRecord.objects.get_or_create(
+        first_or_create(HISBillingRecord, 
             hospital=hospital,
             external_bill_id="HIS-BILL-5001",
             defaults={
@@ -873,7 +882,7 @@ class Command(BaseCommand):
                 "raw_payload": {"payment_mode": "UPI / PhonePe"},
             },
         )
-        HISBillingRecord.objects.get_or_create(
+        first_or_create(HISBillingRecord, 
             hospital=hospital,
             external_bill_id="HIS-BILL-5002",
             defaults={
@@ -887,7 +896,7 @@ class Command(BaseCommand):
         )
 
         # 16. Referral Doctor CRM
-        ref_doc1, _ = ReferringDoctor.objects.get_or_create(
+        ref_doc1, _ = first_or_create(ReferringDoctor, 
             hospital=hospital,
             name="Dr. Milind Soman",
             defaults={
@@ -900,7 +909,7 @@ class Command(BaseCommand):
                 "notes": "Top referring practitioner for Cardiology and General Surgery.",
             },
         )
-        ref_doc2, _ = ReferringDoctor.objects.get_or_create(
+        ref_doc2, _ = first_or_create(ReferringDoctor, 
             hospital=hospital,
             name="Dr. Snehal Patil",
             defaults={
@@ -913,7 +922,7 @@ class Command(BaseCommand):
             },
         )
 
-        ReferralRecord.objects.get_or_create(
+        first_or_create(ReferralRecord, 
             hospital=hospital,
             referring_doctor=ref_doc1,
             patient=p1,
@@ -924,7 +933,7 @@ class Command(BaseCommand):
                 "status": "converted",
             },
         )
-        FieldVisit.objects.get_or_create(
+        first_or_create(FieldVisit, 
             hospital=hospital,
             referring_doctor=ref_doc1,
             visit_date=timezone.now().date() - datetime.timedelta(days=3),
@@ -936,7 +945,7 @@ class Command(BaseCommand):
         )
 
         # 17. Health Packages & Campaigns
-        pkg1, _ = HealthPackage.objects.get_or_create(
+        pkg1, _ = first_or_create(HealthPackage, 
             hospital=hospital,
             code="PKG-CARD-01",
             defaults={
@@ -948,7 +957,7 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        pkg2, _ = HealthPackage.objects.get_or_create(
+        pkg2, _ = first_or_create(HealthPackage, 
             hospital=hospital,
             code="PKG-FULL-01",
             defaults={
@@ -961,7 +970,7 @@ class Command(BaseCommand):
             },
         )
 
-        camp1, _ = Campaign.objects.get_or_create(
+        camp1, _ = first_or_create(Campaign, 
             hospital=hospital,
             name="Pune Senior Citizen Health Camp 2026",
             defaults={
@@ -973,7 +982,7 @@ class Command(BaseCommand):
                 "end_date": timezone.now().date() + datetime.timedelta(days=20),
             },
         )
-        CampRegistration.objects.get_or_create(
+        get_or_create_encrypted(CampRegistration, 
             hospital=hospital,
             campaign=camp1,
             patient_name="Vijay Deshpande",
@@ -985,7 +994,7 @@ class Command(BaseCommand):
         )
 
         # 18. TPA / Pre-Authorization Desk
-        tpa1, _ = TPACompany.objects.get_or_create(
+        tpa1, _ = first_or_create(TPACompany, 
             hospital=hospital,
             code="TPA-STAR-01",
             defaults={
@@ -997,7 +1006,7 @@ class Command(BaseCommand):
                 "avg_tat_days": 2,
             },
         )
-        tpa2, _ = TPACompany.objects.get_or_create(
+        tpa2, _ = first_or_create(TPACompany, 
             hospital=hospital,
             code="TPA-HDFC-01",
             defaults={
@@ -1010,7 +1019,7 @@ class Command(BaseCommand):
             },
         )
 
-        PreAuthRequest.objects.get_or_create(
+        first_or_create(PreAuthRequest, 
             hospital=hospital,
             patient=p1,
             tpa_company=tpa1,
@@ -1023,7 +1032,7 @@ class Command(BaseCommand):
                 "approved_at": timezone.now() - datetime.timedelta(days=1),
             },
         )
-        PreAuthRequest.objects.get_or_create(
+        first_or_create(PreAuthRequest, 
             hospital=hospital,
             patient=p2,
             tpa_company=tpa2,
@@ -1037,7 +1046,7 @@ class Command(BaseCommand):
 
         # 16. SaaS Tenant Subscriptions and Invoices
         for h in Hospital.objects.all():
-            sub, _ = TenantSubscription.objects.get_or_create(
+            sub, _ = first_or_create(TenantSubscription, 
                 hospital=h,
                 defaults={
                     "tier": "enterprise" if any(x in h.name for x in ["Apollo", "Max"]) else "pro",

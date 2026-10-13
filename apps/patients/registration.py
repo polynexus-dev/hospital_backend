@@ -8,7 +8,7 @@ from datetime import timedelta
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.decorators import action
@@ -74,6 +74,13 @@ def find_duplicates(hospital_id, *, first_name="", last_name="", date_of_birth=N
     return sorted(out, key=lambda r: -r["score"])
 
 
+def _unique_sets_with(model, field):
+    """Unique field groups on `model` that include `field` (a patient FK)."""
+    sets = [tuple(f) for f in model._meta.unique_together]
+    sets += [tuple(c.fields) for c in model._meta.constraints if isinstance(c, UniqueConstraint) and c.fields]
+    return [s for s in sets if field.name in s or field.attname in s]
+
+
 @transaction.atomic
 def merge_patients(primary, duplicate, *, actor=None):
     """Re-points every relation from `duplicate` to `primary` and soft-deletes
@@ -90,7 +97,21 @@ def merge_patients(primary, duplicate, *, actor=None):
                 continue
         if rel.many_to_many:
             continue
-        n = model._base_manager.filter(**{fk: duplicate}).update(**{fk: primary})
+        rows = model._base_manager.filter(**{fk: duplicate})
+        unique_sets = _unique_sets_with(model, rel.field)
+        if unique_sets:
+            # Move row by row: one the primary already has (same consent
+            # opt-out, say) stays with the duplicate rather than failing.
+            n = 0
+            for row in rows:
+                if any(model._base_manager.filter(**{fk: primary}, **{f: getattr(row, f) for f in fields if f not in (fk, rel.field.attname)}).exists()
+                       for fields in unique_sets):
+                    skipped.append(model.__name__)
+                    continue
+                model._base_manager.filter(pk=row.pk).update(**{fk: primary})
+                n += 1
+        else:
+            n = rows.update(**{fk: primary})
         if n:
             moved[model.__name__] = n
     for field in ("date_of_birth", "gender", "email", "blood_group", "national_id_type", "national_id_number"):
@@ -100,7 +121,7 @@ def merge_patients(primary, duplicate, *, actor=None):
         primary.mrn = f"merged:{duplicate.uhid}"
     primary.save()
     duplicate.delete(actor=actor, reason=f"Merged into {primary.uhid}")
-    return {"moved": moved, "skipped_one_to_one": skipped}
+    return {"moved": moved, "skipped_one_to_one": sorted(set(skipped))}
 
 
 def issue_otp(hospital, mobile, purpose="registration"):

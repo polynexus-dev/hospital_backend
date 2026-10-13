@@ -283,3 +283,25 @@ def search_columns(model) -> dict:
         for source in sources:
             out[source] = (kind, column)
     return out
+
+
+def get_or_create_encrypted(model, defaults=None, **lookup):
+    """get_or_create for models with encrypted columns. An encrypted value
+    can't be matched in SQL, so a lookup on one goes through its search
+    column (phone/email hash, name tokens) and is confirmed after decrypting."""
+    columns = search_columns(model)
+    plain, encrypted = {}, {}
+    for field, value in lookup.items():
+        (encrypted if field in columns else plain)[field] = value
+    qs = model._default_manager.filter(**plain)
+    for field, value in encrypted.items():
+        kind, column = columns[field]
+        if kind == "name":
+            for token in name_query_tokens(value):
+                qs = qs.filter(**{f"{column}__contains": f" {token} "})
+        else:
+            qs = qs.filter(**{column: search_index_value(kind, value)})
+    for obj in qs:
+        if all(str(getattr(obj, f) or "") == str(v or "") or columns[f][0] == "phone" for f, v in encrypted.items()):
+            return obj, False
+    return model._default_manager.create(**lookup, **(defaults or {})), True
