@@ -17,6 +17,7 @@ _SESSION_CACHE_PREFIX = "payload_enc_session:"
 # Endpoints that must NOT be encrypted (handshake + auth bootstrap).
 _ENCRYPTION_BYPASS_PATHS = frozenset([
     "/api/v1/session-key/",
+    "/api/v1/site/",  # public website form & chat widget (no staff session)
     "/api/v1/auth/login/",
     "/api/v1/auth/refresh/",
     "/api/v1/auth/logout/",

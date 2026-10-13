@@ -227,3 +227,47 @@ class TreatmentEstimate(TenantScopedModel):
     def __str__(self):
         return f"Estimate: {self.procedure_name} ({self.get_stage_display()})"
 
+
+
+def _site_key():
+    import secrets
+
+    return secrets.token_urlsafe(18)
+
+
+class WebsiteWidget(models.Model):
+    """The hospital's website enquiry form (and, later, live chat), added to
+    any website with one script tag. `site_key` is public by design (it sits
+    in the page source), so it can only create enquiries: requests are
+    limited to `allowed_domains`, rate-limited, and screened for bots."""
+
+    DEFAULT_CONSENT = (
+        "I agree that {hospital} may use these details to contact me about my enquiry "
+        "by phone, SMS or WhatsApp, as described in its privacy notice."
+    )
+
+    hospital = models.OneToOneField("core.Hospital", on_delete=models.CASCADE, related_name="website_widget")
+    site_key = models.CharField(max_length=40, unique=True, default=_site_key, editable=False)
+    allowed_domains = models.JSONField(default=list, blank=True, help_text='e.g. ["swasthyam.in", "www.swasthyam.in"]. Empty = any site.')
+    form_enabled = models.BooleanField(default=True)
+    chat_enabled = models.BooleanField(default=False)
+    title = models.CharField(max_length=120, default="Book a consultation")
+    intro = models.CharField(max_length=300, blank=True, default="Leave your details and our team will call you back.")
+    button_text = models.CharField(max_length=40, default="Enquire now")
+    accent_color = models.CharField(max_length=9, default="#0f766e")
+    services = models.JSONField(default=list, blank=True, help_text="Options for 'What do you need?'. Empty = the hospital's departments.")
+    consent_text = models.TextField(blank=True, default=DEFAULT_CONSENT)
+    thank_you_message = models.CharField(max_length=300, default="Thank you! Our team will call you shortly.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Website widget for {self.hospital_id}"
+
+    def origin_allowed(self, origin: str) -> bool:
+        if not self.allowed_domains:
+            return True
+        from urllib.parse import urlparse
+
+        host = (urlparse(origin).hostname or "").lower()
+        return any(host == d.lower().strip() or host.endswith("." + d.lower().strip()) for d in self.allowed_domains if d.strip())
