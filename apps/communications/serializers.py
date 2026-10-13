@@ -36,11 +36,12 @@ class MessageSerializer(serializers.ModelSerializer):
 
 class ThreadSerializer(serializers.ModelSerializer):
     unread_count = serializers.SerializerMethodField()
+    enquiry_name = serializers.CharField(source="enquiry.name", read_only=True, default=None)
 
     class Meta:
         model = Thread
         fields = [
-            "id", "patient", "enquiry", "channel", "owner", "status",
+            "id", "patient", "enquiry", "enquiry_name", "channel", "owner", "status",
             "last_message_at", "last_inbound_at", "sla_due_at", "unread_count", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "last_message_at", "last_inbound_at", "sla_due_at", "created_at", "updated_at"]

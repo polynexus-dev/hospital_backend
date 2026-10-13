@@ -51,7 +51,16 @@
       ".hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}" +
       ".fab{position:fixed;right:20px;bottom:20px;z-index:2147483000;border:0;border-radius:999px;padding:13px 20px;background:" + accent + ";color:#fff;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);cursor:pointer}" +
       ".overlay{position:fixed;inset:0;z-index:2147483001;background:rgba(17,24,39,.45);display:flex;align-items:center;justify-content:center;padding:16px}" +
-      ".close{float:right;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:#6b7280}"
+      ".close{float:right;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:#6b7280}" +
+      ".fab.up{bottom:84px}.bubble{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:56px;height:56px;border:0;border-radius:50%;background:" + accent + ";color:#fff;font-size:24px;box-shadow:0 8px 24px rgba(0,0,0,.2);cursor:pointer}" +
+      ".dot{position:absolute;top:4px;right:4px;width:12px;height:12px;border-radius:50%;background:#ef4444;border:2px solid #fff}" +
+      ".chat{position:fixed;right:20px;bottom:88px;z-index:2147483001;width:360px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);background:#fff;color:#1f2937;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden}" +
+      ".chat header{background:" + accent + ";color:#fff;padding:12px 14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}.chat header button{background:none;border:0;color:#fff;font-size:20px;cursor:pointer}" +
+      ".log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f9fafb}" +
+      ".msg{max-width:80%;padding:8px 11px;border-radius:12px;font-size:14px;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}" +
+      ".msg.visitor{align-self:flex-end;background:" + accent + ";color:#fff;border-bottom-right-radius:4px}.msg.staff,.msg.auto{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:4px}" +
+      ".msg small{display:block;font-size:11px;opacity:.7;margin-bottom:2px}.compose{display:flex;gap:8px;padding:10px;border-top:1px solid #e5e7eb}.compose textarea{flex:1;resize:none;height:42px}" +
+      ".compose button{border:0;border-radius:9px;padding:0 14px;background:" + accent + ";color:#fff;font-weight:600;cursor:pointer}.chat .start{padding:14px;overflow-y:auto}"
   }
 
   function buildForm(cfg, onDone) {
@@ -139,17 +148,153 @@
     return c
   }
 
-  function mount(cfg) {
-    if (!cfg.form_enabled) return
-    var inline = document.querySelector("[data-polynexus-enquiry]")
-    var host = inline || el("div", { id: "polynexus-enquiry-widget" })
-    if (!inline) document.body.appendChild(host)
-    var root = host.attachShadow ? host.attachShadow({ mode: "open" }) : host
-    root.appendChild(el("style", { text: css(cfg.accent_color || "#0f766e") }))
-    if (inline) {
-      root.appendChild(card(cfg))
-      return
+
+  function chatWidget(root, cfg, raised) {
+    var KEY = "pnx_chat_" + API
+    var token = null
+    try { token = localStorage.getItem(KEY) } catch (e) { /* storage blocked */ }
+    var lastId = 0, timer = null, panel = null, log = null, open = false
+    var bubble = el("button", { class: "bubble", type: "button", "aria-label": "Chat with us", text: "💬" })
+    var dot = null
+    root.appendChild(bubble)
+    if (raised) raised.classList.add("up")
+
+    function add(m) {
+      if (m.id <= lastId) return
+      lastId = m.id
+      if (!log) { if (m.from !== "visitor" && !open && !dot) { dot = el("span", { class: "dot" }); bubble.appendChild(dot) } return }
+      var b = el("div", { class: "msg " + m.from })
+      if (m.from === "staff" && m.name) b.appendChild(el("small", { text: m.name }))
+      b.appendChild(document.createTextNode(m.body))
+      log.appendChild(b)
+      log.scrollTop = log.scrollHeight
     }
+    function poll() {
+      if (!token) return
+      fetch(API + "chat/messages/?token=" + encodeURIComponent(token) + "&after=" + lastId)
+        .then(function (r) {
+          if (r.status === 404) { token = null; try { localStorage.removeItem(KEY) } catch (e) {} ; return null }
+          return r.ok ? r.json() : null
+        })
+        .then(function (j) { if (j) j.messages.forEach(add) })
+        .catch(function () {})
+    }
+    function schedule() {
+      clearInterval(timer)
+      if (token) timer = setInterval(poll, open ? 4000 : 30000)
+    }
+    function conversation() {
+      panel.querySelector(".body").replaceWith(el("div", { class: "body", style: "display:flex;flex-direction:column;flex:1;min-height:0" }))
+      var body = panel.querySelector(".body")
+      log = el("div", { class: "log", role: "log", "aria-live": "polite" })
+      var ta = el("textarea", { "aria-label": "Your message", placeholder: "Type a message…", maxlength: "2000" })
+      var send = el("button", { type: "button", text: "Send" })
+      function submit() {
+        var text = ta.value.trim()
+        if (!text) return
+        ta.value = ""
+        fetch(API + "chat/messages/", { method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" }, body: JSON.stringify({ token: token, body: text }) })
+          .then(function (r) { return r.json() })
+          .then(function (j) { if (j.message) add(j.message) })
+          .catch(function () { ta.value = text })
+      }
+      send.addEventListener("click", submit)
+      ta.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit() } })
+      body.appendChild(log)
+      body.appendChild(el("div", { class: "compose" }, [ta, send]))
+      lastId = 0
+      poll()
+    }
+    function startForm() {
+      var body = panel.querySelector(".body")
+      var startedAt = Date.now()
+      var f = el("form", { class: "start", novalidate: "" })
+      var errs = {}
+      function field(name, label, input) {
+        errs[name] = el("div", { class: "err", role: "alert" })
+        input.id = "pnx-chat-" + name
+        return el("div", {}, [el("label", { for: input.id, text: label }), input, errs[name]])
+      }
+      var name = el("input", { autocomplete: "name" })
+      var mobile = el("input", { type: "tel", inputmode: "numeric", autocomplete: "tel", maxlength: "14" })
+      var msg = el("textarea", { rows: "3", maxlength: "2000" })
+      var consent = el("input", { type: "checkbox", id: "pnx-chat-consent" })
+      errs.consent = el("div", { class: "err", role: "alert" })
+      var hp = el("input", { tabindex: "-1", autocomplete: "off" })
+      var status = el("div", { class: "err", role: "alert" })
+      var go = el("button", { class: "submit", type: "submit", text: "Start chat" })
+      f.appendChild(el("p", { class: "intro", text: cfg.chat_welcome || "Hi! How can we help you today?" }))
+      f.appendChild(field("name", "Your name", name))
+      f.appendChild(field("mobile", "Mobile number", mobile))
+      f.appendChild(field("message", "Your question", msg))
+      f.appendChild(el("div", { class: "hp", "aria-hidden": "true" }, [hp]))
+      f.appendChild(el("label", { class: "consent", for: "pnx-chat-consent" }, [consent, el("span", { text: cfg.consent_text })]))
+      f.appendChild(errs.consent)
+      f.appendChild(go)
+      f.appendChild(status)
+      f.addEventListener("submit", function (e) {
+        e.preventDefault()
+        Object.keys(errs).forEach(function (k) { errs[k].textContent = "" })
+        status.textContent = ""
+        go.disabled = true
+        var payload = Object.assign(params(), { name: name.value.trim(), mobile: mobile.value.replace(/\D/g, "").slice(-10), message: msg.value.trim(),
+          consent: consent.checked, website: hp.value, started_at: startedAt })
+        fetch(API + "chat/start/", { method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" }, body: JSON.stringify(payload) })
+          .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j } }) })
+          .then(function (res) {
+            go.disabled = false
+            if (res.status === 201) {
+              token = res.body.token
+              try { localStorage.setItem(KEY, token) } catch (e) {}
+              conversation()
+              res.body.messages.forEach(add)
+              schedule()
+              return
+            }
+            Object.keys(res.body).forEach(function (k) { if (errs[k]) errs[k].textContent = res.body[k]; else status.textContent = res.body[k] })
+          })
+          .catch(function () { go.disabled = false; status.textContent = "Couldn't connect. Please call us." })
+      })
+      body.appendChild(f)
+    }
+    bubble.addEventListener("click", function () {
+      if (open) { panel.remove(); panel = null; log = null; open = false; schedule(); return }
+      open = true
+      if (dot) { dot.remove(); dot = null }
+      var x = el("button", { type: "button", "aria-label": "Close chat", text: "×" })
+      x.addEventListener("click", function () { bubble.click() })
+      panel = el("div", { class: "chat", role: "dialog", "aria-label": "Chat with " + cfg.hospital }, [
+        el("header", {}, [el("span", { text: cfg.hospital }), x]), el("div", { class: "body" }),
+      ])
+      root.appendChild(panel)
+      if (token) conversation()
+      else startForm()
+      schedule()
+    })
+    schedule()
+    poll()
+  }
+
+  function mount(cfg) {
+    var accent = cfg.accent_color || "#0f766e"
+    var inline = document.querySelector("[data-polynexus-enquiry]")
+    var floating = null
+    if (cfg.chat_enabled || (cfg.form_enabled && !inline)) {
+      var fhost = el("div", { id: "polynexus-enquiry-widget" })
+      document.body.appendChild(fhost)
+      floating = fhost.attachShadow ? fhost.attachShadow({ mode: "open" }) : fhost
+      floating.appendChild(el("style", { text: css(accent) }))
+    }
+    if (cfg.form_enabled && inline) {
+      var iroot = inline.attachShadow ? inline.attachShadow({ mode: "open" }) : inline
+      iroot.appendChild(el("style", { text: css(accent) }))
+      iroot.appendChild(card(cfg))
+    }
+    var fab = cfg.form_enabled && !inline ? formButton(floating, cfg) : null
+    if (cfg.chat_enabled) chatWidget(floating, cfg, fab)
+  }
+
+  function formButton(root, cfg) {
     var fab = el("button", { class: "fab", type: "button", text: cfg.button_text || "Enquire now" })
     var overlay = null
     fab.addEventListener("click", function () {
@@ -161,6 +306,7 @@
       root.appendChild(overlay)
     })
     root.appendChild(fab)
+    return fab
   }
 
   function start() {

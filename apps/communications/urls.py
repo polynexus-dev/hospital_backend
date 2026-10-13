@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .webchat import ChatMessagesView, ChatStartView
 from .views import (
     AIChatbotView,
     BroadcastCampaignViewSet,
@@ -19,6 +20,8 @@ router.register("threads", ThreadViewSet, basename="thread")
 router.register("broadcasts", BroadcastCampaignViewSet, basename="broadcast")
 
 urlpatterns = [
+    path("site/<str:site_key>/chat/start/", ChatStartView.as_view(), name="site-chat-start"),
+    path("site/<str:site_key>/chat/messages/", ChatMessagesView.as_view(), name="site-chat-messages"),
     path("messages/ai-chat/", AIChatbotView.as_view(), name="ai-chat"),
     path("webhooks/inbound/<uuid:hospital_id>/<str:channel>/", InboundWebhookView.as_view(), name="inbound-webhook"),
 ] + router.urls

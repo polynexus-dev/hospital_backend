@@ -11,6 +11,7 @@ class Channel(models.TextChoices):
     SMS = "sms", "SMS"
     EMAIL = "email", "Email"
     CALL_NOTE = "call_note", "Call note"
+    WEB_CHAT = "web_chat", "Website chat"
 
 
 class Template(TenantScopedModel):

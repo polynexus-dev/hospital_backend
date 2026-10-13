@@ -258,6 +258,8 @@ class WebsiteWidget(models.Model):
     services = models.JSONField(default=list, blank=True, help_text="Options for 'What do you need?'. Empty = the hospital's departments.")
     consent_text = models.TextField(blank=True, default=DEFAULT_CONSENT)
     thank_you_message = models.CharField(max_length=300, default="Thank you! Our team will call you shortly.")
+    chat_welcome = models.CharField(max_length=300, default="Hi! How can we help you today?")
+    chat_auto_reply = models.CharField(max_length=300, default="Thanks for your message. Someone from our team will reply here shortly. If it's urgent, please call us.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -86,6 +86,7 @@ def public_config(widget):
         "accent_color": widget.accent_color, "services": _services(widget),
         "consent_text": (widget.consent_text or WebsiteWidget.DEFAULT_CONSENT).replace("{hospital}", h.name),
         "thank_you_message": widget.thank_you_message, "form_enabled": widget.form_enabled, "chat_enabled": widget.chat_enabled,
+        "chat_welcome": widget.chat_welcome,
     }
 
 
@@ -209,7 +210,8 @@ class WebsiteWidgetAdminView(APIView):
     """Staff: GET (created on first use) / PATCH the hospital's widget."""
 
     permission_classes = [permissions.IsAuthenticated]
-    EDITABLE = ("allowed_domains", "form_enabled", "chat_enabled", "title", "intro", "button_text", "accent_color", "services", "consent_text", "thank_you_message")
+    EDITABLE = ("allowed_domains", "form_enabled", "chat_enabled", "title", "intro", "button_text", "accent_color", "services", "consent_text",
+                "thank_you_message", "chat_welcome", "chat_auto_reply")
 
     def _payload(self, request, w):
         script = request.build_absolute_uri(f"/api/v1/site/{w.site_key}/widget.js")
@@ -247,7 +249,7 @@ class WebsiteWidgetAdminView(APIView):
         for k in ("form_enabled", "chat_enabled"):
             if k in data:
                 setattr(w, k, bool(data[k]))
-        for k in ("title", "intro", "button_text", "accent_color", "consent_text", "thank_you_message"):
+        for k in ("title", "intro", "button_text", "accent_color", "consent_text", "thank_you_message", "chat_welcome", "chat_auto_reply"):
             if k in data:
                 setattr(w, k, str(data[k])[: WebsiteWidget._meta.get_field(k).max_length or 2000])
         w.save()

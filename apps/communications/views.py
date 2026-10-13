@@ -23,6 +23,8 @@ from .serializers import (
 from .services import send_message, touch_thread
 
 
+from .webchat import WebChatStaffMixin
+
 class TemplateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = TemplateSerializer
     queryset = Template.objects.all()
@@ -67,7 +69,7 @@ class MessageViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
         return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
 
 
-class ThreadViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+class ThreadViewSet(WebChatStaffMixin, TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only per-patient-per-channel threads for the Inbox screen —
     unread counts, owner, and SLA timer over the flat `Message` log."""
 
