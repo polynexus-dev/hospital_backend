@@ -126,6 +126,9 @@ def move_stage(enquiry: Enquiry, to_stage: str, *, changed_by=None) -> Enquiry:
         fields.append("escalation_level")
     enquiry.save(update_fields=fields)
 
+    from apps.automation.engine import fire
+
+    fire("enquiry_stage_changed", {"enquiry_id": enquiry.pk, "from_stage": from_stage, "to_stage": to_stage}, enquiry.hospital_id)
     EnquiryStageChange.objects.create(
         hospital=enquiry.hospital,
         enquiry=enquiry,

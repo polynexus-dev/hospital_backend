@@ -40,6 +40,10 @@ def on_enquiry_created(sender, instance: Enquiry, created, **kwargs):
     if instance.assigned_to_id is None:
         assign_enquiry(instance)
 
+    from apps.automation.engine import fire
+
+    fire("enquiry_created", {"enquiry_id": instance.pk, "source": instance.source}, instance.hospital_id)
+
     if instance.patient_id is not None:
         record_timeline_event(
             patient=instance.patient,

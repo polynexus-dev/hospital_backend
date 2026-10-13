@@ -28,7 +28,7 @@ def sweep_patient_recalls():
     for patient in due_patients.iterator():
         Task.objects.create(
             hospital=patient.hospital,
-            title=f"Recall due: {patient.full_name}",
+            title=f"Recall due: {patient.uhid or f'patient #{patient.pk}'}",
             description=patient.recall_reason or "Preventive-care / follow-up recall due.",
             priority=Task.Priority.NORMAL,
             content_type=patient_content_type,
@@ -36,7 +36,7 @@ def sweep_patient_recalls():
         )
         execute_workflow(
             Workflow.TriggerType.PATIENT_RECALL_DUE,
-            {"patient_id": patient.id, "patient_name": patient.full_name, "recall_reason": patient.recall_reason},
+            {"patient_id": patient.id},
             patient.hospital_id,
         )
         patient.next_recall_due_at = None
@@ -113,3 +113,11 @@ def escalate_overdue_tasks():
         task.save(update_fields=["priority"])
         updated += 1
     return updated
+
+
+@shared_task
+def resume_waiting_workflows():
+    """Continues workflow runs parked by a wait step whose time has come."""
+    from .engine import resume_due
+
+    return resume_due()

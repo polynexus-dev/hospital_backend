@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from apps.patients.models import record_timeline_event
+from apps.patients.models import Patient, record_timeline_event
 
 from .adapters import get_provider_for_channel
 from .models import Channel, ConsentOptOut, Message, Template, Thread
@@ -115,3 +115,49 @@ def send_appointment_reminder(appointment, *, offset_hours: int) -> Message | No
     return send_message(
         patient=appointment.patient, channel=Channel.WHATSAPP, purpose=purpose, context=context, fallback_channel=Channel.SMS
     )
+
+
+
+def send_to_enquiry(*, enquiry, channel: str, purpose: str, context: dict | None = None, sent_by=None, fallback_channel: str | None = None) -> Message | None:
+    """send_message for a lead who isn't a registered patient yet (workflow
+    follow-ups). Uses the same templates; skips lost enquiries and numbers
+    whose patient record has opted out of marketing on that channel."""
+    from apps.clinical.notify import ensure_default_templates
+    from apps.enquiries.models import Enquiry
+
+    if enquiry.patient_id:
+        return send_message(patient=enquiry.patient, channel=channel, purpose=purpose, context={"patient_name": enquiry.patient.full_name, **(context or {})},
+                            sent_by=sent_by, fallback_channel=fallback_channel)
+    if enquiry.stage == Enquiry.Stage.LOST or not enquiry.mobile or channel not in (Channel.WHATSAPP, Channel.SMS):
+        return None
+    opted_out = ConsentOptOut.objects.filter(
+        patient__in=Patient.objects.filter(hospital_id=enquiry.hospital_id).by_mobile(enquiry.mobile), channel=channel, is_opted_out=True,
+        purpose__in=[ConsentOptOut.Purpose.MARKETING, ConsentOptOut.Purpose.ALL],
+    ).exists()
+    def fallback():
+        if fallback_channel and fallback_channel != channel:
+            return send_to_enquiry(enquiry=enquiry, channel=fallback_channel, purpose=purpose, context=context, sent_by=sent_by)
+        return None
+    if opted_out:
+        return fallback()
+    ensure_default_templates(enquiry.hospital)
+    template = get_active_template(enquiry.hospital, purpose=purpose, channel=channel, language=Template.Language.ENGLISH)
+    if template is None:
+        return fallback()
+    body = template.render({"patient_name": enquiry.name, "hospital_name": enquiry.hospital.name, **(context or {})})
+    try:
+        provider_message_id = get_provider_for_channel(channel).send(to=enquiry.mobile, body=body, subject=template.subject)
+        send_status = Message.Status.SENT
+    except Exception:
+        logger.exception("Failed to send %s message to enquiry %s", channel, enquiry.pk)
+        provider_message_id, send_status = "", Message.Status.FAILED
+    message = Message.objects.create(
+        hospital=enquiry.hospital, enquiry=enquiry, channel=channel, direction=Message.Direction.OUTBOUND, template=template, body=body,
+        status=send_status, sent_by=sent_by, provider_message_id=provider_message_id, sent_at=timezone.now() if send_status == Message.Status.SENT else None,
+    )
+    thread, _ = Thread.objects.get_or_create(hospital=enquiry.hospital, enquiry=enquiry, channel=channel)
+    thread.last_message_at = timezone.now()
+    thread.save(update_fields=["last_message_at"])
+    if send_status == Message.Status.FAILED:
+        return fallback() or message
+    return message

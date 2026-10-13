@@ -48,3 +48,6 @@ def on_nps_response(sender, instance: NPSResponse, created, **kwargs):
             nps_response=instance,
             sla_due_at=timezone.now() + timedelta(hours=SERVICE_RECOVERY_SLA_HOURS),
         )
+        from apps.automation.engine import fire
+
+        fire("nps_detractor", {"patient_id": instance.patient_id, "nps_response_id": instance.pk, "score": instance.score}, instance.hospital_id)

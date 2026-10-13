@@ -80,6 +80,7 @@ class Workflow(TenantScopedModel):
 
     class TriggerType(models.TextChoices):
         MISSED_CALL = "missed_call", "Missed Call / Unanswered Call"
+        ENQUIRY_CREATED = "enquiry_created", "New Enquiry"
         ENQUIRY_STAGE_CHANGED = "enquiry_stage_changed", "Enquiry Stage Changed"
         APPOINTMENT_NO_SHOW = "appointment_no_show", "Appointment No-Show"
         NPS_DETRACTOR = "nps_detractor", "NPS Detractor Rating Received"
@@ -141,6 +142,8 @@ class WorkflowRun(TenantScopedModel):
         SUCCESS = "success", "Success"
         FAILED = "failed", "Failed"
         RUNNING = "running", "Running"
+        WAITING = "waiting", "Waiting (resumes later)"
+        STOPPED = "stopped", "Stopped by a condition"
 
     workflow = models.ForeignKey(Workflow, on_delete=models.SET_NULL, null=True, blank=True, related_name="runs")
     trigger_event = models.CharField(max_length=100)
@@ -149,6 +152,9 @@ class WorkflowRun(TenantScopedModel):
     context = models.JSONField(default=dict, blank=True)
     log_output = models.JSONField(default=list, blank=True)
     executed_at = models.DateTimeField(auto_now_add=True)
+    # A "wait" step parks the run; apps.automation.tasks.resume_waiting_workflows picks it up.
+    resume_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    next_step_order = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-executed_at"]

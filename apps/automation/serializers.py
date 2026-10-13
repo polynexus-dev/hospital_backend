@@ -28,6 +28,25 @@ class WorkflowStepSerializer(serializers.ModelSerializer):
         fields = ["id", "order", "step_type", "action_type", "title", "config"]
         read_only_fields = ["id"]
 
+    def validate(self, attrs):
+        """Refuse steps the engine couldn't run, instead of failing later."""
+        from .engine import parse_condition
+
+        cfg = attrs.get("config") or {}
+        kind, action = attrs.get("step_type"), attrs.get("action_type")
+        if kind == WorkflowStep.StepType.CONDITION and parse_condition(cfg) is None:
+            raise serializers.ValidationError({"config": "A condition needs a field, an operator and a value."})
+        if kind == WorkflowStep.StepType.ACTION:
+            if action in (WorkflowStep.ActionType.SEND_WHATSAPP, WorkflowStep.ActionType.SEND_SMS) and not (cfg.get("purpose") or cfg.get("template")):
+                raise serializers.ValidationError({"config": "Choose which message template to send."})
+            if action == WorkflowStep.ActionType.WAIT_DELAY:
+                try:
+                    if int(cfg.get("delay_minutes", 0)) < 1:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError({"config": "Wait at least 1 minute."})
+        return attrs
+
 
 class WorkflowSerializer(serializers.ModelSerializer):
     steps = WorkflowStepSerializer(many=True, required=False)

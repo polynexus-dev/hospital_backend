@@ -489,6 +489,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.appointments.tasks.mark_overdue_appointments_as_no_show",
         "schedule": 1800.0,  # every 30 minutes
     },
+    # Workflow runs parked by a "wait" step.
+    "resume-waiting-workflows": {
+        "task": "apps.automation.tasks.resume_waiting_workflows",
+        "schedule": 300.0,
+    },
     # §6 — generic automation task escalation.
     "escalate-overdue-tasks": {
         "task": "apps.automation.tasks.escalate_overdue_tasks",

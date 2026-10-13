@@ -16,7 +16,7 @@ RECALL_TASK_DUE_HOURS = 24
 def create_no_show_recall_task(sender, appointment, **kwargs):
     Task.objects.create(
         hospital=appointment.hospital,
-        title=f"Recall {appointment.patient} — missed {appointment.doctor} appointment",
+        title=f"Recall {appointment.patient.uhid or f'patient #{appointment.patient_id}'}: missed appointment with {appointment.doctor}",
         description=f"No-show for the {appointment.slot.date} {appointment.slot.start_time} slot. Call to reschedule.",
         department=appointment.doctor.department,
         due_at=timezone.now() + timedelta(hours=RECALL_TASK_DUE_HOURS),
@@ -24,6 +24,10 @@ def create_no_show_recall_task(sender, appointment, **kwargs):
         content_type=ContentType.objects.get_for_model(appointment),
         object_id=appointment.pk,
     )
+    from .engine import fire
+
+    fire("appointment_no_show", {"appointment_id": appointment.pk, "patient_id": appointment.patient_id,
+                                 "department_id": appointment.doctor.department_id}, appointment.hospital_id)
 
 
 try:
@@ -33,7 +37,7 @@ try:
     def create_critical_lab_result_task(sender, result, **kwargs):
         Task.objects.create(
             hospital=result.hospital,
-            title=f"URGENT: Critical Lab Result for {result.lab_order.patient}",
+            title=f"URGENT: Critical lab result for {result.lab_order.patient.uhid or f'patient #{result.lab_order.patient_id}'}",
             description=f"Critical lab result for test {result.lab_test}: {result.value}",
             priority=Task.Priority.URGENT,
             content_type=ContentType.objects.get_for_model(result),

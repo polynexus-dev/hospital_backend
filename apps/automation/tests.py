@@ -226,7 +226,7 @@ def test_workflow_api_update_replaces_all_steps_not_merges(auth_client, hospital
     WorkflowStep.objects.create(workflow=workflow, order=1, title="Old step")
 
     response = auth_client.patch(f"/api/v1/workflows/{workflow.id}/", {
-        "steps": [{"step_type": "action", "action_type": "send_whatsapp", "title": "New step"}],
+        "steps": [{"step_type": "action", "action_type": "send_whatsapp", "title": "New step", "config": {"purpose": "enquiry_follow_up"}}],
     }, format="json")
 
     assert response.status_code == 200
@@ -313,28 +313,28 @@ def test_execute_workflow_condition_step_passes_when_score_meets_threshold(hospi
 
 
 @pytest.mark.django_db
-def test_execute_workflow_create_task_action_sets_high_priority_when_urgent_in_event_data(hospital):
+def test_execute_workflow_create_task_action_uses_the_configured_priority(hospital):
     workflow = Workflow.objects.create(hospital=hospital, name="Urgent handler", trigger_type=Workflow.TriggerType.MISSED_CALL)
-    WorkflowStep.objects.create(workflow=workflow, order=1, step_type=WorkflowStep.StepType.ACTION, action_type=WorkflowStep.ActionType.CREATE_TASK)
+    WorkflowStep.objects.create(workflow=workflow, order=1, step_type=WorkflowStep.StepType.ACTION, action_type=WorkflowStep.ActionType.CREATE_TASK,
+                                config={"priority": "high"})
 
-    execute_workflow("missed_call", {"note": "urgent callback requested"}, hospital.id)
+    execute_workflow("missed_call", {}, hospital.id)
 
     task = Task.objects.get(hospital=hospital)
     assert task.priority == Task.Priority.HIGH
 
 
 @pytest.mark.django_db
-def test_execute_workflow_send_whatsapp_action_only_logs_no_real_send(hospital):
-    """Documents real (limited) behavior: SEND_WHATSAPP/SEND_SMS/ESCALATE/
-    WAIT_DELAY steps only append a log entry — they never call
-    apps.communications.adapters to actually dispatch anything."""
+def test_execute_workflow_send_whatsapp_with_nobody_to_message_is_skipped_not_faked(hospital):
+    """A send step with no patient or enquiry in the event says so; it never
+    reports a send that didn't happen."""
     workflow = Workflow.objects.create(hospital=hospital, name="Notify", trigger_type=Workflow.TriggerType.MISSED_CALL)
     WorkflowStep.objects.create(workflow=workflow, order=1, step_type=WorkflowStep.StepType.ACTION, action_type=WorkflowStep.ActionType.SEND_WHATSAPP, config={"template": "missed_call_recall"})
 
     runs = execute_workflow("missed_call", {}, hospital.id)
 
     log = runs[0].log_output[0]
-    assert "queued for dispatch" in log["details"]
+    assert log["status"] == "skipped" and "Nobody to message" in log["details"]
     from apps.communications.models import Message
     assert not Message.objects.filter(hospital=hospital).exists()
 

@@ -310,8 +310,7 @@ class TelephonyWebhookView(APIView):
             execute_workflow(
                 trigger_type="missed_call",
                 event_data={
-                    "from_number": normalized["from_number"],
-                    "call_id": str(call.id),
+                    "call_id": call.id, "patient_id": call.patient_id, "enquiry_id": call.enquiry_id,
                     "started_at": str(normalized["started_at"]),
                 },
                 hospital_id=hospital_id,
