@@ -26,7 +26,17 @@ class LicenseStatusView(APIView):
     def get(self, request):
         if not service.is_on_premise():
             return Response({"mode": "saas"})
-        data = service.current_status().as_dict(detail=_is_installation_admin(request.user))
+        is_admin = _is_installation_admin(request.user)
+        data = service.current_status().as_dict(detail=is_admin)
+        if is_admin:
+            # What's in use against the licence limits, counted as the usage report does.
+            from apps.accounts.models import User
+            from apps.facilities.models import Bed
+
+            data["usage"] = {
+                "active_users": User.objects.filter(hospital__isnull=False, is_active=True).count(),
+                "beds": Bed._base_manager.count(),
+            }
         data["support"] = _support()
         return Response(data)
 
