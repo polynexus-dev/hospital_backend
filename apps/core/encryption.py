@@ -249,3 +249,33 @@ def name_query_tokens(term) -> list[str]:
 def email_index(email) -> str:
     email = str(email or "").strip().casefold()
     return blind_index("email:" + email) if email else ""
+
+
+def search_index_value(kind: str, *values) -> str:
+    """The stored search column for one encrypted field (see SEARCH_INDEXES)."""
+    if kind == "name":
+        return name_search_tokens(*values)
+    if kind == "phone":
+        return blind_index(normalize_phone(values[0] if values else ""))
+    if kind == "email":
+        return email_index(values[0] if values else "")
+    raise ValueError(f"Unknown search index kind: {kind}")
+
+
+def fill_search_indexes(instance) -> list[str]:
+    """Set every search column a model declares in SEARCH_INDEXES:
+    {"column": ("name" | "phone" | "email", ["source_field", ...])}.
+    Returns the columns set, for save(update_fields=...)."""
+    spec = getattr(type(instance), "SEARCH_INDEXES", {})
+    for column, (kind, sources) in spec.items():
+        setattr(instance, column, search_index_value(kind, *[getattr(instance, s, "") for s in sources]))
+    return list(spec)
+
+
+def search_columns(model) -> dict:
+    """{encrypted_field: (kind, column)} for the search filter."""
+    out = {}
+    for column, (kind, sources) in getattr(model, "SEARCH_INDEXES", {}).items():
+        for source in sources:
+            out[source] = (kind, column)
+    return out

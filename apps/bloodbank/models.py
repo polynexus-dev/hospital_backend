@@ -2,18 +2,23 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from apps.core.encryption import fill_search_indexes
+from apps.core.fields import EncryptedCharField, EncryptedDateField
 from apps.core.models import TenantScopedModel
 from apps.ipd.models import Admission
 from apps.patients.models import Patient
 
 
 class Donor(TenantScopedModel):
-    name = models.CharField(max_length=255)
+    # Identity encrypted at rest (DPDP Act 2023); findable via name_search / phone_hash.
+    name = EncryptedCharField(max_length=255)
     blood_group = models.CharField(max_length=8)
-    phone = models.CharField(max_length=20, blank=True)
+    phone = EncryptedCharField(max_length=20, blank=True)
+    name_search = models.TextField(blank=True, editable=False)
+    phone_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
     last_donation_date = models.DateField(null=True, blank=True)
     # COP.3.a prospective donor record.
-    date_of_birth = models.DateField(null=True, blank=True)
+    date_of_birth = EncryptedDateField(null=True, blank=True)
     gender = models.CharField(max_length=10, blank=True)
     weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     haemoglobin = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
@@ -22,8 +27,16 @@ class Donor(TenantScopedModel):
     deferred_until = models.DateField(null=True, blank=True)
     is_voluntary = models.BooleanField(default=True)
 
+    SEARCH_INDEXES = {"name_search": ("name", ["name"]), "phone_hash": ("phone", ["phone"])}
+
     class Meta:
-        ordering = ["name"]
+        ordering = ["-created_at"]  # names are encrypted, so they can't be sorted in the database
+
+    def save(self, *args, **kwargs):
+        columns = fill_search_indexes(self)
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | set(columns)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Donor: {self.name} ({self.blood_group})"

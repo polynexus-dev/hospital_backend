@@ -264,8 +264,8 @@ def test_bulk_import_creates_enquiries_from_a_valid_csv(auth_client, hospital):
     assert response.status_code == 201
     assert response.data["created"] == 2
     assert response.data["errors"] == []
-    assert Enquiry.objects.filter(hospital=hospital, mobile="9111111111").exists()
-    assert Enquiry.objects.filter(hospital=hospital, mobile="9222222222").exists()
+    assert find_duplicates(hospital, mobile="9111111111").exists()
+    assert find_duplicates(hospital, mobile="9222222222").exists()
 
 
 @pytest.mark.django_db

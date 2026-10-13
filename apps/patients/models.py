@@ -172,6 +172,14 @@ class Patient(TenantScopedModel, SoftDeleteModel):
 
     objects = PatientManager()
 
+    # Encrypted fields and the columns that make them searchable (apps.core.filters).
+    SEARCH_INDEXES = {
+        "name_search": ("name", ["first_name", "last_name"]),
+        "mobile_hash": ("phone", ["mobile"]),
+        "alternate_mobile_hash": ("phone", ["alternate_mobile"]),
+        "email_hash": ("email", ["email"]),
+    }
+
     class Meta:
         indexes = [
             models.Index(fields=["hospital", "mobile_hash"]),

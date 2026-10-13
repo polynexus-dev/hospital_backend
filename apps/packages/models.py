@@ -1,4 +1,6 @@
 from django.db import models
+from apps.core.encryption import fill_search_indexes
+from apps.core.fields import EncryptedCharField
 from apps.core.models import TenantScopedModel
 from apps.enquiries.models import Enquiry
 from apps.patients.models import Patient
@@ -108,8 +110,11 @@ class CampRegistration(TenantScopedModel):
         IPD_CONVERTED = "ipd_converted", "IPD Converted"
 
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name="registrations")
-    patient_name = models.CharField(max_length=200)
-    mobile = models.CharField(max_length=32)
+    # Attendee identity encrypted at rest (DPDP Act 2023).
+    patient_name = EncryptedCharField(max_length=200)
+    mobile = EncryptedCharField(max_length=32)
+    name_search = models.TextField(blank=True, editable=False)
+    mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
     stage = models.CharField(max_length=24, choices=FunnelStage.choices, default=FunnelStage.REGISTERED)
     revenue_generated = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
@@ -122,8 +127,16 @@ class CampRegistration(TenantScopedModel):
 
     registered_at = models.DateTimeField(auto_now_add=True)
 
+    SEARCH_INDEXES = {"name_search": ("name", ["patient_name"]), "mobile_hash": ("phone", ["mobile"])}
+
     class Meta:
         ordering = ["-registered_at"]
+
+    def save(self, *args, **kwargs):
+        columns = fill_search_indexes(self)
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | set(columns)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.patient_name} - {self.campaign.name} ({self.stage})"

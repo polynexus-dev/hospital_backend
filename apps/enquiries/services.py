@@ -17,12 +17,15 @@ def find_duplicates(hospital, *, mobile="", alternate_mobile="", email=""):
     """Matches on mobile, alternate mobile, or email within the hospital —
     the union covers a patient calling from a different number than the one
     on file (§2)."""
-    numbers = [n for n in (mobile, alternate_mobile) if n]
+    from apps.core.encryption import blind_index, email_index, normalize_phone
+
+    # Contact details are encrypted: match on their keyed hashes.
+    digests = [d for d in (blind_index(normalize_phone(n)) for n in (mobile, alternate_mobile) if n) if d]
     q = Q()
-    if numbers:
-        q |= Q(mobile__in=numbers) | Q(alternate_mobile__in=numbers)
+    if digests:
+        q |= Q(mobile_hash__in=digests) | Q(alternate_mobile_hash__in=digests)
     if email:
-        q |= Q(email=email)
+        q |= Q(email_hash=email_index(email))
     if not q:
         return Enquiry.objects.none()
     return Enquiry.objects.filter(hospital=hospital).filter(q)

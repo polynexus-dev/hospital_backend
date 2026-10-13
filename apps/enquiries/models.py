@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from apps.core.encryption import fill_search_indexes
+from apps.core.fields import EncryptedCharField
 from apps.core.models import Department, TenantScopedModel
 from apps.patients.models import Patient
 
@@ -43,10 +45,16 @@ class Enquiry(TenantScopedModel):
 
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True, related_name="enquiries")
 
-    name = models.CharField(max_length=255)
-    mobile = models.CharField(max_length=20, db_index=True)
-    alternate_mobile = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
+    # A lead's identity and contact details are encrypted at rest (DPDP Act
+    # 2023); the *_hash / name_search columns keep them findable.
+    name = EncryptedCharField(max_length=255)
+    mobile = EncryptedCharField(max_length=20)
+    alternate_mobile = EncryptedCharField(max_length=20, blank=True)
+    email = EncryptedCharField(max_length=254, blank=True)
+    name_search = models.TextField(blank=True, editable=False)
+    mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
+    alternate_mobile_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
+    email_hash = models.CharField(max_length=64, blank=True, editable=False, db_index=True)
 
     source = models.CharField(max_length=16, choices=Source.choices)
     campaign = models.CharField(max_length=150, blank=True)
@@ -87,6 +95,19 @@ class Enquiry(TenantScopedModel):
     notes = models.TextField(blank=True)
 
     estimated_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    SEARCH_INDEXES = {
+        "name_search": ("name", ["name"]),
+        "mobile_hash": ("phone", ["mobile"]),
+        "alternate_mobile_hash": ("phone", ["alternate_mobile"]),
+        "email_hash": ("email", ["email"]),
+    }
+
+    def save(self, *args, **kwargs):
+        columns = fill_search_indexes(self)
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | set(columns)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["-created_at"]

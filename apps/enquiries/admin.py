@@ -21,5 +21,5 @@ class AssignmentChangeInline(admin.TabularInline):
 class EnquiryAdmin(admin.ModelAdmin):
     list_display = ["name", "mobile", "hospital", "source", "stage", "department", "assigned_to", "urgency", "score"]
     list_filter = ["hospital", "stage", "source", "department", "urgency", "lost_reason"]
-    search_fields = ["name", "mobile", "alternate_mobile", "email", "utm_campaign"]
+    search_fields = ["utm_campaign"]  # name and contact details are encrypted; search them in the app
     inlines = [StageChangeInline, AssignmentChangeInline]
