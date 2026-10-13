@@ -21,7 +21,13 @@ def on_enquiry_created(sender, instance: Enquiry, created, **kwargs):
     # to a trained score once the hospital has enough closed-enquiry
     # history, and keeps it current as this enquiry ages.
     instance.score = score_enquiry(instance)
-    instance.save(update_fields=["score"])
+    fields = ["score"]
+    if instance.stage == Enquiry.Stage.NEW and instance.sla_due_at is None:
+        from .sla import first_contact_due
+
+        instance.sla_due_at = first_contact_due(instance)
+        fields.append("sla_due_at")
+    instance.save(update_fields=fields)
 
     if instance.duplicate_of_id is None:
         duplicate = find_duplicates(

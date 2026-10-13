@@ -107,16 +107,17 @@ def test_enquiry_isolation(auth_client, other_hospital):
 # --- move-stage / lose actions ----------------------------------------------
 
 @pytest.mark.django_db
-def test_move_stage_action_sets_sla_due_at_on_entering_an_open_stage(auth_client, hospital):
+def test_move_stage_action_ends_the_first_contact_deadline(auth_client, hospital):
     enquiry = Enquiry.objects.create(hospital=hospital, name="X", mobile="9000066666", source=Enquiry.Source.OTHER, stage=Enquiry.Stage.NEW)
-    assert enquiry.sla_due_at is None
+    enquiry.refresh_from_db()
+    assert enquiry.sla_due_at is not None  # a new enquiry is on the clock from the start
 
     response = auth_client.post(f"/api/v1/enquiries/{enquiry.id}/move-stage/", {"stage": "contacted"}, format="json")
 
     assert response.status_code == 200
     enquiry.refresh_from_db()
     assert enquiry.stage == "contacted"
-    assert enquiry.sla_due_at is not None
+    assert enquiry.sla_due_at is None and enquiry.first_contacted_at is not None
     assert EnquiryStageChange.objects.filter(enquiry=enquiry, from_stage="new", to_stage="contacted").exists()
 
 

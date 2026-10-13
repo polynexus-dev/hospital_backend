@@ -1,22 +1,18 @@
 from celery import shared_task
-from django.db.models import F
-from django.utils import timezone
 
 from apps.core.models import Hospital
 
-from .models import Enquiry
 from .scoring import recompute_hospital_scores
-from .services import OPEN_STAGES
 
 
 @shared_task
 def escalate_overdue_enquiries():
-    """Ageing report / auto-escalation on SLA breach (§2)."""
-    overdue = Enquiry.objects.filter(
-        stage__in=OPEN_STAGES,
-        sla_due_at__lt=timezone.now(),
-    )
-    return overdue.update(escalation_level=F("escalation_level") + 1)
+    """First-contact SLA breaches and overdue follow-ups: tasks for the owner,
+    then a manager (and reassignment, per the hospital's escalation rules).
+    See apps.enquiries.sla."""
+    from .sla import escalate_all
+
+    return escalate_all()
 
 
 @shared_task

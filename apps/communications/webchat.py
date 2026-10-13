@@ -228,9 +228,9 @@ class WebChatStaffMixin:
             thread.save(update_fields=["owner"])
         msg = _record(thread, text, Message.Direction.OUTBOUND, sent_by=request.user, read=True)
         if thread.enquiry_id and thread.enquiry.stage == Enquiry.Stage.NEW:
-            enquiry = thread.enquiry
-            enquiry.stage = Enquiry.Stage.CONTACTED
-            enquiry.save()  # through save(), so the stage history records who made contact
+            from apps.enquiries.services import move_stage
+
+            move_stage(thread.enquiry, Enquiry.Stage.CONTACTED, changed_by=request.user)
         return Response(serialize(msg), status=201)
 
     @action(detail=True, methods=["post"])

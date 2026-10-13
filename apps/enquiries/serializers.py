@@ -18,11 +18,11 @@ class EnquirySerializer(serializers.ModelSerializer):
             "department", "consulting_doctor", "consulting_doctor_name",
             "service_requested", "urgency", "score",
             "stage", "assigned_to", "duplicate_of",
-            "sla_due_at", "follow_up_date", "escalation_level", "lost_reason", "lost_notes", "notes",
+            "sla_due_at", "first_contacted_at", "follow_up_date", "escalation_level", "lost_reason", "lost_notes", "notes",
             "estimated_value",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "assigned_to", "duplicate_of", "sla_due_at", "escalation_level", "created_at", "updated_at"]
+        read_only_fields = ["id", "assigned_to", "duplicate_of", "sla_due_at", "first_contacted_at", "escalation_level", "created_at", "updated_at"]
 
     def get_consulting_doctor_name(self, obj) -> str:
         if not obj.consulting_doctor:

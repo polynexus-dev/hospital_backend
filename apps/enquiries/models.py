@@ -89,6 +89,9 @@ class Enquiry(TenantScopedModel):
     sla_due_at = models.DateTimeField(null=True, blank=True)
     follow_up_date = models.DateField(null=True, blank=True, help_text="Scheduled callback / follow-up date")
     escalation_level = models.PositiveSmallIntegerField(default=0)
+    first_contacted_at = models.DateTimeField(null=True, blank=True, help_text="When the enquiry first left New (response-time KPI).")
+    last_escalated_at = models.DateTimeField(null=True, blank=True)
+    follow_up_reminded_on = models.DateField(null=True, blank=True, help_text="Last day an overdue follow-up reminder was raised.")
 
     lost_reason = models.CharField(max_length=32, choices=LostReason.choices, blank=True)
     lost_notes = models.TextField(blank=True)

@@ -31,12 +31,20 @@ def find_duplicates(hospital, *, mobile="", alternate_mobile="", email=""):
     return Enquiry.objects.filter(hospital=hospital).filter(q)
 
 
+def enquiry_workers(hospital_id):
+    """Active users who can work enquiries (their role grants
+    enquiries.change_enquiry): never a lab technician or pharmacist."""
+    can_work = Q(groups__permissions__codename="change_enquiry", groups__permissions__content_type__app_label="enquiries") | Q(
+        user_permissions__codename="change_enquiry", user_permissions__content_type__app_label="enquiries")
+    return User.objects.filter(hospital_id=hospital_id, is_active=True).filter(can_work).distinct()
+
+
 def assign_enquiry(enquiry: Enquiry) -> User | None:
     """Round-robin / department-wise / skill-based assignment, approximated
     as least-currently-loaded active user in the target department (§2).
     Falls back to least-loaded active user hospital-wide if the enquiry has
     no department yet."""
-    candidates = User.objects.filter(hospital_id=enquiry.hospital_id, is_active=True)
+    candidates = enquiry_workers(enquiry.hospital_id)
     if enquiry.department_id:
         department_candidates = candidates.filter(department_id=enquiry.department_id)
         if department_candidates.exists():
@@ -101,9 +109,22 @@ def move_stage(enquiry: Enquiry, to_stage: str, *, changed_by=None) -> Enquiry:
         return enquiry
 
     enquiry.stage = to_stage
-    if to_stage in OPEN_STAGES and enquiry.sla_due_at is None:
-        enquiry.sla_due_at = timezone.now() + timedelta(hours=DEFAULT_ENQUIRY_SLA_HOURS)
-    enquiry.save(update_fields=["stage", "sla_due_at"])
+    fields = ["stage", "sla_due_at"]
+    if from_stage == Enquiry.Stage.NEW:
+        # First contact made: the first-response SLA is met and stops; from
+        # here on, follow_up_date is what keeps the enquiry moving.
+        from .sla import stop_first_contact_sla
+
+        fields += stop_first_contact_sla(enquiry)
+    elif to_stage == Enquiry.Stage.NEW:  # re-opened: a fresh first-contact deadline
+        from django.utils import timezone as tz
+
+        from .sla import first_contact_minutes
+
+        enquiry.sla_due_at = tz.now() + timedelta(minutes=first_contact_minutes(enquiry))
+        enquiry.escalation_level = 0
+        fields.append("escalation_level")
+    enquiry.save(update_fields=fields)
 
     EnquiryStageChange.objects.create(
         hospital=enquiry.hospital,
