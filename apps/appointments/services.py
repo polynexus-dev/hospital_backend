@@ -45,7 +45,7 @@ class SlotUnavailable(Exception):
 
 
 @transaction.atomic
-def book_appointment(*, patient, slot: Slot, source=Appointment.Source.CRM, reason="", booked_by=None) -> Appointment:
+def book_appointment(*, patient, slot: Slot, source=Appointment.Source.CRM, reason="", booked_by=None, external_reference="") -> Appointment:
     """Clash-free booking: locks the slot row for the duration of the
     transaction so two simultaneous requests can't double-book it (§4)."""
     locked_slot = Slot.objects.select_for_update().get(pk=slot.pk)
@@ -65,6 +65,7 @@ def book_appointment(*, patient, slot: Slot, source=Appointment.Source.CRM, reas
         source=source,
         reason=reason,
         booked_by=booked_by,
+        external_reference=external_reference,
         registration_token=secrets.token_urlsafe(24),
     )
 

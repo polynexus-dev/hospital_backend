@@ -23,6 +23,7 @@ def _batch(hospital, med, qty=100, days=365, number="B1"):
     return MedicineBatch.objects.create(hospital=hospital, medicine=med, batch_number=number, expiry_date=timezone.localdate() + timedelta(days=days), quantity_available=qty)
 
 
+# NABH MOM.2.g
 def test_dispense_blocks_expired_and_allergy_without_override(auth_client, hospital, patient):
     amox = Medicine.objects.create(hospital=hospital, name="Amoxicillin 500", generic_name="amoxicillin")
     old = _batch(hospital, amox, days=-1, number="OLD")
@@ -35,6 +36,7 @@ def test_dispense_blocks_expired_and_allergy_without_override(auth_client, hospi
     assert res.status_code == 201 and res.json()["override_reason"]
 
 
+# NABH MOM.1.a, MOM.2.b, MOM.2.c, MOM.2.f
 def test_high_risk_needs_second_person_and_non_formulary_flagged(auth_client, hospital, patient, second_user):
     insulin = Medicine.objects.create(hospital=hospital, name="Insulin regular", is_high_risk=True, is_formulary=False)
     b = _batch(hospital, insulin)
@@ -43,6 +45,7 @@ def test_high_risk_needs_second_person_and_non_formulary_flagged(auth_client, ho
     assert res["verified_by"] == second_user.pk and res["is_non_formulary"] is True and res["dispensed_at"]
 
 
+# NABH MOM.1.c, MOM.2.i, MOM.2.j
 def test_reorder_expiry_and_recall(auth_client, hospital, patient):
     para = Medicine.objects.create(hospital=hospital, name="Paracetamol", reorder_level=50)
     b = _batch(hospital, para, qty=10, days=20)
@@ -56,7 +59,7 @@ def test_reorder_expiry_and_recall(auth_client, hospital, patient):
     assert auth_client.post("/api/v1/pharmacy/dispense-records/", {"batch": b.pk, "quantity": 1}, format="json").status_code == 409
 
 
-# NABH FPM.1.b (stock movement), FPM.1.c (indents)
+# NABH FPM.1.b (stock movement), FPM.1.c (indents), MOM.1.b, MOM.2.a
 def test_indent_issue_fefo_and_emergency_stockout(auth_client, hospital):
     med = Medicine.objects.create(hospital=hospital, name="Ringer lactate")
     late = _batch(hospital, med, qty=5, days=300, number="LATE")
@@ -73,6 +76,7 @@ def test_indent_issue_fefo_and_emergency_stockout(auth_client, hospital):
     assert StockOutEvent.objects.filter(medicine=adr, is_emergency_medication=True, resolved_at__isnull=True).exists()
 
 
+# NABH MOM.2.h
 def test_reconciliation_requires_decisions(auth_client, patient):
     bad = auth_client.post("/api/v1/pharmacy/reconciliations/", {"patient": patient.pk, "stage": "admission", "items": [{"name": "Metformin"}]}, format="json")
     assert bad.status_code == 400
@@ -80,6 +84,7 @@ def test_reconciliation_requires_decisions(auth_client, patient):
     assert ok["discrepancies_found"] == 1
 
 
+# NABH MOM.3.a, MOM.3.b
 def test_emar_wrong_patient_blocked(auth_client, hospital, patient):
     from apps.appointments.models import Doctor
     from apps.facilities.models import Bed, Room, Ward

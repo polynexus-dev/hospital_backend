@@ -73,6 +73,7 @@ def test_radiology_order_api_create_stamps_ordered_by(auth_client, user, patient
     assert order.status == RadiologyOrder.Status.ORDERED
 
 
+# NABH AAC.4.a
 @pytest.mark.django_db
 def test_new_radiology_order_alerts_the_radiology_department(auth_client, patient, procedure):
     """AAC.4.c"""

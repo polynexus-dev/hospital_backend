@@ -92,6 +92,7 @@ def test_nps_response_viewset_has_no_create_endpoint(auth_client, hospital, pati
     assert response.status_code == 405
 
 
+# NABH AAC.8.b
 @pytest.mark.django_db
 def test_nps_response_by_department_rollup(auth_client, hospital, patient, feedback_request, department):
     NPSResponse.objects.create(hospital=hospital, feedback_request=feedback_request, patient=patient, department=department, score=9)

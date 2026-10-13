@@ -111,7 +111,8 @@ class AppointmentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         slot = get_object_or_404(Slot, pk=data["slot"])
         try:
             appointment = book_appointment(
-                patient=patient, slot=slot, source=data["source"], reason=data["reason"], booked_by=request.user
+                patient=patient, slot=slot, source=data["source"], reason=data["reason"], booked_by=request.user,
+                external_reference=data["external_reference"]
             )
         except SlotUnavailable as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)

@@ -12,6 +12,7 @@ def test_role_creation_backs_a_django_group(hospital):
     assert role.group.name == f"{hospital.id}:PRO"
 
 
+# NABH DOM.1.a
 @pytest.mark.django_db
 def test_assign_role_syncs_group_membership_and_permissions(hospital, department, user):
     other_role = Role.objects.create(hospital=hospital, department=department, name="Billing Desk")
@@ -130,6 +131,7 @@ def test_token_refresh_returns_a_new_access_token(api_client, hospital, departme
 
 # --- Users API: CRUD, isolation, and real gotchas ------------------------
 
+# NABH DOM.4.d
 @pytest.mark.django_db
 def test_create_user_via_api_requires_only_email(auth_client, hospital):
     response = auth_client.post("/api/v1/users/", {"email": "new-staff@test-hospital.example"}, format="json")

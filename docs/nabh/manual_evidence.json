@@ -89,5 +89,9 @@
     "status": "Organisational",
     "evidence": "ISO 82304-1 health software conformity; a vendor certification"
   },
-  "MOM.1.b": "`pharmacy.Medicine`/MedicineBatch search and stock, StockAdjustment, MedicineRecall"
+  "MOM.1.b": "`pharmacy.Medicine`/MedicineBatch search and stock, StockAdjustment, MedicineRecall",
+  "AAC.5.d": {
+    "evidence": "Health packages (`packages.HealthPackage`, included services) attached to an admission (`ipd.Admission.package`); an explicit exclusion list per package is not built yet",
+    "status": "Partial"
+  }
 }

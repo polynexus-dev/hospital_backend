@@ -266,6 +266,7 @@ def test_fhir_export_appointments_excludes_another_hospitals_appointments(auth_c
     assert body["entry"][0]["resource"]["id"] == str(mine.id)
 
 
+# NABH DOM.5.a
 @pytest.mark.django_db
 def test_fhir_export_all_includes_both_patients_and_appointments(auth_client, doctor, patient, slot):
     book_appointment(patient=patient, slot=slot)
@@ -304,6 +305,7 @@ def test_data_export_requires_authentication(api_client):
     assert response.status_code == 401
 
 
+# NABH DOM.5.a
 @pytest.mark.django_db
 def test_data_export_patients_returns_csv_with_the_seeded_patient(auth_client, patient):
     response = auth_client.get("/api/v1/export/patients/")

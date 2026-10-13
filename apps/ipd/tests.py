@@ -90,6 +90,7 @@ def test_admit_patient_creates_admission_and_occupies_the_bed(hospital, patient,
     assert BedAllocation.objects.filter(admission=admission, bed=bed, released_at__isnull=True).exists()
 
 
+# NABH AAC.5.a
 @pytest.mark.django_db
 def test_admit_patient_rejects_an_already_occupied_bed(hospital, patient, doctor, bed):
     admit_patient(hospital=hospital, patient=patient, admitting_doctor=doctor, bed=bed)
@@ -190,6 +191,7 @@ def test_doctor_progress_note_finalize_locks_it(hospital, admission, doctor):
         note.save()
 
 
+# NABH AAC.6.a
 @pytest.mark.django_db
 def test_discharge_summary_finalize_locks_it(hospital, admission):
     summary = DischargeSummary.objects.create(hospital=hospital, admission=admission, final_diagnosis="Viral fever")
@@ -202,6 +204,7 @@ def test_discharge_summary_finalize_locks_it(hospital, admission):
 
 # --- API: admission create/discharge, RBAC, isolation ---------------------
 
+# NABH AAC.5.c
 @pytest.mark.django_db
 def test_admission_api_create(doctor_client, hospital, patient, doctor, bed):
     response = doctor_client.post("/api/v1/ipd/admissions/", {

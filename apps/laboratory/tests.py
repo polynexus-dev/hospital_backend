@@ -66,6 +66,7 @@ def test_lab_order_api_create_stamps_ordered_by(auth_client, user, patient, lab_
     assert order.status == LabOrder.Status.ORDERED
 
 
+# NABH AAC.3.a
 @pytest.mark.django_db
 def test_sample_collection_advances_order_status(auth_client, user, lab_order):
     response = auth_client.post("/api/v1/laboratory/samples/", {
@@ -154,6 +155,7 @@ def test_critical_result_fires_result_critical_signal(auth_client, lab_order, la
     assert received[0].flag == LabResult.Flag.CRITICAL
 
 
+# NABH COP.12.b
 @pytest.mark.django_db
 def test_critical_lab_result_creates_urgent_automation_task(auth_client, lab_order, lab_test):
     from apps.automation.models import Task

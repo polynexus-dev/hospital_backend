@@ -23,6 +23,7 @@ def _order(auth_client, patient, test, **extra):
     return auth_client.post("/api/v1/laboratory/orders/", {"patient": patient.pk, "ordered_tests": [test.pk], **extra}, format="json")
 
 
+# NABH COP.1.k
 def test_order_number_and_duplicate_guard(auth_client, patient, glucose):
     first = _order(auth_client, patient, glucose)
     assert first.status_code == 201 and first.json()["order_number"].startswith("LAB")
@@ -31,7 +32,7 @@ def test_order_number_and_duplicate_guard(auth_client, patient, glucose):
     assert _order(auth_client, patient, glucose, confirm_duplicate=True).status_code == 201
 
 
-# NABH AAC.3.c (specimen tracking), AAC.3.h (rejected samples marked)
+# NABH AAC.3.c (specimen tracking), AAC.3.h (rejected samples marked), AAC.3.b, AAC.3.j
 def test_specimen_number_tracking_and_rejection(auth_client, patient, glucose):
     order = _order(auth_client, patient, glucose).json()
     s = auth_client.post("/api/v1/laboratory/samples/", {"lab_order": order["id"], "sample_type": "Serum"}, format="json").json()
@@ -45,7 +46,7 @@ def test_specimen_number_tracking_and_rejection(auth_client, patient, glucose):
     assert label.status_code == 200 and label.content[:4] == b"%PDF"
 
 
-# NABH AAC.3.i (reference range, abnormal results highlighted)
+# NABH AAC.3.i (reference range, abnormal results highlighted), COP.1.m
 def test_auto_flag_and_critical_alert_to_orderer(auth_client, patient, glucose, user):
     order = _order(auth_client, patient, glucose).json()
     r = auth_client.post("/api/v1/laboratory/results/", {"lab_order": order["id"], "lab_test": glucose.pk, "value": "450", "flag": "normal"}, format="json")
@@ -56,6 +57,7 @@ def test_auto_flag_and_critical_alert_to_orderer(auth_client, patient, glucose, 
     assert LabResult.objects.get(pk=r2.json()["id"]).flag == "high"
 
 
+# NABH AAC.3.f, AAC.3.g
 def test_signed_result_amend_is_logged_and_report_marks_provisional(auth_client, patient, glucose):
     order = _order(auth_client, patient, glucose).json()
     rid = auth_client.post("/api/v1/laboratory/results/", {"lab_order": order["id"], "lab_test": glucose.pk, "value": "95"}, format="json").json()["id"]
@@ -70,6 +72,7 @@ def test_signed_result_amend_is_logged_and_report_marks_provisional(auth_client,
     assert Amendment.objects.filter(object_id=str(rid), previous_value="95", corrected_value="59").exists()
 
 
+# NABH AAC.1.l
 def test_hl7_analyzer_import(api_client, hospital, patient, glucose):
     order = LabOrder.objects.create(hospital=hospital, patient=patient)
     order.ordered_tests.add(glucose)
@@ -92,6 +95,7 @@ def _dicom_bytes(study_uid):
     return b"\x00" * 128 + b"DICM" + el(0x0008, 0x0060, b"CS", b"CT") + el(0x0020, 0x000D, b"UI", study_uid.encode())
 
 
+# NABH IMS.1.g
 def test_dicom_header_reader():
     from apps.radiology.dicom import read_tags
 
@@ -99,7 +103,7 @@ def test_dicom_header_reader():
     assert tags["study_instance_uid"] == "1.2.840.113619.2.55.3" and tags["modality"] == "CT"
 
 
-# NABH COP.1.g (CPOE for radiology)
+# NABH COP.1.g (CPOE for radiology), AAC.4.b, AAC.4.l
 def test_radiology_contraindication_blocks_until_override(auth_client, hospital, patient):
     from apps.clinical.models import ClinicalAssessment
     from apps.radiology.models import RadiologyProcedure
@@ -113,7 +117,7 @@ def test_radiology_contraindication_blocks_until_override(auth_client, hospital,
     assert ClinicalAlert.objects.filter(target_department="radiology").exists()
 
 
-# NABH AAC.4.f (radiology reports appended), AAC.4.i (amended reports flagged)
+# NABH AAC.4.f (radiology reports appended), AAC.4.i (amended reports flagged), AAC.4.e, AAC.4.g
 def test_radiology_slot_booking_status_and_amendment(auth_client, hospital, patient):
     from django.utils import timezone
 

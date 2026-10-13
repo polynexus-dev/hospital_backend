@@ -39,6 +39,7 @@ def admission(hospital, patient, doctor, bed):
 # --- OT (COP.6) ---------------------------------------------------------------
 
 
+# NABH COP.6.a, COP.6.e
 def test_ot_checklist_order_and_start_requires_timeout(auth_client, hospital, patient, doctor, admission):
     from apps.ot.models import OTSchedule, SurgeryRequest, SurgicalSafetyChecklist
 
@@ -61,6 +62,7 @@ def test_ot_checklist_order_and_start_requires_timeout(auth_client, hospital, pa
     assert auth_client.post(f"/api/v1/ot/schedules/{sch.pk}/end/").json()["status"] == "completed"
 
 
+# NABH COP.6.d
 def test_ot_reschedule_and_cancel_need_reasons(auth_client, hospital, patient, doctor):
     from apps.ot.models import OTSchedule, SurgeryRequest
 
@@ -76,6 +78,7 @@ def test_ot_reschedule_and_cancel_need_reasons(auth_client, hospital, patient, d
 # --- Blood bank (COP.3) ---------------------------------------------------------
 
 
+# NABH COP.3.b, COP.3.d
 def test_blood_tat_steps_and_reaction_opens_incident(auth_client, hospital, patient):
     from apps.bloodbank.models import BloodUnit, CrossMatchRequest
     from apps.quality.models import SafetyIncident
@@ -95,6 +98,7 @@ def test_blood_tat_steps_and_reaction_opens_incident(auth_client, hospital, pati
     assert SafetyIncident.objects.filter(patient=patient, incident_type="transfusion_reaction").exists()
 
 
+# NABH COP.3.d
 def test_transfusion_rejects_incompatible_unit_and_self_verification(auth_client, hospital, patient, user):
     from apps.bloodbank.models import BloodUnit
 
@@ -104,6 +108,7 @@ def test_transfusion_rejects_incompatible_unit_and_self_verification(auth_client
     assert auth_client.post("/api/v1/bloodbank/transfusions/", {"blood_unit": o_neg.pk, "patient": patient.pk, "bedside_verified_by": user.pk}, format="json").status_code == 400
 
 
+# NABH COP.3.c, COP.3.e
 def test_public_blood_stock(api_client, hospital):
     from apps.bloodbank.models import BloodUnit
 
@@ -115,6 +120,7 @@ def test_public_blood_stock(api_client, hospital):
 # --- ICU (COP.5) ------------------------------------------------------------
 
 
+# NABH COP.5.b
 def test_apache_and_sofa_scoring():
     from apps.icu.scoring import apache_ii, sofa
 
@@ -124,6 +130,7 @@ def test_apache_and_sofa_scoring():
     assert sofa({"pao2_fio2": 180, "respiratory_support": True, "platelets_thousands": 90, "bilirubin_mg_dl": 2.5, "vasopressor": "dopamine_mid_or_norepi_low", "gcs": 12, "creatinine_mg_dl": 2.1})[0] == 3 + 2 + 2 + 3 + 2 + 2
 
 
+# NABH COP.5.a, COP.5.b
 def test_icu_admission_scores_and_discharge_needs_criteria(auth_client, hospital, admission, bed):
     from apps.icu.models import ICUAdmission
 
@@ -136,6 +143,7 @@ def test_icu_admission_scores_and_discharge_needs_criteria(auth_client, hospital
 # --- IPD (AAC.5/6) -----------------------------------------------------------
 
 
+# NABH AAC.5.g, AAC.6.c
 def test_admission_notifies_departments_and_discharge_requires_clearances(auth_client, hospital, patient, doctor, bed):
     from apps.clinical.models import ClinicalAlert
     from apps.support_services.models import HousekeepingTask
@@ -154,6 +162,7 @@ def test_admission_notifies_departments_and_discharge_requires_clearances(auth_c
     assert HousekeepingTask.objects.filter(bed=bed, task_type="terminal").exists()
 
 
+# NABH AAC.5.h, AAC.5.i
 def test_bed_board_and_prediction(auth_client, admission):
     Admission.objects.filter(pk=admission.pk).update(expected_discharge_date=timezone.localdate())
     res = auth_client.get("/api/v1/ipd/bed-board/")
@@ -177,6 +186,7 @@ def test_mark_mlc(auth_client, hospital, patient):
 # --- Support services ---------------------------------------------------------
 
 
+# NABH COP.4.c
 def test_ambulance_trip_device_feed_and_arrival_creates_ed_visit(auth_client, api_client, hospital, patient):
     from apps.emergency.models import EDVisit
 
@@ -221,6 +231,7 @@ def test_sentinel_incident_cannot_close_without_rca(auth_client, patient):
     assert auth_client.post(f"/api/v1/quality/incidents/{res.json()['id']}/close/").status_code == 400
 
 
+# NABH MOM.4.b, MOM.4.c
 def test_medication_error_opens_incident_and_dashboard(auth_client, patient):
     res = auth_client.post("/api/v1/quality/medication-errors/", {"patient": patient.pk, "medication": "Insulin", "stage": "administration", "error_type": "wrong_dose", "category": "E"}, format="json")
     assert res.status_code == 201 and res.json()["incident"] is not None
@@ -228,6 +239,7 @@ def test_medication_error_opens_incident_and_dashboard(auth_client, patient):
     assert dash["total"] == 1 and dash["harmful"] == 1 and dash["by_stage"]["administration"] == 1
 
 
+# NABH MOM.4.d
 def test_code_blue_alerts_responders_and_records_response(auth_client, hospital, user):
     from apps.clinical.models import ClinicalAlert
     from apps.quality.models import EmergencyCode
@@ -240,6 +252,7 @@ def test_code_blue_alerts_responders_and_records_response(auth_client, hospital,
     assert res["responses"][0]["role"] == "Team leader" and res["first_response_minutes"] is not None
 
 
+# NABH IMS.2.a, IMS.2.b
 def test_kpis_compute_and_export_all_formats(auth_client, hospital, admission, patient):
     from apps.quality.models import SafetyIncident
 
@@ -256,6 +269,7 @@ def test_kpis_compute_and_export_all_formats(auth_client, hospital, admission, p
         assert r.status_code == 200 and marker in r.content[:400], fmt
 
 
+# NABH IMS.2.c
 def test_manual_kpi_entry_overrides_and_quarter_publish(auth_client, hospital):
     from apps.quality.kpis import previous_quarter
     from apps.quality.models import KPISnapshot
@@ -282,6 +296,7 @@ def test_cauti_rate_uses_catheter_days(auth_client, hospital, patient, admission
     assert cauti["denominator"] == 10 and cauti["value"] == 100.0
 
 
+# NABH COP.8.b, COP.8.d
 def test_staff_exposure_followups_and_antimicrobial_self_approval_blocked(auth_client, user, patient):
     res = auth_client.post("/api/v1/infection-control/staff-exposures/", {"staff": user.pk, "exposure_type": "needlestick", "source_patient": patient.pk}, format="json").json()
     assert [f["label"] for f in res["followups"]] == ["Baseline", "6 weeks", "3 months", "6 months"]

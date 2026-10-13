@@ -26,6 +26,7 @@ def test_install_adds_only_missing_templates_and_keeps_hospital_edits(hospital):
     assert len(cardio.fields) == 2
 
 
+# NABH AAC.5.b
 @pytest.mark.django_db
 def test_install_library_endpoint_and_manual_template_creation(auth_client, hospital):
     AssessmentTemplate.objects.filter(hospital=hospital, category="dental").delete()

@@ -26,6 +26,7 @@ def admission(hospital, patient):
 # --- MRD -------------------------------------------------------------------------
 
 
+# NABH IMS.1.e
 def test_icd10_search_and_discharge_creates_mrd_file(auth_client, hospital, admission):
     from apps.ipd.models import DischargeSummary
     from apps.ipd.services import discharge_patient
@@ -57,6 +58,7 @@ def test_mrd_issue_return_audit_and_coding(auth_client, hospital, admission):
 # --- Dietary -------------------------------------------------------------------------
 
 
+# NABH COP.7.b
 def test_diet_order_supersedes_and_kitchen_trays(auth_client, hospital, admission, patient):
     from apps.clinical.models import Allergy
     from apps.dietary.models import DietType
@@ -150,6 +152,7 @@ def test_rt_fractions(auth_client, patient):
 # --- Predictive ------------------------------------------------------------------------
 
 
+# NABH HRM.1.f
 def test_predictive_endpoints(auth_client, hospital, admission):
     for url in ("predict/opd-footfall/", "predict/admissions/", "predict/beds/", "predict/staffing/", "predict/stockouts/", "predict/no-show/"):
         res = auth_client.get(f"/api/v1/{url}")

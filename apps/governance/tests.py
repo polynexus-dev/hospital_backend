@@ -146,12 +146,18 @@ def test_rollback_reverts_audited_update(auth_client, hospital, user):
     from apps.bloodbank.models import Donor
 
     donor = Donor.objects.create(hospital=hospital, name="Asha", blood_group="O+")
-    assert auth_client.patch(f"/api/v1/bloodbank/donors/{donor.pk}/", {"name": "Wrong Name"}, format="json").status_code == 200
+    assert auth_client.patch(f"/api/v1/bloodbank/donors/{donor.pk}/", {"blood_group": "B+"}, format="json").status_code == 200
     entry = AuditLog.objects.filter(model_name="Donor", action="update").latest("created_at")
     res = auth_client.post(f"/api/v1/governance/audit-logs/{entry.pk}/rollback/", format="json")
     assert res.status_code == 200, res.json()
     donor.refresh_from_db()
-    assert donor.name == "Asha"
+    assert donor.blood_group == "O+"
+
+    # The name is encrypted, so its audit entry has no value to restore.
+    auth_client.patch(f"/api/v1/bloodbank/donors/{donor.pk}/", {"name": "Wrong Name"}, format="json")
+    entry = AuditLog.objects.filter(model_name="Donor", action="update").latest("created_at")
+    res = auth_client.post(f"/api/v1/governance/audit-logs/{entry.pk}/rollback/", format="json")
+    assert res.status_code == 400 and "encrypted" in res.json()["detail"]
 
 
 # --- DOM.1.e backup / restore ----------------------------------------------

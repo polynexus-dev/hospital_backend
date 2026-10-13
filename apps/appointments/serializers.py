@@ -30,7 +30,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = [
-            "id", "patient", "doctor", "slot", "status", "source", "reason",
+            "id", "patient", "doctor", "slot", "status", "source", "external_reference", "reason",
             "consent_captured", "consent_captured_at", "registration_token", "queue_token",
             "reminder_24h_sent_at", "reminder_2h_sent_at",
             "checked_in_at", "completed_at", "cancelled_at", "no_show_at",
@@ -58,6 +58,8 @@ class BookAppointmentSerializer(serializers.Serializer):
     slot = serializers.IntegerField()
     source = serializers.ChoiceField(choices=Appointment.Source.choices, default=Appointment.Source.CRM)
     reason = serializers.CharField(required=False, allow_blank=True, default="")
+    external_reference = serializers.CharField(required=False, allow_blank=True, default="", max_length=100,
+                                               help_text="Booking id in the external system (aggregator app, ABDM, partner portal).")
 
 
 class RescheduleAppointmentSerializer(serializers.Serializer):

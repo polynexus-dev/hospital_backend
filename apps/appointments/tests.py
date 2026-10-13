@@ -59,6 +59,7 @@ def test_booking_stamps_a_unique_registration_token(hospital, patient, slot):
     assert appointment.registration_token
 
 
+# NABH AAC.2.b
 @pytest.mark.django_db
 def test_reminder_task_sends_and_stamps_appointments_in_the_24h_window(hospital, doctor, patient):
     target = timezone.localtime() + datetime.timedelta(hours=24, minutes=5)
@@ -258,6 +259,17 @@ def test_booking_via_api_uses_book_appointment_serializer(auth_client, patient, 
     appointment = Appointment.objects.get(pk=response.data["id"])
     assert appointment.slot_id == slot.id
     assert appointment.registration_token
+
+
+# NABH AAC.2.d
+@pytest.mark.django_db
+def test_booking_from_an_external_system_keeps_its_reference(auth_client, patient, slot):
+    response = auth_client.post("/api/v1/appointments/", {"patient": patient.id, "slot": slot.id, "source": "external", "external_reference": "PRACTO-88412"}, format="json")
+
+    assert response.status_code == 201
+    appointment = Appointment.objects.get(pk=response.data["id"])
+    assert (appointment.source, appointment.external_reference) == ("external", "PRACTO-88412")
+    assert auth_client.get(f"/api/v1/appointments/{appointment.pk}/").json()["external_reference"] == "PRACTO-88412"
 
 
 @pytest.mark.django_db

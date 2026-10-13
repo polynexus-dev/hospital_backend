@@ -248,6 +248,7 @@ def test_role_without_patients_permission_cannot_read_patients_at_all(hospital, 
     assert client.get("/api/v1/documents/").status_code == 403
 
 
+# NABH DOM.1.a
 @pytest.mark.django_db
 def test_restricted_role_cannot_touch_an_app_outside_its_template_at_all(restricted_client, hospital, department):
     """tpa isn't in the Telephony Operator template at all."""
@@ -591,3 +592,21 @@ def test_public_tenant_branding_default_platform(api_client):
     assert res.data["name"] == "Polynexus Healthcare OS"
 
 
+
+
+# NABH DAC.1.a
+def test_prod_settings_serve_only_over_https():
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    env = {**os.environ, "DJANGO_SETTINGS_MODULE": "config.settings.prod", "SECRET_KEY": "a-real-looking-production-secret-value-for-tests",
+           "FIELD_HASH_KEY": "a-real-looking-blind-index-key-for-tests", "FIELD_ENCRYPTION_KEY": REAL_KEY_A, "FIELD_ENCRYPTION_KEY_V2": REAL_KEY_B,
+           "FIELD_ENCRYPTION_KEYS": "", "FIELD_ENCRYPTION_KEYS_V2": "", "ALLOWED_HOSTS": "api.example.com"}
+    env.pop("SECURE_SSL_REDIRECT", None)
+    code = ("import django; django.setup(); from django.conf import settings as s; "
+            "print(s.SECURE_SSL_REDIRECT, s.SESSION_COOKIE_SECURE, s.CSRF_COOKIE_SECURE, s.SECURE_HSTS_SECONDS >= 2592000, s.SECURE_HSTS_INCLUDE_SUBDOMAINS)")
+    out = subprocess.run([sys.executable, "-c", code], cwd=Path(__file__).resolve().parent.parent.parent, env=env, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.split() == ["True"] * 5

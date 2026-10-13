@@ -87,6 +87,7 @@ def fragment(resp):
     return key, unquote(value)
 
 
+# NABH DAC.1.e
 @pytest.mark.django_db
 def test_full_sign_in_links_identity_and_issues_tokens_once(idp, provider, nurse):
     listing = APIClient().get("/api/v1/auth/sso/providers/", {"hospital": nurse.hospital.slug})

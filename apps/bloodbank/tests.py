@@ -42,6 +42,7 @@ class BloodBankComprehensiveTestCase(TestCase):
             status=BloodUnit.Status.AVAILABLE,
         )
 
+    # NABH COP.3.a
     def test_donor_and_unit_creation(self):
         client = APIClient()
         client.force_authenticate(user=self.user_a)

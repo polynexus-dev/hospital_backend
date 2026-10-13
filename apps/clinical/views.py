@@ -484,6 +484,7 @@ class PatientClinicalSummaryView(APIView):
 
         return Response({
             "patient": {"id": patient.pk, "uhid": patient.uhid, "name": patient.full_name, "dob": patient.date_of_birth, "gender": patient.gender, "blood_group": patient.blood_group},
+            "follow_up": {"due": patient.next_recall_due_at, "reason": patient.recall_reason},  # COP.1.b
             "allergies": AllergySerializer(patient.allergies.filter(status="active"), many=True).data,
             "active_alerts": ClinicalAlertSerializer(patient.clinical_alerts.filter(acknowledged_at__isnull=True)[:20], many=True).data,
             "episodes": EpisodeOfCareSerializer(patient.episodes.all(), many=True).data,

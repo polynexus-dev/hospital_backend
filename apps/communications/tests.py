@@ -55,6 +55,7 @@ def test_picking_a_slot_asks_for_name_and_mobile(hospital, doctor, slot):
     assert result["pending_slot_id"] == slot.id
 
 
+# NABH DAC.1.d
 @pytest.mark.django_db
 def test_submit_booking_creates_a_real_appointment(hospital, doctor, slot):
     result = process_interactive_chat_action(

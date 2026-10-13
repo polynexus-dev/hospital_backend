@@ -30,6 +30,7 @@ class AdmitPatientSerializer(serializers.Serializer):
     admission_type = serializers.ChoiceField(choices=Admission.AdmissionType.choices, default=Admission.AdmissionType.PLANNED)
     admission_diagnosis = serializers.CharField(required=False, allow_blank=True, default="")
     source_encounter = serializers.IntegerField(required=False, allow_null=True)
+    package = serializers.IntegerField(required=False, allow_null=True)
 
 
 class DischargeAdmissionSerializer(serializers.Serializer):

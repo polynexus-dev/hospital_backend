@@ -36,6 +36,7 @@ def test_risk_scores(tool, answers, level):
     assert scoring.score(tool, answers)[1] == level
 
 
+# NABH COP.9.a
 def test_high_risk_assessment_raises_nursing_alert(auth_client, patient):
     res = auth_client.post("/api/v1/clinical/risk-assessments/", {
         "patient": patient.pk, "tool": "morse_fall", "answers": {"history_of_falling": True, "gait": "impaired", "secondary_diagnosis": True},
@@ -46,6 +47,7 @@ def test_high_risk_assessment_raises_nursing_alert(auth_client, patient):
     assert ClinicalAlert.objects.filter(patient=patient, alert_type="risk", target_department="nursing").exists()
 
 
+# NABH COP.12.a, COP.1.k, MOM.2.g
 def test_cdss_flags_allergy_interaction_and_duplicate(auth_client, hospital, patient, user):
     Allergy.objects.create(hospital=hospital, patient=patient, allergen="penicillin", severity="severe")
     Prescription.objects.create(hospital=hospital, patient=patient, diagnosis="AF", medications=[{"name": "Warfarin 5mg"}])
@@ -59,6 +61,7 @@ def test_cdss_flags_allergy_interaction_and_duplicate(auth_client, hospital, pat
     assert ClinicalAlert.objects.filter(patient=patient, alert_type="allergy").exists()
 
 
+# NABH COP.12.a
 def test_cdss_contraindication_uses_diagnosis(auth_client, hospital, patient):
     from apps.clinical.models import ClinicalAssessment
 
@@ -67,12 +70,14 @@ def test_cdss_contraindication_uses_diagnosis(auth_client, hospital, patient):
     assert any(a["alert_type"] == "contraindication" for a in res.json()["alerts"])
 
 
+# NABH COP.12.b
 def test_critical_alert_override_requires_reason(auth_client, hospital, patient):
     alert = ClinicalAlert.objects.create(hospital=hospital, patient=patient, alert_type="allergy", severity="critical", title="x", message="y")
     assert auth_client.post(f"/api/v1/clinical/alerts/{alert.pk}/acknowledge/", {}, format="json").status_code == 400
     assert auth_client.post(f"/api/v1/clinical/alerts/{alert.pk}/acknowledge/", {"override_reason": "Desensitised"}, format="json").status_code == 200
 
 
+# NABH COP.6.c
 def test_minor_consent_requires_guardian(auth_client, minor):
     base = {"patient": minor.pk, "consent_type": "procedure", "procedure_name": "Tonsillectomy"}
     assert auth_client.post("/api/v1/clinical/consents/", base, format="json").status_code == 400
@@ -80,6 +85,7 @@ def test_minor_consent_requires_guardian(auth_client, minor):
     assert res.status_code == 201 and res.json()["patient_is_minor"] is True
 
 
+# NABH COP.12.c, COP.1.a
 def test_assessment_with_notifiable_diagnosis_opens_report(auth_client, patient):
     res = auth_client.post("/api/v1/clinical/assessments/", {"patient": patient.pk, "provisional_diagnosis": "Dengue fever with warning signs"}, format="json")
     assert res.status_code == 201, res.json()
@@ -89,6 +95,7 @@ def test_assessment_with_notifiable_diagnosis_opens_report(auth_client, patient)
     assert res.json()["status"] == "reported"
 
 
+# NABH AAC.5.b
 def test_template_required_fields_enforced(auth_client, hospital, patient):
     from apps.clinical.models import AssessmentTemplate
 
@@ -99,7 +106,7 @@ def test_template_required_fields_enforced(auth_client, hospital, patient):
     assert res.status_code == 201 and res.json()["category"] == "antenatal"
 
 
-# NABH COP.1.h (signed e-prescription)
+# NABH COP.1.h (signed e-prescription), COP.1.e
 def test_sign_prescription_and_detect_tampering(auth_client, hospital, patient, user):
     user.set_password("Sign$Passw0rd1")
     user.save()
@@ -113,6 +120,7 @@ def test_sign_prescription_and_detect_tampering(auth_client, hospital, patient, 
     assert document_hash(rx) != sig.document_hash
 
 
+# NABH COP.2.b
 def test_handover_acknowledged_by_receiver(auth_client, hospital, patient, user):
     from apps.appointments.models import Doctor
     from apps.facilities.models import Bed, Room, Ward
@@ -129,7 +137,7 @@ def test_handover_acknowledged_by_receiver(auth_client, hospital, patient, user)
     assert res.json()["acknowledged_at"] is not None
 
 
-# NABH COP.1.n (past medical records for practitioners)
+# NABH COP.1.n (past medical records for practitioners), AAC.1.i, COP.1.d
 def test_clinical_summary_links_records_to_uhid(auth_client, hospital, patient):
     Allergy.objects.create(hospital=hospital, patient=patient, allergen="sulfa")
     res = auth_client.get(f"/api/v1/clinical/patients/{patient.pk}/summary/")
@@ -137,6 +145,7 @@ def test_clinical_summary_links_records_to_uhid(auth_client, hospital, patient):
     assert res.json()["allergies"][0]["allergen"] == "sulfa"
 
 
+# NABH COP.11.a
 def test_barthel_total_and_reassessment_delta(auth_client, patient):
     first = auth_client.post("/api/v1/clinical/functional-assessments/", {"patient": patient.pk, "discipline": "physiotherapy", "scale": "barthel", "scores": {"feeding": 5, "mobility": 5}}, format="json").json()
     assert first["total"] == 10

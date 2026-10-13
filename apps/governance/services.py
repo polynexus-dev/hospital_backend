@@ -339,8 +339,11 @@ def revert_audited_update(audit_log, *, user=None, request=None):
     if getattr(instance, "hospital_id", audit_log.hospital_id) != audit_log.hospital_id:
         raise ValueError("Record belongs to a different hospital.")
 
-    reverted, skipped = {}, []
+    reverted, skipped, encrypted = {}, [], []
     for field_name, diff in audit_log.changes.items():
+        if not isinstance(diff, dict) or "new" not in diff:
+            encrypted.append(field_name)  # encrypted fields are logged without values
+            continue
         field = model._meta.get_field(field_name)
         current = getattr(instance, field.attname)
         if str(current) != diff.get("new"):
@@ -350,6 +353,8 @@ def revert_audited_update(audit_log, *, user=None, request=None):
         value = None if old in ("None", None) and field.null else field.to_python(old)
         setattr(instance, field.attname, value)
         reverted[field_name] = {"old": str(current), "new": str(value)}
+    if not reverted and encrypted and not skipped:
+        raise ValueError(f"Can't roll back {', '.join(encrypted)}: encrypted fields are logged without their values. Correct the record by editing it.")
     if not reverted:
         raise ValueError("Nothing to roll back — every field has changed again since this entry.")
     instance.save(update_fields=[model._meta.get_field(f).name for f in reverted])

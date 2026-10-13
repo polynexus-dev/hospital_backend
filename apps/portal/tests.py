@@ -48,7 +48,7 @@ def test_unknown_number_gets_same_response_but_no_otp(hospital):
     assert not MobileOTP.objects.exists()
 
 
-# NABH AAC.3.l (patients view/download their reports)
+# NABH AAC.3.l (patients view/download their reports), AAC.2.e, AAC.2.f, DAC.1.d
 def test_portal_booking_and_reports_visibility(hospital, family, monkeypatch):
     from apps.laboratory.models import LabOrder
 
@@ -73,6 +73,7 @@ def test_portal_cannot_see_other_patients(hospital, family, monkeypatch):
     assert c.get(f"/api/v1/portal/prescriptions/?patient={stranger.pk}").status_code == 404
 
 
+# NABH AAC.8.a, AAC.8.d
 def test_measures_and_complaint(hospital, family, monkeypatch):
     c, _ = _portal_client(hospital, "9811100001", monkeypatch)
     assert c.post("/api/v1/portal/measures/", {"instrument": "prem_opd", "answers": {"q1": 5}}, format="json").status_code == 400
@@ -81,6 +82,7 @@ def test_measures_and_complaint(hospital, family, monkeypatch):
     assert c.post("/api/v1/portal/complaints/", {"description": "Long wait at billing"}, format="json").status_code == 201
 
 
+# NABH COP.10.a, DAC.1.d
 def test_teleconsult_flow(auth_client, hospital, family):
     a, _ = family
     doc = Doctor.objects.create(hospital=hospital, name="Dr Video")

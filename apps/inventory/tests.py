@@ -38,6 +38,7 @@ class InventoryComprehensiveTestCase(TestCase):
         self.assertIn(self.item_a.id, item_ids)
         self.assertNotIn(self.item_b.id, item_ids)
 
+    # NABH FPM.1.d
     def test_purchase_order_add_item(self):
         client = APIClient()
         client.force_authenticate(user=self.user_a)

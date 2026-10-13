@@ -43,6 +43,7 @@ class OTComprehensiveTestCase(TestCase):
             scheduled_end=end,
         )
 
+    # NABH COP.6.b
     def test_preop_checklist_creation(self):
         client = APIClient()
         client.force_authenticate(user=self.surgeon_user_a)
@@ -55,6 +56,7 @@ class OTComprehensiveTestCase(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertTrue(PreOpChecklist.objects.filter(surgery_request=self.surg_req_a).exists())
 
+    # NABH COP.6.g
     def test_operative_note_finalization_lock(self):
         client = APIClient()
         client.force_authenticate(user=self.surgeon_user_a)
@@ -79,6 +81,7 @@ class OTComprehensiveTestCase(TestCase):
         with self.assertRaises(Exception):
             note.save()
 
+    # NABH MOM.3.c
     def test_consumable_and_implant_logging(self):
         client = APIClient()
         client.force_authenticate(user=self.surgeon_user_a)

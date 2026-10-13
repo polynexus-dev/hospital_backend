@@ -15,6 +15,7 @@ def nurse(hospital, user):
     return Employee.objects.create(hospital=hospital, user=u, employee_code="N001", designation="Staff Nurse")
 
 
+# NABH HRM.1.i
 def test_payroll_statutory_deductions_and_maker_checker(auth_client, hospital, user, nurse):
     auth_client.post("/api/v1/hr/salary-structures/", {"employee": nurse.pk, "basic": "15000", "hra": "3000", "special_allowance": "2000"}, format="json")
     month = date(2026, 8, 1)
@@ -36,6 +37,7 @@ def test_payroll_statutory_deductions_and_maker_checker(auth_client, hospital, u
     assert auth_client.post(f"/api/v1/hr/payroll-runs/{run['id']}/share_payslips/").json()["shared"] == 1
 
 
+# NABH HRM.1.c, HRM.1.d, HRM.1.e
 def test_roster_publish_checks_duty_rules_and_notifies(auth_client, hospital, nurse):
     from apps.clinical.models import ClinicalAlert
 
@@ -51,6 +53,7 @@ def test_roster_publish_checks_duty_rules_and_notifies(auth_client, hospital, nu
     assert ClinicalAlert.objects.filter(target_user=nurse.user, title__startswith="Your roster").exists()
 
 
+# NABH HRM.2.a, HRM.2.b, HRM.3.a, HRM.3.c
 def test_recruitment_exit_training(auth_client, hospital, nurse):
     op = auth_client.post("/api/v1/hr/job-openings/", {"title": "ICU nurse", "positions": 2}, format="json").json()
     assert auth_client.post("/api/v1/hr/candidates/", {"opening": op["id"], "name": "Ria"}, format="json").status_code == 400
@@ -73,6 +76,7 @@ def test_recruitment_exit_training(auth_client, hospital, nurse):
     assert not any(r["employee_code"] == "N001" for r in auth_client.get("/api/v1/hr/trainings/pending_induction/").json())
 
 
+# NABH HRM.1.h
 def test_appraisal_overall(auth_client, nurse):
     a = auth_client.post("/api/v1/hr/appraisals/", {"employee": nurse.pk, "period": "FY2025-26", "ratings": {"clinical": 4, "communication": 5, "teamwork": 3}}, format="json").json()
     assert Decimal(a["overall_rating"]) == Decimal("4.00")

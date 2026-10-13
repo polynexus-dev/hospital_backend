@@ -16,7 +16,7 @@ def _resources(bundle, rtype):
     return [e["resource"] for e in bundle["entry"] if e["resource"]["resourceType"] == rtype]
 
 
-# NABH COP.1.h (e-prescription)
+# NABH COP.1.h (e-prescription), IMS.1.a
 def test_prescription_bundle(auth_client, hospital, patient):
     rx = Prescription.objects.create(hospital=hospital, patient=patient, diagnosis="Hypertension", medications=[{"name": "Amlodipine 5mg", "frequency": "OD"}])
     b = auth_client.get(f"/api/v1/abdm-fhir/prescription/{rx.pk}/").json()
@@ -26,7 +26,7 @@ def test_prescription_bundle(auth_client, hospital, patient):
     assert _resources(b, "Patient")[0]["identifier"][0]["value"] == patient.uhid
 
 
-# NABH AAC.3.n (lab reports shared via ABHA bundles)
+# NABH AAC.3.n (lab reports shared via ABHA bundles), IMS.1.f, IMS.1.a
 def test_lab_bundle_with_loinc(auth_client, hospital, patient):
     from apps.laboratory.models import LabOrder, LabResult, LabTest
 

@@ -13,7 +13,7 @@ def patient(hospital):
     return Patient.objects.create(hospital=hospital, first_name="Vikas", mobile="9000000601")
 
 
-# NABH FPM.3.d (patient bills for goods and services)
+# NABH FPM.3.d (patient bills for goods and services), FPM.3.a
 def test_bill_quantity_bug_fixed_and_tariff_gst(auth_client, hospital, patient):
     bill = auth_client.post("/api/v1/billing/bills/", {"patient": patient.pk, "status": "unpaid"}, format="json").json()
     r = auth_client.post(f"/api/v1/billing/bills/{bill['id']}/add-item/", {"description": "Syringe", "quantity": 2, "unit_price": "500"}, format="json").json()
@@ -26,6 +26,7 @@ def test_bill_quantity_bug_fixed_and_tariff_gst(auth_client, hospital, patient):
     assert Decimal(b["net_amount"]) == Decimal("29000.00") and b["bill_number"].startswith("INV")
 
 
+# NABH FPM.2.c, FPM.3.f
 def test_journals_balance_tally_and_gst(auth_client, hospital, patient):
     from apps.finance.models import JournalEntry
 
@@ -49,7 +50,7 @@ def test_journals_balance_tally_and_gst(auth_client, hospital, patient):
     assert statement["outstanding"] == 0.0
 
 
-# NABH FPM.2.d (supplier debit/credit notes)
+# NABH FPM.2.d (supplier debit/credit notes), FPM.1.e, FPM.2.a, FPM.2.c, FPM.2.f
 def test_vendor_invoice_three_way_match_payment_and_aging(auth_client, hospital):
     from apps.inventory.models import Item, ItemCategory, PurchaseOrder, POItem
 
@@ -73,6 +74,7 @@ def test_vendor_invoice_three_way_match_payment_and_aging(auth_client, hospital)
     assert note["note_number"].startswith("DN")
 
 
+# NABH AAC.6.e, FPM.4.d, FPM.4.f, FPM.4.g, FPM.4.h
 def test_interim_bill_and_claim_settlement(auth_client, hospital, patient, monkeypatch):
     from apps.appointments.models import Doctor
     from apps.facilities.models import Bed, Room, Ward

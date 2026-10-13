@@ -218,6 +218,7 @@ def test_tpa_company_api_search_by_name(auth_client, hospital):
 # --- PreAuthRequestViewSet: API-level CRUD ---------------------------------
 
 
+# NABH FPM.4.c
 @pytest.mark.django_db
 def test_pre_auth_request_api_create_with_required_fields_only(auth_client, hospital, tpa_company, patient):
     response = auth_client.post(
@@ -269,6 +270,7 @@ def test_pre_auth_request_api_delete(auth_client, tpa_company, patient):
     assert not PreAuthRequest.objects.filter(pk=request.id).exists()
 
 
+# NABH FPM.4.e
 @pytest.mark.django_db
 def test_pre_auth_request_api_filters_by_status(auth_client, tpa_company, patient):
     submitted = PreAuthRequest.objects.create(hospital=tpa_company.hospital, patient=patient, tpa_company=tpa_company, policy_number="P1", claim_amount=Decimal("1"), status=PreAuthRequest.Status.SUBMITTED)

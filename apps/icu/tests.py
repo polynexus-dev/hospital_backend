@@ -50,6 +50,7 @@ class ICUComprehensiveTestCase(TestCase):
             ventilator_required=True,
         )
 
+    # NABH COP.5.d
     def test_ventilator_log_logging(self):
         client = APIClient()
         client.force_authenticate(user=self.doctor_user_a)

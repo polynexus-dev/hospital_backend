@@ -67,6 +67,11 @@ class AdmissionViewSet(AdmissionWorkflowMixin, AuditedModelViewSetMixin, TenantS
             )
         except BedUnavailable as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        if data.get("package"):  # AAC.5.d
+            from apps.packages.models import HealthPackage
+
+            admission.package = get_object_or_404(HealthPackage, pk=data["package"], hospital=hospital)
+            admission.save(update_fields=["package"])
         admission_created(admission)
         return Response(AdmissionSerializer(admission).data, status=status.HTTP_201_CREATED)
 

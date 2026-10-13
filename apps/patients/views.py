@@ -53,11 +53,10 @@ class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDel
         "offline_sync": "patients.add_patient",
     }
     filterset_fields = ["is_active", "gender", "preferred_language"]
-    # mobile/alternate_mobile are encrypted at rest (Part A #2) and
-    # deliberately excluded here — SearchFilter's icontains lookup against
-    # an encrypted column silently matches nothing rather than erroring.
-    # Exact phone lookup still works, via the `lookup` action below.
-    search_fields = ["first_name", "last_name", "email"]
+    # Names, email and phones are encrypted at rest; EncryptedAwareSearchFilter
+    # searches them through their hash columns (name prefixes, exact email,
+    # exact phone number). UHID is plain text.
+    search_fields = ["first_name", "last_name", "email", "mobile", "alternate_mobile", "uhid"]
 
     @action(detail=False, methods=["get"])
     def lookup(self, request):
