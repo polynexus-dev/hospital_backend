@@ -25,6 +25,7 @@ router.register("functional-assessments", views.FunctionalAssessmentViewSet, bas
 router.register("referrals", views_extra.SpecialtyReferralViewSet, basename="specialtyreferral")
 router.register("record-shares", views_extra.RecordShareViewSet, basename="recordshare")
 router.register("devices", views_extra.MedicalDeviceViewSet, basename="medicaldevice")
+router.register("immunizations", views_extra.ImmunizationViewSet, basename="immunization")
 router.register("device-vitals", views_extra.DeviceVitalSignViewSet, basename="devicevitalsign")
 
 urlpatterns = router.urls + [

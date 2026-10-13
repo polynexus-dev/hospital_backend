@@ -8,6 +8,7 @@ Each builder returns a `Bundle` of type `document` whose first entry is a
 followed by every resource the Composition references — the shape the
 ABDM sandbox validator expects for the matching HI type.
 """
+import base64
 import uuid
 from datetime import datetime
 
@@ -23,6 +24,12 @@ DOC_TYPES = {
     "Prescription": ("440545006", "Prescription record"),
     "DiagnosticReport": ("721981007", "Diagnostic studies report"),
     "DischargeSummary": ("373942005", "Discharge summary"),
+    # Extended set (IMS.1.b)
+    "Immunization": ("41000179103", "Immunization record"),
+    "Wellness": (None, "Wellness Record"),
+    "HealthDocument": ("419891008", "Record artifact"),
+    # Advanced set (IMS.1.c)
+    "Invoice": (None, "Invoice"),
 }
 
 
@@ -71,7 +78,7 @@ def _bundle(hi_type, patient_res, author_res, org_res, sections, extra, title, d
     code, display = DOC_TYPES[hi_type]
     comp = {
         "resourceType": "Composition", "id": _id(), "meta": {"profile": [f"{NRCES}/{hi_type}Record"]},
-        "status": "final", "type": {"coding": [{"system": SNOMED, "code": code, "display": display}], "text": display},
+        "status": "final", "type": {**({"coding": [{"system": SNOMED, "code": code, "display": display}]} if code else {}), "text": display},
         "subject": {"reference": _ref(patient_res)}, "date": _iso(date_), "author": [{"reference": _ref(author_res)}],
         "title": title, "custodian": {"reference": _ref(org_res)}, "section": sections,
     }
@@ -202,6 +209,117 @@ def op_consultation_bundle(encounter):
                   "patient": {"reference": _ref(p)}, "criticality": "high" if a.severity == "severe" else "low"} for a in encounter.patient.allergies.filter(status="active")]
     sections = [_section("Medical history / diagnosis", "371529009", conditions), _section("Physical examination", "425044008", vitals), _section("Allergies", "722446000", allergies)]
     return _bundle("OPConsultation", p, doc, org, sections, [*conditions, *vitals, *allergies], "OP Consultation Record", encounter.created_at)
+
+
+def immunization_bundle(imm):
+    """ImmunizationRecord: one vaccine dose."""
+    p, org = _patient(imm.patient), _organization(imm.hospital)
+    who = _practitioner(imm.administered_by.get_full_name() if imm.administered_by else "")
+    vaccine = {"text": imm.vaccine}
+    if imm.vaccine_code:
+        vaccine["coding"] = [{"system": SNOMED, "code": imm.vaccine_code, "display": imm.vaccine}]
+    res = {
+        "resourceType": "Immunization", "id": _id(), "meta": {"profile": [f"{NRCES}/Immunization"]}, "status": "completed",
+        "vaccineCode": vaccine, "patient": {"reference": _ref(p)}, "occurrenceDateTime": _iso(imm.administered_on), "primarySource": True,
+        "performer": [{"actor": {"reference": _ref(who)}}], "protocolApplied": [{"doseNumberPositiveInt": imm.dose_number}],
+        "route": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": imm.route}]},
+    }
+    if imm.lot_number:
+        res["lotNumber"] = imm.lot_number
+    if imm.expiry_date:
+        res["expirationDate"] = _iso(imm.expiry_date)
+    if imm.manufacturer:
+        res["manufacturer"] = {"display": imm.manufacturer}
+    if imm.site:
+        res["site"] = {"text": imm.site}
+    if imm.adverse_event:
+        res["reaction"] = [{"detail": {"display": imm.adverse_event[:200]}, "reported": True}]
+    extra = [res]
+    if imm.next_due_on:
+        extra.append({
+            "resourceType": "ImmunizationRecommendation", "id": _id(), "meta": {"profile": [f"{NRCES}/ImmunizationRecommendation"]},
+            "patient": {"reference": _ref(p)}, "date": _iso(imm.administered_on),
+            "recommendation": [{"vaccineCode": [vaccine], "forecastStatus": {"text": "due"}, "doseNumberPositiveInt": imm.dose_number + 1,
+                                "dateCriterion": [{"code": {"text": "Due date"}, "value": _iso(imm.next_due_on)}]}],
+        })
+    return _bundle("Immunization", p, who, org, [_section("Immunization", "41000179103", extra)], extra, "Immunization Record", imm.administered_on)
+
+
+def wellness_bundle(reading):
+    """WellnessRecord: vital signs and body measurements from one reading."""
+    enc = reading.encounter
+    p, org = _patient(enc.patient), _organization(enc.hospital)
+    who = _practitioner(reading.recorded_by.get_full_name() if reading.recorded_by else enc.doctor.name)
+    rows = (("Pulse", "8867-4", reading.pulse, "/min"), ("Systolic BP", "8480-6", reading.bp_systolic, "mm[Hg]"),
+            ("Diastolic BP", "8462-4", reading.bp_diastolic, "mm[Hg]"), ("Body temperature", "8310-5", reading.temperature_c, "Cel"),
+            ("Oxygen saturation", "59408-5", reading.spo2, "%"))
+    measures = (("Body height", "8302-2", reading.height_cm, "cm"), ("Body weight", "29463-7", reading.weight_kg, "kg"))
+    vitals = [_observation(p, n, v, u, "", None, code, reading.recorded_at) for n, code, v, u in rows if v is not None]
+    body = [_observation(p, n, v, u, "", None, code, reading.recorded_at) for n, code, v, u in measures if v is not None]
+    if reading.height_cm and reading.weight_kg:
+        bmi = round(float(reading.weight_kg) / (float(reading.height_cm) / 100) ** 2, 1)
+        body.append(_observation(p, "Body mass index", bmi, "kg/m2", "", None, "39156-5", reading.recorded_at))
+    sections = [s for s in (_text_section("Vital Signs", vitals), _text_section("Body Measurement", body)) if s["entry"]]
+    return _bundle("Wellness", p, who, org, sections, [*vitals, *body], "Wellness Record", reading.recorded_at)
+
+
+def health_document_bundle(document, max_inline_bytes=5 * 1024 * 1024):
+    """HealthDocumentRecord: an uploaded/scanned document as an attachment
+    (inline up to 5 MB)."""
+    import mimetypes
+
+    p, org = _patient(document.patient), _organization(document.hospital)
+    who = _practitioner(document.uploaded_by.get_full_name() if document.uploaded_by else "")
+    attachment = {"contentType": mimetypes.guess_type(document.file.name)[0] or "application/octet-stream",
+                  "title": document.title or document.get_category_display(), "creation": _iso(document.created_at)}
+    try:
+        size = document.file.size
+        if size <= max_inline_bytes:
+            with document.file.open("rb") as fh:
+                attachment["data"] = base64.b64encode(fh.read()).decode("ascii")
+        attachment["size"] = size
+    except (OSError, ValueError):
+        pass
+    ref = {"resourceType": "DocumentReference", "id": _id(), "meta": {"profile": [f"{NRCES}/DocumentReference"]}, "status": "current",
+           "docStatus": "final", "type": {"text": document.get_category_display()}, "subject": {"reference": _ref(p)},
+           "date": _iso(document.created_at), "content": [{"attachment": attachment}]}
+    return _bundle("HealthDocument", p, who, org, [_section("Record artifact", "419891008", [ref])], [ref], document.title or "Health Document", document.created_at)
+
+
+def _inr(amount):
+    return {"value": float(amount), "currency": "INR"}
+
+
+def invoice_bundle(bill):
+    """InvoiceRecord: the bill, its line items (ChargeItem) and what's paid."""
+    p, org = _patient(bill.patient), _organization(bill.hospital)
+    who = _practitioner(bill.hospital.name)
+    charges, lines = [], []
+    for i, item in enumerate(bill.items.all(), start=1):
+        charge = {"resourceType": "ChargeItem", "id": _id(), "meta": {"profile": [f"{NRCES}/ChargeItem"]}, "status": "billed",
+                  "code": {"text": item.description}, "subject": {"reference": _ref(p)}, "quantity": {"value": item.quantity}}
+        if item.service_date:
+            charge["occurrenceDateTime"] = _iso(item.service_date)
+        charges.append(charge)
+        components = [{"type": "base", "amount": _inr(item.unit_price * item.quantity)}]
+        if item.tax_amount:
+            components.append({"type": "tax", "code": {"text": f"GST {item.gst_rate}%"}, "amount": _inr(item.tax_amount)})
+        lines.append({"sequence": i, "chargeItemReference": {"reference": _ref(charge)}, "priceComponent": components})
+    paid = sum(float(x.amount) for x in bill.payments.all())
+    invoice = {
+        "resourceType": "Invoice", "id": _id(), "meta": {"profile": [f"{NRCES}/Invoice"]},
+        "identifier": [{"value": bill.bill_number or str(bill.pk)}], "status": "balanced" if paid >= float(bill.net_amount) else "issued",
+        "type": {"text": "Interim bill" if bill.is_interim else "Final bill"}, "subject": {"reference": _ref(p)}, "date": _iso(bill.created_at),
+        "issuer": {"reference": _ref(org)}, "lineItem": lines, "totalGross": _inr(bill.total_amount), "totalNet": _inr(bill.net_amount),
+        "paymentTerms": f"Paid Rs. {paid:.2f} of Rs. {float(bill.net_amount):.2f}",
+    }
+    if bill.discount_amount:
+        invoice["totalPriceComponent"] = [{"type": "discount", "amount": _inr(bill.discount_amount)}]
+    return _bundle("Invoice", p, who, org, [_text_section("Invoice", [invoice, *charges])], [invoice, *charges], "Invoice", bill.created_at)
+
+
+def _text_section(title, resources):
+    return {"title": title, "entry": [{"reference": _ref(r)} for r in resources]}
 
 
 def validate_document_bundle(bundle):

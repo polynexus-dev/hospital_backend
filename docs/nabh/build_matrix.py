@@ -17,12 +17,12 @@ HERE = Path(__file__).resolve().parent
 BACKEND = HERE.parent.parent            # Backend/
 REPOS = BACKEND.parent                  # the folder holding Backend/ and Frontend/
 ROOT = REPOS
-SOURCES = [BACKEND / "apps", REPOS / "Frontend" / "src"]
+SOURCES = [BACKEND / "apps", REPOS / "Frontend" / "src", REPOS / "Frontend" / "e2e"]
 
 
 def is_test(path: Path) -> bool:
     name = path.name
-    return name.startswith("test_") or name == "tests.py" or ".test." in name
+    return name.startswith("test_") or name == "tests.py" or ".test." in name or ".spec." in name
 CHAPTERS = ["AAC", "COP", "MOM", "DAC", "DOM", "FPM", "HRM", "IMS", "MDC"]
 TAG = re.compile(r"\b(" + "|".join(CHAPTERS) + r")\.(\d+)((?:\.[a-z](?:/[a-z])*)?)")
 

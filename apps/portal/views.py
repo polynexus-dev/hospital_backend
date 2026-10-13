@@ -253,6 +253,25 @@ class BillsView(PortalView):
         return Response({"outstanding": round(due, 2), "bills": rows})
 
 
+class PayBillView(PortalView):
+    """FPM.2.b / FPM.3.e — the patient pays a bill online from the portal."""
+
+    def post(self, request, bill_id):
+        from apps.billing import online_payments as gw
+        from apps.billing.models import Bill
+
+        bill = Bill.objects.filter(pk=bill_id, patient__in=request.user.patients()).select_related("patient", "hospital").first()
+        if bill is None:
+            raise NotFound()
+        try:
+            link = gw.create_payment_link(bill, channel="portal", notify=False)
+        except gw.GatewayNotConfigured:
+            return Response({"detail": "Online payment isn't available at this hospital yet. Please pay at the billing counter."}, status=503)
+        except gw.GatewayError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"pay_url": link.short_url, "amount": float(link.amount)}, status=201)
+
+
 class TeleconsultationsView(PortalView):
     def get(self, request):
         from apps.telemedicine.models import TeleConsultation

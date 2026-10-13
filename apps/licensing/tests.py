@@ -113,7 +113,8 @@ def test_clock_rollback_is_detected(onprem, keypair, hospital):
 @pytest.mark.django_db
 def test_saas_mode_ignores_licensing(auth_client, settings):
     settings.DEPLOYMENT_MODE = "saas"
-    assert auth_client.get("/api/v1/licensing/status/").data == {"mode": "saas"}
+    data = auth_client.get("/api/v1/licensing/status/").data
+    assert data["mode"] == "saas" and data["app_version"] and set(data["support"]) == {"email", "phone"}
     assert auth_client.post("/api/v1/departments/", {"name": "Cardiology"}, format="json").status_code == 201
 
 

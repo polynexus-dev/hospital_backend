@@ -5,7 +5,7 @@ from .models import CampRegistration, Campaign, CorporateClient, HealthPackage
 class HealthPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = HealthPackage
-        fields = ["id", "name", "code", "category", "price", "description", "included_tests", "is_active"]
+        fields = ["id", "name", "code", "category", "price", "description", "included_tests", "excluded_services", "length_of_stay_days", "is_active"]
         read_only_fields = ["id"]
 
 

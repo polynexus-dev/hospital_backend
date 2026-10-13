@@ -25,7 +25,7 @@ class LicenseStatusView(APIView):
 
     def get(self, request):
         if not service.is_on_premise():
-            return Response({"mode": "saas"})
+            return Response({"mode": "saas", "app_version": settings.APP_VERSION, "support": _support()})
         is_admin = _is_installation_admin(request.user)
         data = service.current_status().as_dict(detail=is_admin)
         if is_admin:
@@ -38,6 +38,7 @@ class LicenseStatusView(APIView):
                 "beds": Bed._base_manager.count(),
             }
         data["support"] = _support()
+        data["app_version"] = settings.APP_VERSION
         return Response(data)
 
 

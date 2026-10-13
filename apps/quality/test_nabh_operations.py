@@ -57,15 +57,17 @@ def client_with_role(hospital, template, email):
     return c
 
 
-# NABH AAC.5.d (package with its included services; exclusions are not modelled, so the matrix marks this Partial)
+# NABH AAC.5.d
 def test_admission_under_a_package_with_included_services(auth_client, patient, doctor, bed):
-    pkg = auth_client.post("/api/v1/packages/catalog/", {"name": "Lap chole package", "code": "LAPC", "category": "full_body", "price": "65000",
-                                                                "included_tests": ["CBC", "LFT", "Ultrasound abdomen"]}, format="json")
+    pkg = auth_client.post("/api/v1/packages/catalog/", {"name": "Lap chole package", "code": "LAPC", "category": "surgical", "price": "65000",
+                                                                "included_tests": ["CBC", "LFT", "Ultrasound abdomen"],
+                                                                "excluded_services": ["Implants", "Blood products"], "length_of_stay_days": 3}, format="json")
     assert pkg.status_code == 201, pkg.json()
     adm = auth_client.post("/api/v1/ipd/admissions/", {"patient": patient.pk, "admitting_doctor": doctor.pk, "bed": bed.pk, "admission_type": "planned",
                                                        "admission_diagnosis": "Cholelithiasis", "package": pkg.json()["id"]}, format="json")
     assert adm.status_code == 201, adm.json()
-    assert adm.json()["package"] == pkg.json()["id"]
+    assert adm.json()["package"] == pkg.json()["id"] and adm.json()["package_name"] == "Lap chole package"
+    assert adm.json()["package_included"] == ["CBC", "LFT", "Ultrasound abdomen"] and adm.json()["package_excluded"] == ["Implants", "Blood products"]
 
 
 # NABH AAC.5.f

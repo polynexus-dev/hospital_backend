@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from apps.core.fields import EncryptedCharField
 from apps.core.models import TenantScopedModel
 from apps.ipd.models import Admission
 from apps.patients.models import Patient
@@ -223,3 +224,47 @@ class DiscountApproval(TenantScopedModel):
     class Meta:
         ordering = ["-created_at"]
         permissions = [("authorize_discount", "Can authorise discounts above the front-desk limit")]
+
+
+class PaymentGatewayAccount(models.Model):
+    """NABH FPM.2.b / FPM.3.e — the hospital's own Razorpay account, so
+    online payments settle straight into the hospital's bank account. On
+    on-premise installs it can also come from RAZORPAY_* in the .env."""
+
+    hospital = models.OneToOneField("core.Hospital", on_delete=models.CASCADE, related_name="payment_gateway")
+    provider = models.CharField(max_length=20, default="razorpay")
+    key_id = models.CharField(max_length=60)
+    key_secret = EncryptedCharField(max_length=200)
+    webhook_secret = EncryptedCharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.provider} for {self.hospital_id}"
+
+
+class OnlinePaymentLink(TenantScopedModel):
+    """A payment link for a bill: sent to the patient by SMS/WhatsApp or
+    opened from the patient portal; paid by UPI, card, netbanking or wallet.
+    The gateway's signed webhook records the Payment."""
+
+    class Status(models.TextChoices):
+        CREATED = "created", "Awaiting payment"
+        PAID = "paid", "Paid"
+        CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Expired"
+
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="payment_links")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    provider = models.CharField(max_length=20, default="razorpay")
+    provider_link_id = models.CharField(max_length=60, db_index=True)
+    short_url = models.URLField(max_length=300)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.CREATED)
+    channel = models.CharField(max_length=10, default="staff", help_text="staff | portal")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    payment = models.OneToOneField(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name="online_link")
+    paid_at = models.DateTimeField(null=True, blank=True)
+    patient_notified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]

@@ -16,6 +16,7 @@ DEFAULT_TEMPLATES = {
     "discharge_ready": "Dear {patient_name}, your discharge summary is ready on the patient portal.",
     "portal_otp": "{otp} is your OTP to sign in to the patient portal. Valid for 10 minutes. Do not share it.",
     "registration_otp": "{otp} is your OTP to verify your mobile number with {hospital_name}.",
+    "payment_link": "Dear {patient_name}, please pay Rs. {amount} to {hospital_name} securely by UPI, card or netbanking: {link}",
     "homecare_booking": "Dear {patient_name}, your {service} home visit is booked for {time}.",
 }
 

@@ -14,7 +14,7 @@ from apps.core.crud import ClinicalCRUDViewSet, TenantCRUDViewSet, model_seriali
 from apps.core.permissions import RequiresClinicalDetailPermission
 
 from . import scoring
-from .models import ClinicalAlert, DeviceVitalSign, MedicalDevice, RecordShare, SpecialtyReferral
+from .models import ClinicalAlert, DeviceVitalSign, Immunization, MedicalDevice, RecordShare, SpecialtyReferral
 
 _patient = {
     "patient_name": serializers.CharField(source="patient.full_name", read_only=True),
@@ -108,6 +108,13 @@ class SharedWithMeView(APIView):
         log_action(actor=request.user, action="read", instance=share.patient, changes={"via_share": share.pk}, request=request, force=True)
         view = PatientClinicalSummaryView()
         return view.build(share.patient)
+
+
+class ImmunizationViewSet(ClinicalCRUDViewSet):
+    serializer_class = model_serializer(Immunization, read_only=("administered_by",), extra=_patient)
+    queryset = Immunization.objects.select_related("patient")
+    filterset_fields = ["patient", "vaccine"]
+    actor_field = "administered_by"
 
 
 class MedicalDeviceViewSet(TenantCRUDViewSet):

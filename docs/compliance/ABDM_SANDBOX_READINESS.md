@@ -24,7 +24,7 @@ ABDM certification is usually done in three milestones:
 
 Today every ABDM call goes to a **stub** gateway unless `ABDM_GATEWAY=real` and sandbox credentials are set, so nothing has yet been run against a live ABDM response.
 
-NABH elements this affects: AAC.1.e (ABHA capture), AAC.3.n / AAC.4.m / AAC.6.f / COP.1.o (records linked to ABHA: bundles built and tested), COP.1.p (access to past records through ABHA: partial), IMS.1.b–d (extended FHIR profiles and NHCX: partial or gap).
+NABH elements this affects: AAC.1.e (ABHA capture), AAC.3.n / AAC.4.m / AAC.6.f / COP.1.o (records linked to ABHA: bundles built and tested), COP.1.p (access to past records through ABHA: partial), IMS.1.b–c (extended and advanced FHIR profiles: built and tested, 2026-10-13), IMS.1.d (NHCX: partial until onboarding).
 
 ## Part 2: The certification path
 
@@ -47,7 +47,7 @@ In the order to do it:
 | 4 | HIP care-context discovery and linking | M2: patients link their visits at our hospital to their ABHA | Medium |
 | 5 | Encrypted data push (ECDH/X25519 with the published encryption spec) | M2 and M3: health records travel encrypted end to end | Large |
 | 6 | HIU data receipt and display | M3: show records fetched from other providers | Medium |
-| 7 | Extended and advanced FHIR profiles (immunisation, wellness, health documents) | NABH IMS.1.b/c | Medium |
+| 7 | ~~Extended and advanced FHIR profiles~~ **Done 2026-10-13:** Immunization, Wellness, Health Document and Invoice records (`/abdm-fhir/<immunization\|wellness\|document\|invoice>/<id>/`). Still run them through the NRCeS validator in the sandbox | NABH IMS.1.b/c | Done |
 | 8 | NHCX live gateway | Insurance claims (FPM.4.i, IMS.1.d) after NHCX onboarding | Medium |
 
 ## Part 4: What the hospital or company must do

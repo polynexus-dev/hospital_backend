@@ -14,13 +14,19 @@ class HealthPackage(TenantScopedModel):
         FULL_BODY = "full_body", "Comprehensive Full Body"
         ORTHO = "ortho", "Bone & Joint Package"
         MATERNITY = "maternity", "Maternity & Women Care"
+        SURGICAL = "surgical", "Surgical (IPD) package"
+        MEDICAL = "medical", "Medical management (IPD) package"
+        DAY_CARE = "day_care", "Day-care procedure"
 
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=32)
     category = models.CharField(max_length=32, choices=Category.choices, default=Category.FULL_BODY)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
-    included_tests = models.JSONField(default=list, blank=True)
+    included_tests = models.JSONField(default=list, blank=True, help_text="Services covered by the package price.")
+    # NABH AAC.5.d — what the package does not cover, billed separately.
+    excluded_services = models.JSONField(default=list, blank=True, help_text="e.g. implants, blood products, extra ICU days")
+    length_of_stay_days = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Room days included (IPD packages).")
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

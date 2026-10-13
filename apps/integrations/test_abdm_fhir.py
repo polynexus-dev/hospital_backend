@@ -63,3 +63,77 @@ def test_unknown_type_and_tenant_isolation(auth_client, other_hospital):
     rx = Prescription.objects.create(hospital=other_hospital, patient=other, diagnosis="x")
     assert auth_client.get(f"/api/v1/abdm-fhir/prescription/{rx.pk}/").status_code == 404
     assert auth_client.get("/api/v1/abdm-fhir/xray/1/").status_code == 400
+
+
+# --- Extended (IMS.1.b) and advanced (IMS.1.c) ABDM record types ----------------
+
+
+def _get_bundle(auth_client, hi_type, pk):
+    res = auth_client.get(f"/api/v1/abdm-fhir/{hi_type}/{pk}/")
+    assert res.status_code == 200, res.json()
+    bundle = res.json()
+    assert validate_document_bundle(bundle) == []
+    return bundle
+
+
+# NABH IMS.1.b
+def test_immunization_record_bundle(auth_client, hospital, patient):
+    imm = auth_client.post("/api/v1/clinical/immunizations/", {"patient": patient.pk, "vaccine": "Td (tetanus-diphtheria)", "dose_number": 2,
+                                                              "lot_number": "TD-881", "route": "IM", "site": "left deltoid",
+                                                              "next_due_on": str(timezone.localdate() + timezone.timedelta(days=180))}, format="json")
+    assert imm.status_code == 201, imm.json()
+    b = _get_bundle(auth_client, "immunization", imm.json()["id"])
+    assert b["entry"][0]["resource"]["type"]["coding"][0]["code"] == "41000179103"
+    res = _resources(b, "Immunization")[0]
+    assert res["vaccineCode"]["text"] == "Td (tetanus-diphtheria)" and res["lotNumber"] == "TD-881" and res["protocolApplied"][0]["doseNumberPositiveInt"] == 2
+    assert _resources(b, "ImmunizationRecommendation")[0]["recommendation"][0]["doseNumberPositiveInt"] == 3
+
+
+# NABH IMS.1.b
+def test_wellness_record_bundle(auth_client, hospital, patient):
+    import datetime
+
+    from apps.appointments.models import Doctor, Slot
+    from apps.appointments.services import book_appointment, check_in
+    from apps.opd.models import Encounter, VitalsReading
+
+    doctor = Doctor.objects.create(hospital=hospital, name="Dr Well")
+    slot = Slot.objects.create(hospital=hospital, doctor=doctor, date=datetime.date.today(), start_time=datetime.time(10, 0), end_time=datetime.time(10, 15))
+    enc = Encounter.objects.get(appointment=check_in(book_appointment(patient=patient, slot=slot)))
+    v = VitalsReading.objects.create(hospital=hospital, encounter=enc, pulse=72, bp_systolic=118, bp_diastolic=76, spo2=98, height_cm=170, weight_kg=65)
+    b = _get_bundle(auth_client, "wellness", v.pk)
+    codes = {o["code"]["coding"][0]["code"]: o["valueQuantity"]["value"] for o in _resources(b, "Observation")}
+    assert codes["8867-4"] == 72 and codes["59408-5"] == 98 and codes["39156-5"] == 22.5
+    assert [s["title"] for s in b["entry"][0]["resource"]["section"]] == ["Vital Signs", "Body Measurement"]
+
+
+# NABH IMS.1.b
+def test_health_document_record_bundle(auth_client, hospital, patient, settings, tmp_path):
+    import base64
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.patients.models import Document
+
+    settings.MEDIA_ROOT = tmp_path
+    doc = Document.objects.create(hospital=hospital, patient=patient, category="report", title="Outside MRI", file=SimpleUploadedFile("mri.pdf", b"%PDF-1.4 test", content_type="application/pdf"))
+    b = _get_bundle(auth_client, "document", doc.pk)
+    att = _resources(b, "DocumentReference")[0]["content"][0]["attachment"]
+    assert att["contentType"] == "application/pdf" and base64.b64decode(att["data"]) == b"%PDF-1.4 test"
+    assert b["entry"][0]["resource"]["type"]["coding"][0]["code"] == "419891008"
+
+
+# NABH IMS.1.c
+def test_invoice_record_bundle(auth_client, hospital, patient):
+    from decimal import Decimal
+
+    from apps.billing.models import Bill, BillItem, Payment
+
+    bill = Bill.objects.create(hospital=hospital, patient=patient, total_amount=Decimal("1180"), net_amount=Decimal("1180"), status="issued")
+    BillItem.objects.create(bill=bill, description="Consultation", quantity=1, unit_price=Decimal("1000"), total_price=Decimal("1180"), gst_rate=Decimal("18"), tax_amount=Decimal("180"))
+    Payment.objects.create(hospital=hospital, bill=bill, amount=Decimal("500"), payment_method="upi")
+    b = _get_bundle(auth_client, "invoice", bill.pk)
+    inv = _resources(b, "Invoice")[0]
+    assert inv["status"] == "issued" and inv["totalNet"] == {"value": 1180.0, "currency": "INR"}
+    assert [c["type"] for c in inv["lineItem"][0]["priceComponent"]] == ["base", "tax"]
+    assert _resources(b, "ChargeItem")[0]["code"]["text"] == "Consultation"

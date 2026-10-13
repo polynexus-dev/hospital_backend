@@ -240,7 +240,9 @@ class HISBillingRecordViewSet(viewsets.ReadOnlyModelViewSet):
 class ABDMHealthRecordView(APIView):
     """GET /abdm-fhir/<hi_type>/<id>/ — the NRCeS FHIR document bundle for
     one record (what ABDM HIE-CM receives when the patient consents to
-    share it). hi_type: prescription | lab | imaging | discharge | opd."""
+    share it). hi_type: prescription | lab | imaging | discharge | opd
+    (base set), immunization | wellness | document (extended set, IMS.1.b),
+    invoice (advanced set, IMS.1.c)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -272,8 +274,24 @@ class ABDMHealthRecordView(APIView):
             from apps.opd.models import Encounter
 
             obj, build = Encounter.objects.filter(pk=pk, hospital_id=h).first(), f.op_consultation_bundle
+        elif hi_type == "immunization":
+            from apps.clinical.models import Immunization
+
+            obj, build = Immunization.objects.filter(pk=pk, hospital_id=h).first(), f.immunization_bundle
+        elif hi_type == "wellness":
+            from apps.opd.models import VitalsReading
+
+            obj, build = VitalsReading.objects.filter(pk=pk, encounter__hospital_id=h).first(), f.wellness_bundle
+        elif hi_type == "document":
+            from apps.patients.models import Document
+
+            obj, build = Document.objects.filter(pk=pk, hospital_id=h).first(), f.health_document_bundle
+        elif hi_type == "invoice":
+            from apps.billing.models import Bill
+
+            obj, build = Bill.objects.filter(pk=pk, hospital_id=h).first(), f.invoice_bundle
         else:
-            return Response({"detail": "hi_type must be prescription | lab | imaging | discharge | opd"}, status=400)
+            return Response({"detail": "hi_type must be one of prescription, lab, imaging, discharge, opd, immunization, wellness, document, invoice"}, status=400)
         if obj is None:
             return Response({"detail": "Not found."}, status=404)
         bundle = build(obj)

@@ -7,13 +7,16 @@ class AdmissionSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     doctor_name = serializers.CharField(source="admitting_doctor.name", read_only=True)
     bed_label = serializers.CharField(source="bed.__str__", read_only=True)
+    package_name = serializers.CharField(source="package.name", read_only=True, default=None)
+    package_included = serializers.JSONField(source="package.included_tests", read_only=True, default=None)
+    package_excluded = serializers.JSONField(source="package.excluded_services", read_only=True, default=None)
 
     class Meta:
         model = Admission
         fields = [
             "id", "patient", "patient_name", "admitting_doctor", "doctor_name", "department",
             "bed", "bed_label", "source_encounter", "admission_type", "status", "admission_diagnosis",
-            "admitted_at", "discharged_at", "care_team", "admission_checklist", "package", "expected_discharge_date", "discharge_initiated_at",
+            "admitted_at", "discharged_at", "care_team", "admission_checklist", "package", "package_name", "package_included", "package_excluded", "expected_discharge_date", "discharge_initiated_at",
         ]
         read_only_fields = ["id", "bed", "status", "admitted_at", "discharged_at", "discharge_initiated_at"]
 

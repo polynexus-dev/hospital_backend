@@ -640,6 +640,12 @@ WEBRTC_SIP_DISPLAY_NAME = env("WEBRTC_SIP_DISPLAY_NAME", default="Reception")
 # PIN directory (import_pincodes --from-api). Lookups never call the API.
 DATA_GOV_IN_API_KEY = env("DATA_GOV_IN_API_KEY", default="")
 
+# Online payments (apps.billing.online_payments). Hospitals normally add their
+# own Razorpay keys in Settings; these are the fallback for on-premise installs.
+RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", default="")
+RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
+
 
 # HIS connector selection — see apps.integrations.his.
 HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")

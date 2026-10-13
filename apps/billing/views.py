@@ -110,14 +110,9 @@ class PaymentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewset
         payment = serializer.save(hospital=hospital)
         self._log("create", payment)
 
-        # Update bill status if fully paid
-        bill = payment.bill
-        total_paid = sum(p.amount for p in bill.payments.all())
-        if total_paid >= bill.net_amount:
-            bill.status = Bill.Status.PAID
-        else:
-            bill.status = Bill.Status.PARTIALLY_PAID
-        bill.save(update_fields=["status"])
+        from .online_payments import refresh_bill_status
+
+        refresh_bill_status(payment.bill)
 
 
 class InsuranceClaimViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):

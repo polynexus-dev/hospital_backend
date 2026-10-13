@@ -649,3 +649,32 @@ class DeviceVitalSign(TenantScopedModel):
 
     class Meta:
         ordering = ["-recorded_at"]
+
+
+class Immunization(TenantScopedModel):
+    """Vaccines given at the hospital (paediatric schedule, ANC, adult,
+    staff). Shared with ABDM as an ImmunizationRecord (NABH IMS.1.b)."""
+
+    class Route(models.TextChoices):
+        IM = "IM", "Intramuscular"
+        SC = "SC", "Subcutaneous"
+        ID = "ID", "Intradermal"
+        ORAL = "PO", "Oral"
+        NASAL = "NASINHLC", "Intranasal"
+
+    patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="immunizations")
+    vaccine = models.CharField(max_length=150, help_text="e.g. Pentavalent, MMR, Td, COVID-19 (Covishield)")
+    vaccine_code = models.CharField(max_length=40, blank=True, help_text="SNOMED CT code of the vaccine product, if known.")
+    dose_number = models.PositiveSmallIntegerField(default=1)
+    administered_on = models.DateField(default=timezone.localdate)
+    lot_number = models.CharField(max_length=60, blank=True)
+    manufacturer = models.CharField(max_length=120, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+    route = models.CharField(max_length=10, choices=Route.choices, default=Route.IM)
+    site = models.CharField(max_length=60, blank=True, help_text="e.g. left deltoid, right thigh")
+    administered_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    next_due_on = models.DateField(null=True, blank=True)
+    adverse_event = models.TextField(blank=True, help_text="Any AEFI observed.")
+
+    class Meta:
+        ordering = ["-administered_on", "-id"]
