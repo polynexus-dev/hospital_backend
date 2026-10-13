@@ -273,3 +273,57 @@ class WebsiteWidget(models.Model):
 
         host = (urlparse(origin).hostname or "").lower()
         return any(host == d.lower().strip() or host.endswith("." + d.lower().strip()) for d in self.allowed_domains if d.strip())
+
+
+def _verify_token():
+    import secrets
+
+    return secrets.token_urlsafe(24)
+
+
+class AdLeadIntegration(models.Model):
+    """Leads straight from Meta (Facebook/Instagram) lead ads and Google Ads
+    lead forms into the CRM. Secrets are encrypted; tokens we generate are
+    shown once in Enquiries > Ad lead forms for pasting into Meta/Google."""
+
+    hospital = models.OneToOneField("core.Hospital", on_delete=models.CASCADE, related_name="ad_leads")
+    meta_enabled = models.BooleanField(default=False)
+    meta_verify_token = models.CharField(max_length=60, default=_verify_token, editable=False)
+    meta_app_secret = EncryptedCharField(max_length=200, blank=True)
+    meta_page_token = EncryptedCharField(max_length=600, blank=True)
+    meta_page_id = models.CharField(max_length=40, blank=True)
+    google_enabled = models.BooleanField(default=False)
+    google_key = models.CharField(max_length=60, default=_verify_token, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Ad leads for {self.hospital_id}"
+
+
+class AdLead(models.Model):
+    """One lead as received from an ad platform. Keeps the platform's lead id
+    so a retried delivery doesn't create a second enquiry. Holds no contact
+    details itself; those go on the enquiry, encrypted."""
+
+    class Platform(models.TextChoices):
+        META = "meta", "Meta (Facebook / Instagram)"
+        GOOGLE = "google", "Google Ads"
+
+    class Status(models.TextChoices):
+        CREATED = "created", "Enquiry created"
+        TEST = "test", "Test lead"
+        FAILED = "failed", "Couldn't fetch"
+
+    hospital = models.ForeignKey("core.Hospital", on_delete=models.CASCADE, related_name="ad_lead_log")
+    platform = models.CharField(max_length=10, choices=Platform.choices)
+    external_id = models.CharField(max_length=80)
+    form_id = models.CharField(max_length=80, blank=True)
+    campaign = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    enquiry = models.ForeignKey(Enquiry, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    error = models.CharField(max_length=300, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+        constraints = [models.UniqueConstraint(fields=["hospital", "platform", "external_id"], name="unique_ad_lead_per_platform")]

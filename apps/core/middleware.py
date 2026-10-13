@@ -18,6 +18,7 @@ _SESSION_CACHE_PREFIX = "payload_enc_session:"
 _ENCRYPTION_BYPASS_PATHS = frozenset([
     "/api/v1/session-key/",
     "/api/v1/site/",  # public website form & chat widget (no staff session)
+    "/api/v1/leads/",  # Meta / Google ad-lead webhooks
     "/api/v1/auth/login/",
     "/api/v1/auth/refresh/",
     "/api/v1/auth/logout/",
