@@ -478,3 +478,17 @@ def test_call_viewset_active_calls_endpoint(mock_active, auth_client, settings):
     assert len(response.data) == 1
     assert response.data[0]["caller_number"] == "9820000088"
 
+
+
+@pytest.mark.django_db
+def test_softphone_credentials_come_from_the_server_not_the_bundle(auth_client, restricted_client, settings):
+    """The SIP password is served only to signed-in telephony users, from the server's environment."""
+    settings.WEBRTC_SIP_SERVER, settings.WEBRTC_SIP_USER, settings.WEBRTC_SIP_PASSWORD = "wss://pbx.example:7443", "101", "s3cret"
+    settings.WEBRTC_SIP_AUTH_USER = ""
+    data = auth_client.get("/api/v1/telephony/webrtc-config/").data
+    assert data["configured"] and data["password"] == "s3cret" and data["authNumber"] == "101"
+    settings.WEBRTC_SIP_PASSWORD = ""
+    assert auth_client.get("/api/v1/telephony/webrtc-config/").data == {"configured": False}
+    from rest_framework.test import APIClient
+
+    assert APIClient().get("/api/v1/telephony/webrtc-config/").status_code == 401

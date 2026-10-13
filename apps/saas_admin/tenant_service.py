@@ -66,7 +66,10 @@ def onboard_hospital_tenant(data: dict) -> dict:
     owner_first_name = (owner_data.get("first_name") or "Admin").strip()
     owner_last_name = (owner_data.get("last_name") or "User").strip()
     owner_phone = (owner_data.get("phone") or "").strip()
-    owner_password = owner_data.get("password") or "Hospital@123"
+    # Never a shared default: every owner gets their own password (the console generates one).
+    owner_password = str(owner_data.get("password") or "")
+    if len(owner_password) < 10:
+        raise ValidationError({"owner": {"password": "Give the owner a password of at least 10 characters."}})
 
     # 3. Validate Subscription Details
     sub_data = data.get("subscription") or {}

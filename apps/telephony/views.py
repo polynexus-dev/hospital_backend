@@ -319,3 +319,26 @@ class TelephonyWebhookView(APIView):
 
         return Response(CallSerializer(call).data, status=status.HTTP_201_CREATED)
 
+
+class WebRTCConfigView(APIView):
+    """GET: softphone settings for the signed-in user. Credentials live in the
+    server's environment and reach only users who may use telephony, instead
+    of being built into the JavaScript every browser downloads."""
+
+    def get(self, request):
+        from django.conf import settings
+        from rest_framework.exceptions import PermissionDenied
+
+        if not request.user.has_perm("telephony.view_call"):
+            raise PermissionDenied("Your role doesn't use the softphone.")
+        if not (settings.WEBRTC_SIP_SERVER and settings.WEBRTC_SIP_USER and settings.WEBRTC_SIP_PASSWORD):
+            return Response({"configured": False})
+        return Response({
+            "configured": True,
+            "wsUrl": settings.WEBRTC_SIP_SERVER,
+            "sipDomain": settings.WEBRTC_SIP_DOMAIN,
+            "extNumber": settings.WEBRTC_SIP_USER,
+            "authNumber": settings.WEBRTC_SIP_AUTH_USER or settings.WEBRTC_SIP_USER,
+            "password": settings.WEBRTC_SIP_PASSWORD,
+            "displayName": settings.WEBRTC_SIP_DISPLAY_NAME,
+        })

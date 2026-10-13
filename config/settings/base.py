@@ -620,12 +620,21 @@ WHATSAPP_META_API_VERSION = env("WHATSAPP_META_API_VERSION", default="v19.0")
 # Telephony provider selection — see apps.telephony.adapters.
 TELEPHONY_PROVIDER = env("TELEPHONY_PROVIDER", default="hodupbx")
 HODUPBX_BASE_URL = env("HODUPBX_BASE_URL", default="https://ecallpbx.konnectcom.in/hodupbx_api/v1.4").rstrip("/")
-HODUPBX_TOKEN_ID = env("HODUPBX_TOKEN_ID", default="IPSj9rbBE3BxL1lL")
+HODUPBX_TOKEN_ID = env("HODUPBX_TOKEN_ID", default="")  # secret: set in the server's .env, never in code
 HODUPBX_TENANT_ID = env("HODUPBX_TENANT_ID", default="1048")
 # Extension used for click-to-call (agent's extension number)
 HODUPBX_DEFAULT_EXTENSION = env("HODUPBX_DEFAULT_EXTENSION", default="101")
 # MD5 hash of the extension's web password — required by /api/info/click2call
 HODUPBX_EXTENSION_PASSWORD_MD5 = env("HODUPBX_EXTENSION_PASSWORD_MD5", default="")
+
+# Browser softphone (WebRTC SIP). Served to signed-in telephony users by
+# /api/v1/telephony/webrtc-config/ — never built into the frontend bundle.
+WEBRTC_SIP_SERVER = env("WEBRTC_SIP_SERVER", default="")
+WEBRTC_SIP_DOMAIN = env("WEBRTC_SIP_DOMAIN", default="")
+WEBRTC_SIP_USER = env("WEBRTC_SIP_USER", default="")
+WEBRTC_SIP_AUTH_USER = env("WEBRTC_SIP_AUTH_USER", default="")
+WEBRTC_SIP_PASSWORD = env("WEBRTC_SIP_PASSWORD", default="")
+WEBRTC_SIP_DISPLAY_NAME = env("WEBRTC_SIP_DISPLAY_NAME", default="Reception")
 
 
 # HIS connector selection — see apps.integrations.his.

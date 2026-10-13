@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import CallbackTaskViewSet, CallViewSet, IVRRouteViewSet, TelephonyWebhookView
+from .views import CallbackTaskViewSet, CallViewSet, IVRRouteViewSet, TelephonyWebhookView, WebRTCConfigView
 
 router = DefaultRouter()
 router.register("calls", CallViewSet, basename="call")
@@ -10,4 +10,5 @@ router.register("ivr-routes", IVRRouteViewSet, basename="ivrroute")
 
 urlpatterns = router.urls + [
     path("webhooks/telephony/<uuid:hospital_id>/", TelephonyWebhookView.as_view(), name="telephony-webhook"),
+    path("telephony/webrtc-config/", WebRTCConfigView.as_view(), name="webrtc-config"),
 ]
