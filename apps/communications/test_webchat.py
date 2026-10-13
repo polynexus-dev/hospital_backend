@@ -94,3 +94,24 @@ def test_free_text_replies_only_on_website_chats(auth_client, hospital, widget):
     e = Enquiry.objects.create(hospital=hospital, name="WhatsApp lead", mobile="9822000001", source="whatsapp")
     t = Thread.objects.create(hospital=hospital, enquiry=e, channel="whatsapp")
     assert auth_client.post(f"/api/v1/threads/{t.pk}/reply/", {"body": "hi"}, format="json").status_code == 400
+
+
+def test_new_chat_alerts_list_unread_chats_until_opened(api_client, auth_client, widget):
+    assert auth_client.get("/api/v1/threads/web-chat-alerts/").json() == {"unread_chats": 0, "chats": []}
+    start(api_client, widget)
+    alerts = auth_client.get("/api/v1/threads/web-chat-alerts/").json()
+    assert alerts["unread_chats"] == 1 and alerts["chats"][0]["name"] == "Rohit Pawar"
+    assert alerts["chats"][0]["preview"].startswith("Do you have a cardiologist") and alerts["chats"][0]["unread"] == 1
+    auth_client.get(f"/api/v1/threads/{alerts['chats'][0]['thread']}/chat-messages/")  # staff opened it
+    assert auth_client.get("/api/v1/threads/web-chat-alerts/").json()["unread_chats"] == 0
+
+
+def test_chat_alerts_need_inbox_access(api_client, hospital, department):
+    from apps.accounts.models import Role, User, assign_role
+
+    lab = User.objects.create_user(email="lab@test-hospital.example", password="x", hospital=hospital, department=department)
+    assign_role(lab, Role.objects.create(hospital=hospital, name="Lab", template=Role.Template.LAB_TECHNICIAN))
+    api_client.force_authenticate(user=lab)
+    assert api_client.get("/api/v1/threads/web-chat-alerts/").status_code == 403
+    t = Thread.objects.create(hospital=hospital, enquiry=Enquiry.objects.create(hospital=hospital, name="V", mobile="9822000002", source="website"), channel="web_chat")
+    assert api_client.post(f"/api/v1/threads/{t.pk}/reply/", {"body": "hi"}, format="json").status_code in (403, 404)

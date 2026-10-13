@@ -180,12 +180,35 @@ class WebChatStaffMixin:
     """Added to ThreadViewSet: the staff side of website chats."""
 
     def _web_thread(self):
-        from rest_framework.exceptions import ValidationError
+        from rest_framework.exceptions import PermissionDenied, ValidationError
 
+        # Custom actions skip the model-permission check, so ask for Inbox access here.
+        if not self.request.user.has_perm("communications.view_thread"):
+            raise PermissionDenied("No Inbox access.")
         thread = self.get_object()
         if thread.channel != Channel.WEB_CHAT:
             raise ValidationError({"detail": "Free-text replies are only for website chats (WhatsApp/SMS use approved templates)."})
         return thread
+
+    @action(detail=False, methods=["get"], url_path="web-chat-alerts")
+    def web_chat_alerts(self, request):
+        """Light poll for the app-wide new-chat alert: open website chats
+        with unread visitor messages, newest first."""
+        from django.db.models import Count, Q
+
+        if not request.user.has_perm("communications.view_thread"):
+            return Response({"detail": "No Inbox access."}, status=403)
+        unread = Q(enquiry__messages__channel=Channel.WEB_CHAT, enquiry__messages__direction=Message.Direction.INBOUND, enquiry__messages__is_read=False)
+        threads = (self.get_queryset().filter(channel=Channel.WEB_CHAT, status=Thread.Status.OPEN, enquiry__isnull=False)
+                   .annotate(unread=Count("enquiry__messages", filter=unread)).filter(unread__gt=0)
+                   .select_related("enquiry").order_by("-last_inbound_at")[:20])
+        rows = []
+        for t in threads:
+            last = (Message.objects.filter(hospital=t.hospital, enquiry=t.enquiry, channel=Channel.WEB_CHAT, direction=Message.Direction.INBOUND)
+                    .order_by("-pk").first())
+            rows.append({"thread": t.pk, "name": t.enquiry.name, "unread": t.unread, "last_message_id": last.pk if last else 0,
+                         "preview": (last.body if last else "")[:120], "at": t.last_inbound_at})
+        return Response({"unread_chats": len(rows), "chats": rows})
 
     @action(detail=True, methods=["get"], url_path="chat-messages")
     def chat_messages(self, request, pk=None):
