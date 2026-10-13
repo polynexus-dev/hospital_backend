@@ -373,7 +373,8 @@ def test_hodupbx_adapter_initiate_call_success(mock_post, settings):
 
     assert call_id == "722"
     mock_post.assert_called_once()
-    assert "/api/info/speeddial" in mock_post.call_args[0][0]
+    assert "/api/info/click2call" in mock_post.call_args[0][0]
+    assert "mock-token-123" in str(mock_post.call_args)  # sent to the PBX ...
 
 
 @patch("requests.post")

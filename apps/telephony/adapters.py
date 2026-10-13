@@ -6,11 +6,14 @@ shape `views.TelephonyWebhookView` expects, and outbound calls are placed
 through `initiate_call`. Swapping vendors later means adding one adapter
 class and pointing settings.TELEPHONY_PROVIDER at it — no other code changes.
 """
+import logging
 from abc import ABC, abstractmethod
 
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
+
+logger = logging.getLogger(__name__)
 
 class TelephonyProvider(ABC):
     @abstractmethod
@@ -143,7 +146,7 @@ class HoduPBXProvider(TelephonyProvider):
         import requests
 
         if not self.base_url or not self.token_id:
-            print(f"[HoduPBX] ERROR: base_url={self.base_url!r} token_id={self.token_id!r} — not configured")
+            logger.error("HoduPBX isn't configured: set HODUPBX_BASE_URL and HODUPBX_TOKEN_ID in the server's .env")
             return f"hodu-unconfigured-{from_number}-{to_number}"
 
         ext_to_use = (
@@ -160,21 +163,24 @@ class HoduPBXProvider(TelephonyProvider):
             "extension_password": ext_password_md5,
             "phone_number": to_number,
         }
-        print(f"[HoduPBX] click2call → POST {url}")
-        print(f"[HoduPBX] payload: {payload}")
+        # Never log the payload: it carries the API token and the extension password hash.
+        logger.info("HoduPBX click2call: extension %s → %s", ext_to_use, to_number[-4:].rjust(len(to_number), "*"))
         try:
             # 30s timeout — HoduPBX holds connection open while ringing extension
             resp = requests.post(url, json=payload, timeout=30, verify=False)
-            print(f"[HoduPBX] HTTP {resp.status_code} — body: {resp.text[:500]}")
             data = resp.json()
             if data.get("status") == "SUCCESS":
-                call_uuid = str(data.get("data", f"hodu-{ext_to_use}-{to_number}"))
-                print(f"[HoduPBX] Call initiated successfully. UUID: {call_uuid}")
+                result = data.get("data")
+                # "data" is the call UUID, or an object holding the id, depending on the PBX version.
+                if isinstance(result, dict):
+                    result = next((result[k] for k in ("uuid", "call_id", "callid", "ext_id", "id") if result.get(k)), None)
+                call_uuid = str(result) if result else f"hodu-{ext_to_use}-{to_number}"
+                logger.info("HoduPBX click2call accepted: %s", call_uuid)
                 return call_uuid
             else:
                 msg = data.get("message", "").strip()
                 reason = data.get("status_reason", "")
-                print(f"[HoduPBX] Non-SUCCESS: {data.get('status')} | {msg} | {reason}")
+                logger.warning("HoduPBX click2call refused: %s | %s | %s (HTTP %s)", data.get("status"), msg, reason, resp.status_code)
                 # USER_BUSY means the extension already has an active call
                 if "USER_BUSY" in msg or resp.status_code == 500:
                     raise RuntimeError(
@@ -184,7 +190,7 @@ class HoduPBXProvider(TelephonyProvider):
         except RuntimeError:
             raise  # re-raise USER_BUSY and similar for the view to handle
         except Exception as exc:
-            print(f"[HoduPBX] Exception during click2call: {type(exc).__name__}: {exc}")
+            logger.warning("HoduPBX click2call failed: %s: %s", type(exc).__name__, exc)
         return f"hodu-call-{ext_to_use}-{to_number}"
 
     def get_recording_url(self, call_id: str) -> str:

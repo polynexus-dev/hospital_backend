@@ -306,7 +306,10 @@ def test_hospital_staff_user_without_saas_admin_cannot_switch_hospital(api_clien
 
 @pytest.mark.django_db
 def test_saas_admin_can_switch_hospital(saas_admin_client, saas_admin_user, other_hospital):
-    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(other_hospital.id)}, format="json")
+    # Support access needs a reason (logged for the hospital's audit).
+    no_reason = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(other_hospital.id)}, format="json")
+    assert no_reason.status_code == 400 and "reason" in no_reason.data
+    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(other_hospital.id), "reason": "Investigating ticket #42"}, format="json")
 
     assert response.status_code == 200
     saas_admin_user.refresh_from_db()
@@ -317,7 +320,7 @@ def test_saas_admin_can_switch_hospital(saas_admin_client, saas_admin_user, othe
 def test_switch_hospital_404s_for_an_unknown_hospital_id(saas_admin_client):
     import uuid
 
-    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(uuid.uuid4())}, format="json")
+    response = saas_admin_client.post("/api/v1/users/switch-hospital/", {"hospital_id": str(uuid.uuid4()), "reason": "Investigating ticket #42"}, format="json")
 
     assert response.status_code == 404
 
