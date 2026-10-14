@@ -31,6 +31,11 @@ class DoctorPayoutRule(TenantScopedModel):
     value = models.DecimalField(max_digits=10, decimal_places=2)
     earned_on = models.CharField(max_length=10, choices=EarnedOn.choices, default=EarnedOn.BILLED)
     priority = models.SmallIntegerField(default=0)
+    # MedNet-style "exclude medicine purchase cost": for an admission bill,
+    # the purchase cost of medicines dispensed to the patient during the stay
+    # is taken off the bill before the % is applied (shared across the bill's
+    # lines like a discount). Fixed-amount rules are unaffected.
+    deduct_medicine_cost = models.BooleanField(default=False, help_text="% rules only: share is on the bill net of medicine purchase cost (admission bills)")
     effective_from = models.DateField(null=True, blank=True)
     effective_to = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -59,6 +64,7 @@ class DoctorPayout(TenantScopedModel):
     gross_payout = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     tds_percent = models.DecimalField(max_digits=5, decimal_places=2, default=10, help_text="Sec 194J professional fees")
     tds_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    deductions_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, help_text="Manual deduction heads (recoveries)")
     net_payable = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -88,8 +94,61 @@ class DoctorPayoutLine(models.Model):
     service_date = models.DateField()
     quantity = models.PositiveIntegerField(default=1)
     base_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    medicine_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Medicine purchase cost taken off this line's base")
     payout_amount = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
         app_label = "finance"
         ordering = ["service_date", "id"]
+
+
+class PayoutDeductionHead(TenantScopedModel):
+    """A reason money is recovered from a consultant's payout: advance
+    recovery, OT/room rent share, canteen, professional indemnity... Posted
+    to its own ledger when the statement is paid."""
+
+    name = models.CharField(max_length=100)
+    ledger_code = models.CharField(max_length=10, default="4200", help_text="Ledger credited when paid (default 4200 Recoveries from consultants)")
+    default_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    auto_apply = models.BooleanField(default=False, help_text="Add default_amount to every new statement")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        app_label = "finance"
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["hospital", "name"], name="unique_payout_deduction_head")]
+
+    def __str__(self):
+        return self.name
+
+
+class DoctorPayoutDeduction(models.Model):
+    payout = models.ForeignKey(DoctorPayout, on_delete=models.CASCADE, related_name="deductions")
+    head = models.ForeignKey(PayoutDeductionHead, on_delete=models.PROTECT, related_name="+")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    remarks = models.CharField(max_length=255, blank=True)
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "finance"
+        ordering = ["id"]
+
+
+class PayoutStatementDelivery(TenantScopedModel):
+    """One attempt to send a statement to the consultant."""
+
+    class Channel(models.TextChoices):
+        EMAIL = "email", "Email"
+        WHATSAPP = "whatsapp", "WhatsApp"
+
+    payout = models.ForeignKey(DoctorPayout, on_delete=models.CASCADE, related_name="deliveries")
+    channel = models.CharField(max_length=10, choices=Channel.choices)
+    recipient = models.CharField(max_length=255)
+    sent = models.BooleanField(default=False)
+    error = models.CharField(max_length=255, blank=True)
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        app_label = "finance"
+        ordering = ["-created_at"]

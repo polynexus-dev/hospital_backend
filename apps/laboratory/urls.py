@@ -13,9 +13,15 @@ urlpatterns = router.urls
 
 from django.urls import path  # noqa: E402
 
-from .workflow import AnalyzerResultView, LabAnalyzerViewSet, LabReportTemplateViewSet, OutsourcedLabTestViewSet  # noqa: E402
+from .workflow import (  # noqa: E402
+    AnalyzerResultView, LabAnalyzerViewSet, LabReportLinkView, LabReportTemplateViewSet, LabSettingsView, OutsourcedLabTestViewSet,
+)
 
 router.register("report-templates", LabReportTemplateViewSet, basename="labreporttemplate")
 router.register("outsourced-tests", OutsourcedLabTestViewSet, basename="outsourcedlabtest")
 router.register("analyzers", LabAnalyzerViewSet, basename="labanalyzer")
-urlpatterns = router.urls + [path("analyzer/results/", AnalyzerResultView.as_view(), name="analyzer-results")]
+urlpatterns = router.urls + [
+    path("analyzer/results/", AnalyzerResultView.as_view(), name="analyzer-results"),
+    path("settings/", LabSettingsView.as_view(), name="lab-settings"),
+    path("report-link/<str:token>/", LabReportLinkView.as_view(), name="lab-report-link"),
+]

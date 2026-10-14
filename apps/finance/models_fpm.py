@@ -152,6 +152,12 @@ class JournalEntry(TenantScopedModel):
         JOURNAL = "journal", "Journal"
         DEBIT_NOTE = "debit_note", "Debit note"
         CREDIT_NOTE = "credit_note", "Credit note"
+        CONTRA = "contra", "Contra"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending approval"
+        APPROVED = "approved", "Posted"
+        REJECTED = "rejected", "Rejected"
 
     voucher_type = models.CharField(max_length=12, choices=VoucherType.choices)
     voucher_number = models.CharField(max_length=40)
@@ -161,10 +167,19 @@ class JournalEntry(TenantScopedModel):
     source_id = models.CharField(max_length=40, blank=True)
     party_name = models.CharField(max_length=200, blank=True)
     exported_to_tally_at = models.DateTimeField(null=True, blank=True)
+    # Manual vouchers (maker-checker). System postings are approved at once.
+    # Only approved entries count in the day book, trial balance and Tally.
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.APPROVED, db_index=True)
+    is_manual = models.BooleanField(default=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.CharField(max_length=255, blank=True)
 
     class Meta:
         app_label = "finance"
         ordering = ["-entry_date", "-id"]
+        permissions = [("approve_journalentry", "Can approve manual vouchers")]
         constraints = [models.UniqueConstraint(fields=["hospital", "source_type", "source_id", "voucher_type"], name="one_voucher_per_source")]
 
 

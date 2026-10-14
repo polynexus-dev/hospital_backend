@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from apps.core.fields import EncryptedTextField
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 from apps.core.models import Department, TenantScopedModel
 from apps.patients.models import Patient
 
@@ -14,6 +14,8 @@ class Doctor(TenantScopedModel):
     speciality = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
+    # For TDS (Sec 194J) on payouts and Form 16A.
+    pan = EncryptedCharField(max_length=10, blank=True)
     default_consultation_minutes = models.PositiveSmallIntegerField(default=15)
     is_active = models.BooleanField(default=True)
 

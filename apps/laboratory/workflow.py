@@ -24,7 +24,7 @@ from apps.core.crud import ClinicalCRUDViewSet, TenantCRUDViewSet, model_seriali
 from apps.core.models import Amendment
 from apps.core.modules import require_module
 
-from .models import LabAnalyzer, LabOrder, LabReportAddendum, LabReportTemplate, LabResult, LabTest, OutsourcedLabTest, SampleCollection
+from .models import LabAnalyzer, LabOrder, LabReportAddendum, LabReportTemplate, LabResult, LabSettings, LabTest, OutsourcedLabTest, SampleCollection
 
 _RANGE = re.compile(r"(-?\d+(?:\.\d+)?)\s*[-–]\s*(-?\d+(?:\.\d+)?)")
 
@@ -118,7 +118,61 @@ class LabOrderWorkflowMixin:
                 dupes = duplicate_lab_orders(patient, tests)
                 if dupes:
                     return Response({"detail": "Duplicate order — the same test was ordered in the last 24 hours.", "duplicates": dupes, "code": "duplicate_order"}, status=409)
-        return super().create(request, *args, **kwargs)
+        lab_settings = LabSettings.for_hospital(request.user.hospital_id)
+        if not (lab_settings.merge_window_minutes or lab_settings.split_by_department):
+            return super().create(request, *args, **kwargs)
+        # Department-wise orders / merge into a recent open order.
+        from .lab_extras import place_order
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        patient, chosen = data.pop("patient"), data.pop("ordered_tests", [])
+        if not chosen:
+            return super().create(request, *args, **kwargs)
+        placed = place_order(hospital_id=request.user.hospital_id, user=request.user, patient=patient, tests=chosen, fields=data)
+        for order, merged in placed:
+            self._log("update" if merged else "create", order)
+        body = self.get_serializer(placed[0][0]).data
+        body["orders"] = [{"id": o.pk, "order_number": o.order_number, "department": o.department, "merged": m} for o, m in placed]
+        body["merged"] = any(m for _, m in placed)
+        return Response(body, status=201)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        dept = self.request.query_params.get("department")
+        return qs.filter(ordered_tests__department=dept).distinct() if dept else qs
+
+    @action(detail=False, methods=["get"])
+    def worklist(self, request):
+        """GET ?department=&status=&priority=&date_from=&date_to= — one row per
+        test across orders (the investigation view)."""
+        from .lab_extras import worklist
+
+        q = request.query_params
+        return Response(worklist(request.user.hospital_id, department=q.get("department", ""), status=q.get("status", ""),
+                                 priority=q.get("priority", ""), date_from=q.get("date_from") or None, date_to=q.get("date_to") or None))
+
+    @action(detail=True, methods=["post"])
+    def dispatch_report(self, request, pk=None):
+        """POST {channels: ["email", "whatsapp"]} — send the verified report now."""
+        from .lab_extras import send_reports
+
+        order = self.get_object()
+        if order.status != LabOrder.Status.VERIFIED:
+            return Response({"detail": "Only a verified report can be sent."}, status=400)
+        channels = request.data.get("channels") or LabSettings.for_hospital(order.hospital_id).dispatch_channels or ["whatsapp"]
+        if isinstance(channels, str):
+            channels = [c.strip() for c in channels.split(",") if c.strip()]
+        if not channels or set(channels) - {"email", "whatsapp"}:
+            return Response({"channels": "email and/or whatsapp."}, status=400)
+        rows = send_reports([order], channels, user=request.user)
+        return Response([{"channel": r.channel, "recipient": r.recipient, "sent": r.sent, "error": r.error} for r in rows])
+
+    @action(detail=True, methods=["get"])
+    def dispatches(self, request, pk=None):
+        order = self.get_object()
+        return Response(list(order.dispatches.values("id", "channel", "recipient", "sent", "error", "automatic", "created_at")))
 
     @action(detail=True, methods=["get"])
     def report(self, request, pk=None):
@@ -240,15 +294,24 @@ class LabResultWorkflowMixin:
             LabResult.objects.filter(pk=r.pk).update(value=new_value, flag=flag, is_amended=True)
         r.refresh_from_db()
         apply_flag_and_alert(r)
+        from .lab_extras import recompute_calculated
+
+        recompute_calculated(r.lab_order)
         return Response(self.get_serializer(r).data)
 
 
 def after_result_saved(result):
+    from .lab_extras import recompute_calculated
+
     apply_flag_and_alert(result)
+    recompute_calculated(result.lab_order)
 
 
 def after_order_verified(order):
+    from .lab_extras import schedule_dispatch
+
     notify_report_ready(order)
+    schedule_dispatch(order)
 
 
 def render_lab_report(order):
@@ -261,17 +324,34 @@ def render_lab_report(order):
     styles = getSampleStyleSheet()
     doc = SimpleDocTemplate(buf, pagesize=A4, title=f"Lab report {order.order_number}")
     p = order.patient
-    story = [
+    results = list(order.results.select_related("lab_test").order_by("lab_test__name"))
+    # NABL: the mark and certificate number appear only on a report that
+    # has at least one test within the scope of accreditation, and each such
+    # test is marked; tests outside the scope are identified as such.
+    lab_settings = LabSettings.for_hospital(order.hospital_id)
+    nabl = lab_settings.nabl_active and any(r.lab_test.is_nabl_accredited for r in results)
+    story = []
+    if nabl and lab_settings.nabl_logo:
+        try:
+            from reportlab.platypus import Image
+
+            story.append(Image(lab_settings.nabl_logo.path, width=40, height=40, hAlign="RIGHT"))
+        except Exception:  # noqa: BLE001 - a missing logo file must not stop the report
+            pass
+    story += [
         Paragraph(f"<b>{order.hospital.name}</b> — Laboratory Report", styles["Title"]),
         Paragraph(f"Patient: <b>{p.full_name}</b> &nbsp; UHID: {p.uhid} &nbsp; Order: {order.order_number} &nbsp; Ordered: {timezone.localtime(order.ordered_at):%d %b %Y %H:%M}", styles["Normal"]),
         Spacer(1, 8),
     ]
+    if nabl:
+        story.insert(-1, Paragraph(f"NABL accredited laboratory &middot; Certificate No. {lab_settings.nabl_certificate_number}", styles["Normal"]))
     rows = [["Test", "Result", "Unit", "Reference range", "Flag"]]
     flagged = []
     all_signed = True
-    for i, r in enumerate(order.results.select_related("lab_test").order_by("lab_test__name"), start=1):
+    for i, r in enumerate(results, start=1):
         all_signed &= r.finalized_at is not None
-        rows.append([r.lab_test.name, r.value + (" (amended)" if r.is_amended else ""), r.unit or r.lab_test.unit, r.reference_range or r.lab_test.reference_range, r.get_flag_display()])
+        name = r.lab_test.name + (" *" if nabl and r.lab_test.is_nabl_accredited else "") + (" (calculated)" if r.source == "calculated" else "")
+        rows.append([name, r.value + (" (amended)" if r.is_amended else ""), r.unit or r.lab_test.unit, r.reference_range or r.lab_test.reference_range, r.get_flag_display()])
         if r.flag != "normal":
             flagged.append(i)
     t = Table(rows, colWidths=[170, 80, 60, 130, 60], repeatRows=1)
@@ -280,6 +360,9 @@ def render_lab_report(order):
         style += [("TEXTCOLOR", (1, i), (1, i), colors.red), ("FONTNAME", (1, i), (1, i), "Helvetica-Bold")]
     t.setStyle(TableStyle(style))
     story.append(t)
+    if nabl:
+        story += [Spacer(1, 4), Paragraph(f"* Within the scope of NABL accreditation (Certificate No. {lab_settings.nabl_certificate_number}). "
+                                          "Tests without * are outside the scope of accreditation.", styles["Italic"])]
     for a in order.addenda.all():
         story += [Spacer(1, 6), Paragraph(f"<b>Addendum ({timezone.localtime(a.created_at):%d %b %Y %H:%M}):</b> {a.text}", styles["Normal"])]
     story += [Spacer(1, 18), Paragraph("Electronically verified report." if all_signed else "<b>PROVISIONAL — not yet verified by pathologist.</b>", styles["Normal"])]
@@ -394,3 +477,65 @@ class LabAnalyzerViewSet(TenantCRUDViewSet):
         a.api_token = secrets.token_hex(24)
         a.save(update_fields=["api_token"])
         return Response({"api_token": a.api_token})
+
+
+class LabSettingsView(APIView):
+    """GET/PUT /laboratory/settings/ — NABL, report dispatch, order grouping."""
+
+    FIELDS = ("nabl_certificate_number", "nabl_valid_until", "auto_dispatch", "dispatch_channels", "dispatch_times",
+              "dispatch_delay_minutes", "merge_window_minutes", "split_by_department")
+
+    def _payload(self, s):
+        data = {f: getattr(s, f) for f in self.FIELDS}
+        data.update(nabl_logo=s.nabl_logo.url if s.nabl_logo else "", nabl_active=s.nabl_active)
+        return data
+
+    def get(self, request):
+        if not request.user.has_perm("laboratory.view_labsettings"):
+            return Response({"detail": "You don't have access to lab settings."}, status=403)
+        return Response(self._payload(LabSettings.for_hospital(request.user.hospital_id)))
+
+    def put(self, request):
+        if not request.user.has_perm("laboratory.change_labsettings"):
+            return Response({"detail": "You don't have access to change lab settings."}, status=403)
+        s = LabSettings.for_hospital(request.user.hospital_id)
+        ser = LabSettingsSerializer(s, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        if request.FILES.get("nabl_logo"):
+            s.nabl_logo = request.FILES["nabl_logo"]
+            s.save(update_fields=["nabl_logo"])
+        return Response(self._payload(s))
+
+
+class LabSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabSettings
+        fields = LabSettingsView.FIELDS
+
+    def validate_dispatch_channels(self, value):
+        if not isinstance(value, list) or set(value) - {"email", "whatsapp"}:
+            raise serializers.ValidationError('A list of "email" and/or "whatsapp".')
+        return value
+
+    def validate_dispatch_times(self, value):
+        if not isinstance(value, list) or not all(isinstance(t, str) and re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", t) for t in value):
+            raise serializers.ValidationError('A list of times like "10:00".')
+        return sorted(set(value))
+
+
+class LabReportLinkView(APIView):
+    """The signed link in a WhatsApp report message (valid 30 days)."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, token):
+        from .lab_extras import order_from_token
+
+        order = order_from_token(token)
+        if order is None:
+            return HttpResponse("This link has expired. Please ask the hospital for your report.", status=404, content_type="text/plain")
+        resp = HttpResponse(render_lab_report(order), content_type="application/pdf")
+        resp["Content-Disposition"] = f'inline; filename="Lab_report_{order.order_number}.pdf"'
+        return resp

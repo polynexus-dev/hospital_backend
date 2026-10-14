@@ -7,8 +7,18 @@ class LabTestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabTest
         fields = ["id", "name", "code", "department", "reference_range", "unit", "price", "is_active", "loinc_code", "sample_type", "container", "ref_low", "ref_high", "critical_low", "critical_high", "tat_hours", "method", "report_template", "is_outsourced",
+            "is_nabl_accredited", "formula",
         ]
         read_only_fields = ["id"]
+
+    def validate_formula(self, value):
+        from .lab_extras import FormulaError, validate_formula
+
+        try:
+            validate_formula(value)
+        except FormulaError as exc:
+            raise serializers.ValidationError(str(exc))
+        return value
 
 
 class LabTestPackageSerializer(serializers.ModelSerializer):
@@ -24,8 +34,9 @@ class LabOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabOrder
         fields = ["id", "investigation_order", "patient", "patient_name", "ordered_tests", "status", "ordered_by", "ordered_at", "priority", "clinical_notes", "admission", "order_number", "patient_notified_at",
+            "department", "dispatch_due_at", "dispatched_at",
         ]
-        read_only_fields = ["id", "status", "ordered_by", "ordered_at", "order_number", "patient_notified_at"]
+        read_only_fields = ["id", "status", "ordered_by", "ordered_at", "order_number", "patient_notified_at", "department", "dispatch_due_at", "dispatched_at"]
 
 
 class SampleCollectionSerializer(serializers.ModelSerializer):

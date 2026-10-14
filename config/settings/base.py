@@ -540,9 +540,17 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=8, minute=0),
     },
     # §1/§12 — owner's daily WhatsApp MIS, evening dispatch.
+    "dispatch-lab-reports": {
+        "task": "apps.laboratory.tasks.dispatch_lab_reports",
+        "schedule": 300.0,
+    },
     "release-unpaid-portal-bookings": {
         "task": "apps.appointments.tasks.release_unpaid_portal_bookings",
         "schedule": 300.0,
+    },
+    "raise-recurring-invoices": {
+        "task": "apps.finance.tasks.raise_recurring_invoices",
+        "schedule": crontab(hour=6, minute=0),
     },
     "send-scheduled-mis": {
         "task": "apps.analytics.tasks.send_scheduled_mis",

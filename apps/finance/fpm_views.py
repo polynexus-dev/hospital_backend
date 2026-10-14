@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from apps.core.crud import TenantCRUDViewSet, model_serializer
 
 from . import accounting
+from .ar_views import HasPerm
 from .models_fpm import (
     ClaimSettlement,
     InsurancePolicy,
@@ -167,29 +168,9 @@ class LedgerAccountViewSet(TenantCRUDViewSet):
         return super().list(request, *args, **kwargs)
 
 
-class JournalEntryViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = JournalEntry.objects.prefetch_related("lines__account")
-    filterset_fields = ["voucher_type", "source_type"]
-
-    class Ser(serializers.ModelSerializer):
-        lines = serializers.SerializerMethodField()
-
-        class Meta:
-            model = JournalEntry
-            exclude = ["hospital"]
-
-        def get_lines(self, obj):
-            return [{"account": l.account.name, "debit": float(l.debit), "credit": float(l.credit)} for l in obj.lines.all()]
-
-    serializer_class = Ser
-
-    def get_queryset(self):
-        return super().get_queryset().filter(hospital_id=self.request.user.hospital_id)
-
-
 class TrialBalanceView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPerm]
+    required_perm = "finance.view_journalentry"
 
     def get(self, request):
         start, end = _period(request, 365)
@@ -199,7 +180,8 @@ class TrialBalanceView(APIView):
 class TallyExportView(APIView):
     """GET ?start&end[&masters=1] → Tally Prime XML."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPerm]
+    required_perm = "finance.view_journalentry"
 
     def get(self, request):
         hospital = request.user.hospital
@@ -208,7 +190,7 @@ class TallyExportView(APIView):
             name = "tally-ledgers.xml"
         else:
             start, end = _period(request)
-            entries = JournalEntry.objects.filter(hospital=hospital, entry_date__range=(start, end)).prefetch_related("lines__account")
+            entries = JournalEntry.objects.filter(hospital=hospital, entry_date__range=(start, end), status=JournalEntry.Status.APPROVED).prefetch_related("lines__account")
             xml = accounting.tally_xml(entries, hospital.name)
             entries.update(exported_to_tally_at=timezone.now())
             name = f"tally-vouchers-{start}-{end}.xml"
@@ -220,7 +202,8 @@ class TallyExportView(APIView):
 class GSTReportView(APIView):
     """GET ?kind=outward|inward&start&end[&export=csv|xlsx]"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPerm]
+    required_perm = "finance.view_journalentry"
 
     def get(self, request):
         start, end = _period(request)

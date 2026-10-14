@@ -6,8 +6,16 @@ from .models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor
-        fields = ["id", "department", "name", "speciality", "phone", "email", "default_consultation_minutes", "is_active"]
+        fields = ["id", "department", "name", "speciality", "phone", "email", "pan", "default_consultation_minutes", "is_active"]
         read_only_fields = ["id"]
+
+    def validate_pan(self, value):
+        import re
+
+        value = (value or "").strip().upper()
+        if value and not re.fullmatch(r"[A-Z]{5}[0-9]{4}[A-Z]", value):
+            raise serializers.ValidationError("PAN looks like ABCDE1234F.")
+        return value
 
 
 class SlotTemplateSerializer(serializers.ModelSerializer):

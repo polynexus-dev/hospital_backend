@@ -36,6 +36,13 @@ class LabTest(TenantScopedModel):
     method = models.CharField(max_length=120, blank=True)
     report_template = models.ForeignKey("LabReportTemplate", on_delete=models.SET_NULL, null=True, blank=True, related_name="tests")
     is_outsourced = models.BooleanField(default=False, help_text="Routinely sent to an external lab.")
+    # NABL: only tests within the lab's scope of accreditation carry the mark.
+    is_nabl_accredited = models.BooleanField(default=False)
+    # Calculated parameter, e.g. "{CHOL} - {HDL} - {TG} / 5" (Friedewald LDL).
+    # {CODE} is another test's result in the same order; AGE and FEMALE (1/0)
+    # come from the patient; min, max, abs, round, sqrt, log, exp are allowed.
+    # The value is flagged against ref/critical limits like any entered result.
+    formula = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -80,6 +87,11 @@ class LabOrder(TenantScopedModel):
     clinical_notes = models.TextField(blank=True)
     admission = models.ForeignKey("ipd.Admission", on_delete=models.SET_NULL, null=True, blank=True, related_name="lab_orders")
     patient_notified_at = models.DateTimeField(null=True, blank=True)
+    # Set when every test on the order is in one department (always so when
+    # LabSettings.split_by_department is on).
+    department = models.CharField(max_length=16, choices=LabTest.Department.choices, blank=True)
+    dispatch_due_at = models.DateTimeField(null=True, blank=True, help_text="When the verified report is due to be sent automatically")
+    dispatched_at = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.order_number and self.hospital_id:
@@ -246,3 +258,49 @@ class LabAnalyzer(TenantScopedModel):
 
     def __str__(self):
         return self.name
+
+
+class LabSettings(TenantScopedModel):
+    """Per-hospital lab settings: NABL accreditation, automatic report
+    dispatch, and how new orders are grouped."""
+
+    nabl_certificate_number = models.CharField(max_length=40, blank=True)
+    nabl_valid_until = models.DateField(null=True, blank=True)
+    nabl_logo = models.ImageField(upload_to="lab/nabl/", blank=True)
+
+    auto_dispatch = models.BooleanField(default=False, help_text="Send verified reports to the patient automatically")
+    dispatch_channels = models.JSONField(default=list, blank=True, help_text='["email", "whatsapp"]')
+    dispatch_times = models.JSONField(default=list, blank=True, help_text='Send in batches at these times, e.g. ["10:00", "17:00"]; empty = as soon as verified')
+    dispatch_delay_minutes = models.PositiveSmallIntegerField(default=15, help_text="Wait this long after verification so reports verified close together go in one message")
+
+    merge_window_minutes = models.PositiveSmallIntegerField(default=0, help_text="Add tests to the patient's open order placed within this many minutes instead of opening a new one (0 = off)")
+    split_by_department = models.BooleanField(default=False, help_text="One order (sample run, report) per lab department")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["hospital"], name="one_lab_settings_per_hospital")]
+
+    @classmethod
+    def for_hospital(cls, hospital_id):
+        obj, _ = cls.objects.get_or_create(hospital_id=hospital_id, defaults={"dispatch_channels": ["whatsapp"]})
+        return obj
+
+    @property
+    def nabl_active(self):
+        from django.utils import timezone
+
+        return bool(self.nabl_certificate_number) and (self.nabl_valid_until is None or self.nabl_valid_until >= timezone.localdate())
+
+
+class LabReportDispatch(TenantScopedModel):
+    """One attempt to send a lab report to the patient."""
+
+    lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name="dispatches")
+    channel = models.CharField(max_length=10)
+    recipient = models.CharField(max_length=255, blank=True)
+    sent = models.BooleanField(default=False)
+    error = models.CharField(max_length=255, blank=True)
+    automatic = models.BooleanField(default=True)
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]

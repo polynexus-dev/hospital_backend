@@ -79,5 +79,10 @@ from .models_fpm import (  # noqa: E402,F401
     VendorInvoice,
     VendorPayment,
 )
-from .models_payout import DoctorPayout, DoctorPayoutLine, DoctorPayoutRule  # noqa: E402,F401
+from .models_payout import (  # noqa: E402,F401
+    DoctorPayout, DoctorPayoutDeduction, DoctorPayoutLine, DoctorPayoutRule, PayoutDeductionHead, PayoutStatementDelivery,
+)
 from .models_frontdesk import ConsultationFeeRule, FrontDeskPolicy  # noqa: E402,F401
+from .models_ar import (  # noqa: E402,F401
+    AccountsSettings, Customer, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt, RecurringInvoice,
+)

@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from .models_payout import DoctorPayout, DoctorPayoutLine, DoctorPayoutRule
+from .models_payout import DoctorPayout, DoctorPayoutDeduction, DoctorPayoutLine, DoctorPayoutRule, PayoutDeductionHead
 
 CENT = Decimal("0.01")
 # System lines that are never a doctor's professional service.
@@ -42,13 +42,17 @@ def matching_rule(item, rules, on_date):
     return max(candidates, key=_specificity) if candidates else None
 
 
+def _gross(bill):
+    return sum((Decimal(i.total_price) for i in bill.items.all() if i.total_price > 0 and i.source != "scheme_package"), Decimal("0"))
+
+
 def net_base(item):
     """The line's share of the bill after discount — and after any scheme
     package adjustment, which is a reduction just like a discount — before GST."""
     bill = item.bill
     base = Decimal(item.total_price)
     lines = list(bill.items.all())
-    gross = sum((Decimal(i.total_price) for i in lines if i.total_price > 0 and i.source != "scheme_package"), Decimal("0"))
+    gross = _gross(bill)
     reduction = Decimal(bill.discount_amount or 0) - sum((Decimal(i.total_price) for i in lines if i.source == "scheme_adjustment"), Decimal("0"))
     reduction -= sum((Decimal(i.total_price) for i in lines if i.source == "scheme_package"), Decimal("0"))  # package revenue offsets it
     if reduction > 0 and gross:
@@ -56,27 +60,58 @@ def net_base(item):
     return _q(max(base, Decimal("0")))
 
 
-def payout_for(item, rule):
+def bill_medicine_cost(bill):
+    """Purchase cost of medicines dispensed to the patient during the bill's
+    admission, less what was returned to stock. OPD bills: 0 (pharmacy
+    counter sales are settled separately)."""
+    from apps.pharmacy.models import DispenseRecord, MedicineReturn
+
+    adm = bill.admission
+    if adm is None:
+        return Decimal("0")
+    window = {"patient_id": bill.patient_id, "hospital_id": bill.hospital_id}
+    span = (adm.admitted_at, adm.discharged_at or timezone.now())
+    issued = sum((Decimal(d.quantity) * Decimal(d.batch.purchase_price) for d in
+                  DispenseRecord.objects.filter(**window, dispensed_at__range=span).select_related("batch")), Decimal("0"))
+    returned = sum((Decimal(r.quantity) * Decimal(r.batch.purchase_price) for r in
+                    MedicineReturn.objects.filter(**window, restocked=True, created_at__range=span).select_related("batch")), Decimal("0"))
+    return _q(max(issued - returned, Decimal("0")))
+
+
+def medicine_share(item, cache):
+    """This line's part of the bill's medicine cost, split by line value."""
+    bill = item.bill
+    if bill.pk not in cache:
+        cache[bill.pk] = (bill_medicine_cost(bill), _gross(bill))
+    cost, gross = cache[bill.pk]
+    if not cost or not gross or item.total_price <= 0:
+        return Decimal("0")
+    return _q(cost * Decimal(item.total_price) / gross)
+
+
+def payout_for(item, rule, base=None):
     if rule.basis == DoctorPayoutRule.Basis.FIXED:
         return _q(Decimal(rule.value) * item.quantity)
-    return _q(net_base(item) * Decimal(rule.value) / 100)
+    return _q((net_base(item) if base is None else base) * Decimal(rule.value) / 100)
 
 
 def eligible_lines(hospital_id, start, end, doctor=None):
-    """[(item, rule, earned_date, base, payout)] not yet on a live statement."""
+    """[(item, rule, earned_date, base, payout, medicine_cost)] not yet on a
+    live statement. `base` is already net of medicine cost when the rule
+    deducts it."""
     from apps.billing.models import Bill, BillItem
 
     items = (
         BillItem.objects.filter(bill__hospital_id=hospital_id, doctor__isnull=False, payout_line__isnull=True, bill__is_interim=False)
         .exclude(source__in=EXCLUDED_SOURCES)
         .exclude(bill__status__in=[Bill.Status.DRAFT, Bill.Status.CANCELLED])
-        .select_related("bill__patient", "doctor", "tariff")
+        .select_related("bill__patient", "bill__admission", "doctor", "tariff")
         .annotate(last_payment=Max("bill__payments__paid_at"))
     )
     if doctor:
         items = items.filter(doctor=doctor)
     rules = list(DoctorPayoutRule.objects.filter(hospital_id=hospital_id, is_active=True))
-    out = []
+    out, med_cache = [], {}
     for item in items:
         billed_on = item.service_date or timezone.localdate(item.bill.created_at)
         rule = matching_rule(item, rules, billed_on)
@@ -89,13 +124,18 @@ def eligible_lines(hospital_id, start, end, doctor=None):
         else:
             earned = billed_on
         if start <= earned <= end:
-            out.append((item, rule, earned, net_base(item), payout_for(item, rule)))
+            base, med = net_base(item), Decimal("0")
+            if rule.deduct_medicine_cost and rule.basis == DoctorPayoutRule.Basis.PERCENT:
+                med = min(medicine_share(item, med_cache), base)
+                base -= med
+            out.append((item, rule, earned, base, payout_for(item, rule, base), med))
     return out
 
 
 def _rule_label(rule):
     value = f"{rule.value:g}%" if rule.basis == DoctorPayoutRule.Basis.PERCENT else f"₹{rule.value:g}/unit"
-    return f"{rule.name} ({value}, {rule.get_earned_on_display().lower()})"
+    net = ", net of medicine cost" if rule.deduct_medicine_cost and rule.basis == DoctorPayoutRule.Basis.PERCENT else ""
+    return f"{rule.name} ({value}{net}, {rule.get_earned_on_display().lower()})"
 
 
 @transaction.atomic
@@ -107,7 +147,9 @@ def generate_statements(hospital_id, start, end, *, doctor=None, tds_percent=Dec
     if doctor:
         drafts = drafts.filter(doctor=doctor)
     DoctorPayoutLine.objects.filter(payout__in=drafts).delete()
+    DoctorPayoutDeduction.objects.filter(payout__in=drafts).delete()
     drafts.delete()
+    auto_heads = list(PayoutDeductionHead.objects.filter(hospital_id=hospital_id, is_active=True, auto_apply=True, default_amount__gt=0))
 
     by_doctor = defaultdict(list)
     for row in eligible_lines(hospital_id, start, end, doctor):
@@ -120,9 +162,12 @@ def generate_statements(hospital_id, start, end, *, doctor=None, tds_percent=Dec
             DoctorPayoutLine(
                 payout=payout, bill_item=item, rule=rule, rule_label=_rule_label(rule), bill_number=item.bill.bill_number,
                 patient_name=item.bill.patient.full_name, description=item.description, service_date=earned,
-                quantity=item.quantity, base_amount=base, payout_amount=amount,
+                quantity=item.quantity, base_amount=base, medicine_cost=med, payout_amount=amount,
             )
-            for item, rule, earned, base, amount in rows
+            for item, rule, earned, base, amount, med in rows
+        ])
+        DoctorPayoutDeduction.objects.bulk_create([
+            DoctorPayoutDeduction(payout=payout, head=h, amount=h.default_amount, remarks="Applied automatically") for h in auto_heads
         ])
         refresh_totals(payout)
         statements.append(payout)
@@ -134,18 +179,25 @@ def refresh_totals(payout):
     payout.base_amount = sum((ln.base_amount for ln in lines), Decimal("0"))
     payout.gross_payout = sum((ln.payout_amount for ln in lines), Decimal("0"))
     payout.tds_amount = _q(payout.gross_payout * Decimal(payout.tds_percent) / 100)
-    payout.net_payable = payout.gross_payout - payout.tds_amount
-    payout.save(update_fields=["base_amount", "gross_payout", "tds_amount", "net_payable"])
+    payout.deductions_total = sum((d.amount for d in payout.deductions.all()), Decimal("0"))
+    payout.net_payable = payout.gross_payout - payout.tds_amount - payout.deductions_total
+    payout.save(update_fields=["base_amount", "gross_payout", "tds_amount", "deductions_total", "net_payable"])
 
 
 def post_payout_journal(payout):
-    """Dr doctor professional fees; Cr bank/cash (net) and TDS payable."""
+    """Dr doctor professional fees; Cr bank/cash (net), TDS payable, and
+    each deduction head's ledger (recoveries)."""
     from . import accounting
 
     bank = "1000" if payout.payment_mode == "cash" else "1010"
+    recoveries = defaultdict(Decimal)
+    for d in payout.deductions.select_related("head"):
+        recoveries[d.head.ledger_code] += d.amount
+    lines = [("5100", payout.gross_payout, 0), (bank, 0, payout.net_payable), ("2110", 0, payout.tds_amount)]
+    lines += [(code, 0, amt) for code, amt in sorted(recoveries.items()) if amt]
     return accounting.post(
         payout.hospital_id, voucher_type="payment", voucher_number=f"DP{payout.pk}", source_type="doctor_payout", source_id=payout.pk,
-        lines=[("5100", payout.gross_payout, 0), (bank, 0, payout.net_payable), ("2110", 0, payout.tds_amount)],
+        lines=lines,
         narration=f"Professional fees {payout.period_start}–{payout.period_end} ({payout.payment_reference})",
         party=f"Dr. {payout.doctor.name}", entry_date=payout.paid_on,
     )

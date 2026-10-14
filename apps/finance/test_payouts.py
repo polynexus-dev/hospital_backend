@@ -46,7 +46,7 @@ def test_most_specific_rule_wins_and_percent_is_on_net_after_discount(s):
     rule(s, "Echo fixed", 400, tariff=s["echo"], basis="fixed")
     rule(s, "Mehta personal", 30, doctor=s["mehta"])
     _, (c_mehta, c_rao, echo_rao) = bill_with(s, [(s["mehta"], s["consult"], 1, ""), (s["rao"], s["consult"], 1, ""), (s["rao"], s["echo"], 2, "")], discount=700)
-    rows = {item.pk: (r.name, base, amount) for item, r, _d, base, amount in eligible_lines(s["hospital"].pk, TODAY, TODAY)}
+    rows = {item.pk: (r.name, base, amount) for item, r, _d, base, amount, _m in eligible_lines(s["hospital"].pk, TODAY, TODAY)}
     # Bill total 7000, discount 700 → each line keeps 90% of its value.
     assert rows[c_mehta.pk] == ("Mehta personal", Decimal("900.00"), Decimal("270.00"))
     assert rows[c_rao.pk] == ("Department default", Decimal("900.00"), Decimal("180.00"))
@@ -71,7 +71,7 @@ def test_collected_rule_waits_for_full_payment_and_dates_by_last_payment(s):
     from apps.billing.services import recalculate_bill
 
     recalculate_bill(bill)
-    [(_, _, earned, _, amount)] = eligible_lines(s["hospital"].pk, TODAY, TODAY)
+    [(_, _, earned, _, amount, _)] = eligible_lines(s["hospital"].pk, TODAY, TODAY)
     assert earned == TODAY and amount == Decimal("500.00")
 
 

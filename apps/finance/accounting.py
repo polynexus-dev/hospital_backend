@@ -21,6 +21,7 @@ DEFAULT_ACCOUNTS = [
     ("1010", "Bank account", "asset", "Bank Accounts"),
     ("1100", "Patient receivables", "asset", "Sundry Debtors"),
     ("1110", "Insurance / TPA receivables", "asset", "Sundry Debtors"),
+    ("1120", "Customer receivables", "asset", "Sundry Debtors"),
     ("1200", "Inventory", "asset", "Stock-in-Hand"),
     ("1300", "Input GST", "asset", "Duties & Taxes"),
     ("1310", "TDS receivable", "asset", "Duties & Taxes"),
@@ -30,6 +31,7 @@ DEFAULT_ACCOUNTS = [
     ("3000", "Capital", "equity", "Capital Account"),
     ("4000", "Hospital service income", "income", "Sales Accounts"),
     ("4100", "Pharmacy sales", "income", "Sales Accounts"),
+    ("4200", "Recoveries from consultants", "income", "Indirect Incomes"),
     ("4900", "Discount allowed", "expense", "Indirect Expenses"),
     ("5000", "Purchases", "expense", "Purchase Accounts"),
     ("5100", "Doctor professional fees", "expense", "Indirect Expenses"),
@@ -120,7 +122,7 @@ def post_supplier_note(note):
 
 
 def trial_balance(hospital_id, start=None, end=None):
-    qs = JournalLine.objects.filter(entry__hospital_id=hospital_id)
+    qs = JournalLine.objects.filter(entry__hospital_id=hospital_id, entry__status=JournalEntry.Status.APPROVED)
     if start:
         qs = qs.filter(entry__entry_date__gte=start)
     if end:
@@ -134,7 +136,7 @@ def trial_balance(hospital_id, start=None, end=None):
 # --- Tally --------------------------------------------------------------------------
 
 TALLY_VOUCHER = {"sales": "Sales", "receipt": "Receipt", "purchase": "Purchase", "payment": "Payment", "journal": "Journal",
-                 "debit_note": "Debit Note", "credit_note": "Credit Note"}
+                 "debit_note": "Debit Note", "credit_note": "Credit Note", "contra": "Contra"}
 
 
 def tally_xml(entries, company_name):
