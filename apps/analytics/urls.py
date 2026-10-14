@@ -14,6 +14,7 @@ from .views import (
     OTUtilisationView,
     RevenueBySourceView,
     MISExportView,
+    MISScheduleView,
 )
 
 router = DefaultRouter()
@@ -31,6 +32,7 @@ urlpatterns = router.urls + [
     path("reports/icu-occupancy/", ICUOccupancyView.as_view(), name="report-icu-occupancy"),
     path("reports/ot-utilisation/", OTUtilisationView.as_view(), name="report-ot-utilisation"),
     path("reports/mis-export/", MISExportView.as_view(), name="report-mis-export"),
+    path("reports/mis-schedule/", MISScheduleView.as_view(), name="report-mis-schedule"),
 ]
 
 from .predictive import (  # noqa: E402

@@ -540,6 +540,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=8, minute=0),
     },
     # §1/§12 — owner's daily WhatsApp MIS, evening dispatch.
+    "send-scheduled-mis": {
+        "task": "apps.analytics.tasks.send_scheduled_mis",
+        "schedule": crontab(hour=7, minute=30),
+    },
     "send-daily-mis-to-owners": {
         "task": "apps.analytics.tasks.send_daily_mis_to_owners",
         "schedule": crontab(hour=20, minute=0),

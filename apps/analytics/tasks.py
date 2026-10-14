@@ -34,3 +34,11 @@ def send_daily_mis_to_owners():
             log.send_error = str(exc)
         log.save()
     return sent
+
+
+@shared_task
+def send_scheduled_mis():
+    """Weekly / monthly MIS (apps.analytics.scheduled_mis), every morning."""
+    from .scheduled_mis import send_due
+
+    return send_due()

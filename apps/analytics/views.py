@@ -184,3 +184,82 @@ class DailyMISLogViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
             return DailyMISLog.objects.none()
         return DailyMISLog.objects.filter(hospital_id=self.request.user.hospital_id)
+
+
+
+class MISScheduleView(APIView):
+    """Reports > Scheduled MIS. GET / PUT the schedule; POST sends last
+    week's report now, to check the recipients."""
+
+    permission_classes = [IsAuthenticated]
+    MANAGERS = ("owner", "admin", "hospital_administrator", "crm_super_admin", "crm_manager", "finance_manager")
+
+    def _allowed(self, user):
+        return user.is_superuser or getattr(getattr(user, "role", None), "template", "") in self.MANAGERS
+
+    def _payload(self, schedule):
+        from .models import MISReportDelivery
+
+        recent = MISReportDelivery.objects.filter(hospital_id=schedule.hospital_id)[:12]
+        return {
+            "weekly_enabled": schedule.weekly_enabled, "weekly_day": schedule.weekly_day, "monthly_enabled": schedule.monthly_enabled,
+            "email_recipients": schedule.email_recipients, "whatsapp_recipients": schedule.whatsapp_recipients,
+            "recent": [{"period": d.period, "start": d.period_start, "end": d.period_end, "sent_at": d.sent_at, "recipients": d.recipients, "error": d.error} for d in recent],
+        }
+
+    def _schedule(self, request):
+        from .models import MISSchedule
+
+        return MISSchedule.objects.get_or_create(hospital_id=request.user.hospital_id)[0]
+
+    def get(self, request):
+        if not self._allowed(request.user):
+            return Response({"detail": "Managers only."}, status=403)
+        return Response(self._payload(self._schedule(request)))
+
+    def put(self, request):
+        import re
+
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError as DjValidationError
+
+        if not self._allowed(request.user):
+            return Response({"detail": "Managers only."}, status=403)
+        s = self._schedule(request)
+        d = request.data
+        emails = [str(e).strip() for e in (d.get("email_recipients") or []) if str(e).strip()]
+        for e in emails:
+            try:
+                validate_email(e)
+            except DjValidationError:
+                return Response({"email_recipients": f"'{e}' isn't an email address."}, status=400)
+        numbers = []
+        for n in d.get("whatsapp_recipients") or []:
+            digits = re.sub(r"\D", "", str(n))[-10:]
+            if not re.match(r"^[6-9]\d{9}$", digits):
+                return Response({"whatsapp_recipients": f"'{n}' isn't a 10-digit mobile number."}, status=400)
+            numbers.append(digits)
+        day = int(d.get("weekly_day", s.weekly_day))
+        if not 0 <= day <= 6:
+            return Response({"weekly_day": "0 (Monday) to 6 (Sunday)."}, status=400)
+        s.weekly_enabled, s.weekly_day, s.monthly_enabled = bool(d.get("weekly_enabled")), day, bool(d.get("monthly_enabled"))
+        s.email_recipients, s.whatsapp_recipients = emails[:20], numbers[:10]
+        s.save()
+        return Response(self._payload(s))
+
+    def post(self, request):
+        from .models import MISReportDelivery
+        from .scheduled_mis import headline, previous_week, send_report
+
+        if not self._allowed(request.user):
+            return Response({"detail": "Managers only."}, status=403)
+        s = self._schedule(request)
+        if not (s.email_recipients or s.whatsapp_recipients):
+            return Response({"detail": "Add at least one recipient first."}, status=400)
+        start, end = previous_week(timezone.localdate())
+        # A test send shouldn't stop the real one from going out on schedule.
+        MISReportDelivery.objects.filter(hospital_id=s.hospital_id, period="weekly", period_start=start).delete()
+        delivery = send_report(s, MISReportDelivery.Period.WEEKLY, start, end)
+        MISReportDelivery.objects.filter(pk=delivery.pk).delete()
+        return Response({"sent_to": delivery.recipients, "error": delivery.error, "preview": headline(s.hospital, start, end, "Weekly")},
+                        status=200 if delivery.sent_at else 502)
