@@ -253,6 +253,35 @@ class BillsView(PortalView):
         return Response({"outstanding": round(due, 2), "bills": rows})
 
 
+class PortalDocumentsView(PortalView):
+    """GET: what's still needed (stages with something missing).
+    POST multipart {patient, requirement, file}: upload against an item."""
+
+    def get(self, request):
+        from apps.patients.checklist import checklist
+        from apps.patients.models import DocumentRequirement
+
+        p = self.patient(request)
+        lists = [checklist(p, s) for s in DocumentRequirement.Stage.values]
+        return Response({"stages": [c for c in lists if any(not i["satisfied"] for i in c["items"])]})
+
+    def post(self, request):
+        from apps.patients.models import Document, DocumentRequirement
+
+        p = self.patient(request)
+        req = DocumentRequirement.objects.filter(pk=request.data.get("requirement"), hospital_id=p.hospital_id, is_active=True).first()
+        upload = request.FILES.get("file")
+        if req is None or upload is None:
+            raise ValidationError({"detail": "Choose the document and a file."})
+        doc = Document(hospital_id=p.hospital_id, patient=p, category=req.category, title=req.name[:255], file=upload, requirement=req, uploaded_via_portal=True)
+        try:
+            doc.full_clean(exclude=["notes"])
+        except Exception as exc:  # file type / size validators
+            raise ValidationError({"file": getattr(exc, "messages", [str(exc)])})
+        doc.save()
+        return Response({"id": doc.pk, "requirement": req.pk}, status=201)
+
+
 class PayBillView(PortalView):
     """FPM.2.b / FPM.3.e — the patient pays a bill online from the portal."""
 

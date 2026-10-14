@@ -247,11 +247,45 @@ class Document(TenantScopedModel, SoftDeleteModel):
     )
     notes = EncryptedTextField(blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    requirement = models.ForeignKey("DocumentRequirement", on_delete=models.SET_NULL, null=True, blank=True, related_name="documents",
+                                    help_text="The checklist item this upload meets, if any.")
+    uploaded_via_portal = models.BooleanField(default=False)
 
     objects = SoftDeleteManager()
 
     def __str__(self):
         return self.title or self.file.name
+
+
+class DocumentRequirement(TenantScopedModel):
+    """A document the hospital needs at a stage of care (registration,
+    admission, a radiology study...). Patients' uploads are checked against
+    these (apps.patients.checklist)."""
+
+    class Stage(models.TextChoices):
+        REGISTRATION = "registration", "Registration"
+        ADMISSION = "admission", "Admission"
+        SURGERY = "surgery", "Surgery"
+        RADIOLOGY = "radiology", "Radiology"
+        LABORATORY = "laboratory", "Laboratory"
+        INSURANCE = "insurance", "Insurance / TPA claim"
+
+    stage = models.CharField(max_length=16, choices=Stage.choices)
+    name = models.CharField(max_length=120)
+    category = models.CharField(max_length=32, choices=Document.Category.choices, default=Document.Category.OTHER)
+    required = models.BooleanField(default=True)
+    only_if_insured = models.BooleanField(default=False, help_text="Needed only for patients with an insurer on record.")
+    valid_days = models.PositiveIntegerField(null=True, blank=True, help_text="Upload must be this recent (e.g. a consent); empty = any time.")
+    reuse_same_category = models.BooleanField(default=True, help_text="Any upload of this category counts (an ID proof uploaded once counts everywhere).")
+    help_text = models.CharField(max_length=200, blank=True)
+    order = models.PositiveSmallIntegerField(default=10)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["stage", "order", "name"]
+
+    def __str__(self):
+        return f"{self.get_stage_display()}: {self.name}"
 
 
 class TimelineEvent(TenantScopedModel):

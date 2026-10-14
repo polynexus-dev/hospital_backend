@@ -21,6 +21,7 @@ urlpatterns = router.urls + [
     path("discharge-summaries/", views.DischargeSummariesView.as_view()),
     path("bills/", views.BillsView.as_view()),
     path("bills/<int:bill_id>/pay/", views.PayBillView.as_view()),
+    path("documents/", views.PortalDocumentsView.as_view()),
     path("teleconsultations/", views.TeleconsultationsView.as_view()),
     path("care-information/", views.CareInformationView.as_view()),
     path("complaints/", views.ComplaintView.as_view()),

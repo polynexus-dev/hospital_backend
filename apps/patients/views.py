@@ -51,6 +51,7 @@ class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDel
         "lookup": "patients.view_patient", "timeline": "patients.view_patient", "recalls": "patients.view_patient",
         "check_duplicates": "patients.view_patient", "merge": "patients.change_patient", "verify_mobile": "patients.change_patient",
         "offline_sync": "patients.add_patient",
+        "document_checklist": "patients.view_patient", "request_documents": "patients.change_patient",
     }
     filterset_fields = ["is_active", "gender", "preferred_language"]
     # Names, email and phones are encrypted at rest; EncryptedAwareSearchFilter
@@ -68,6 +69,39 @@ class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDel
         matches = self.get_queryset().by_mobile(mobile)
         serializer = PatientLookupSerializer(matches.distinct(), many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="document-checklist")
+    def document_checklist(self, request, pk=None):
+        """?stage=registration|admission|surgery|radiology|laboratory|insurance (default: all)."""
+        from .checklist import checklist
+        from .models import DocumentRequirement
+
+        patient = self.get_object()
+        stage = request.query_params.get("stage")
+        stages = [stage] if stage in DocumentRequirement.Stage.values else list(DocumentRequirement.Stage.values)
+        return Response({"stages": [checklist(patient, s) for s in stages]})
+
+    @action(detail=True, methods=["post"], url_path="request-documents")
+    def request_documents(self, request, pk=None):
+        """Sends the patient the missing required documents for a stage, with
+        a link to upload them in the patient portal."""
+        from apps.clinical.notify import notify_patient
+
+        from .checklist import checklist
+        from .models import DocumentRequirement
+
+        patient = self.get_object()
+        stage = request.data.get("stage")
+        if stage not in DocumentRequirement.Stage.values:
+            return Response({"stage": "Choose a stage."}, status=400)
+        result = checklist(patient, stage)
+        if result["complete"]:
+            return Response({"detail": "Nothing required is missing."}, status=400)
+        link = request.build_absolute_uri("/portal")
+        msg = notify_patient(patient, "documents_needed", {"documents": "; ".join(result["missing_names"]), "link": link}, sent_by=request.user)
+        if msg is None:
+            return Response({"detail": "Couldn't send: the patient may have opted out, or messaging isn't set up."}, status=422)
+        return Response({"sent": True, "channel": msg.channel, "missing": result["missing_names"]})
 
     @action(detail=False, methods=["get"], url_path="recalls")
     def recalls(self, request):
@@ -197,3 +231,37 @@ class PrescriptionViewSet(AuditedModelViewSetMixin, SoftDeleteViewSetMixin, Tena
         return response
 
 
+
+
+
+class DocumentRequirementViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """Settings > Required documents. Read by staff with patient access;
+    changed by hospital admins."""
+
+    from .models import DocumentRequirement
+    from .serializers import DocumentRequirementSerializer
+
+    serializer_class = DocumentRequirementSerializer
+    queryset = DocumentRequirement.objects.all()
+    filterset_fields = ["stage", "is_active"]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from .checklist import ensure_defaults
+
+        if self.request.user.is_authenticated and self.request.user.hospital_id:
+            ensure_defaults(self.request.user.hospital)
+        return super().get_queryset()
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        from rest_framework.exceptions import PermissionDenied
+
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            if not request.user.has_perm("patients.view_patient"):
+                raise PermissionDenied("No patient access.")
+        elif not (request.user.is_superuser or getattr(getattr(request.user, "role", None), "template", "") in ("owner", "admin", "hospital_administrator")):
+            raise PermissionDenied("Only hospital administrators change the required documents.")
+
+    def perform_create(self, serializer):
+        serializer.save(hospital=self.request.user.hospital)

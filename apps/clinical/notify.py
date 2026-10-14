@@ -19,6 +19,7 @@ DEFAULT_TEMPLATES = {
     "payment_link": "Dear {patient_name}, please pay Rs. {amount} to {hospital_name} securely by UPI, card or netbanking: {link}",
     "enquiry_follow_up": "Hello {patient_name}, thank you for contacting {hospital_name}. We'd like to help with your enquiry: reply here or call us to book a convenient time.",
     "no_show_recall": "Dear {patient_name}, we missed you at your appointment at {hospital_name}. Reply here or call us to book a new time that suits you.",
+    "documents_needed": "Dear {patient_name}, {hospital_name} still needs: {documents}. Please upload them securely in the patient portal: {link}",
     "homecare_booking": "Dear {patient_name}, your {service} home visit is booked for {time}.",
     "booking_link": "Dear {patient_name}, thank you for calling {hospital_name}. Book your appointment here: {link}",
     "enquiry_follow_up_email": "Dear {patient_name},\n\nThank you for getting in touch with {hospital_name}. We haven't heard back from you and "

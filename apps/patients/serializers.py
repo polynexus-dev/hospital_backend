@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Document, Patient, TimelineEvent
+from .models import Document, DocumentRequirement, Patient, TimelineEvent
 
 
 class PatientSerializer(serializers.ModelSerializer):
@@ -50,8 +50,17 @@ class PatientLookupSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
-        fields = ["id", "patient", "category", "title", "file", "notes", "uploaded_by", "created_at"]
-        read_only_fields = ["id", "uploaded_by", "created_at"]
+        fields = ["id", "patient", "category", "title", "file", "notes", "uploaded_by", "requirement", "uploaded_via_portal", "created_at"]
+        read_only_fields = ["id", "uploaded_by", "uploaded_via_portal", "created_at"]
+
+    def validate(self, attrs):
+        req = attrs.get("requirement")
+        patient = attrs.get("patient") or getattr(self.instance, "patient", None)
+        if req is not None and patient is not None and req.hospital_id != patient.hospital_id:
+            raise serializers.ValidationError({"requirement": "Not one of this hospital's checklist items."})
+        if req is not None and not attrs.get("category"):
+            attrs["category"] = req.category
+        return attrs
 
 
 class TimelineEventSerializer(serializers.ModelSerializer):
@@ -75,3 +84,11 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+
+
+
+class DocumentRequirementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentRequirement
+        fields = ["id", "stage", "name", "category", "required", "only_if_insured", "valid_days", "reuse_same_category", "help_text", "order", "is_active"]
+        read_only_fields = ["id"]
