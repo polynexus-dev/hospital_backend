@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Call, CallbackTask, IVRRoute
+from apps.core.crud import TenantModelSerializer
+
+from .models import Call, CallbackTask, IVRMenu, IVRNode, IVRRoute
+
+AI_FIELDS = [
+    "ai_summary", "ai_lead_class", "ai_booking_intent", "ai_status", "ai_error", "ai_processed_at",
+    "missed_opportunity", "missed_opportunity_at",
+]
 
 
 class CallSerializer(serializers.ModelSerializer):
@@ -11,9 +18,9 @@ class CallSerializer(serializers.ModelSerializer):
             "patient", "enquiry", "department", "operator",
             "started_at", "answered_at", "ended_at", "duration_seconds",
             "recording_url", "consent_recorded", "ivr_path", "call_reason", "notes",
-            "provider_name", "provider_call_id", "created_at",
+            "provider_name", "provider_call_id", "created_at", *AI_FIELDS,
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", *AI_FIELDS]
 
 
 class CallbackTaskSerializer(serializers.ModelSerializer):
@@ -24,7 +31,7 @@ class CallbackTaskSerializer(serializers.ModelSerializer):
         fields = [
             "id", "call", "patient", "phone_number", "department",
             "owner", "status", "sla_due_at", "escalation_level", "attempt_count",
-            "notes", "resolved_at", "created_at", "ivr_path",
+            "notes", "resolved_at", "created_at", "ivr_path", "source",
         ]
         read_only_fields = ["id", "escalation_level", "attempt_count", "created_at"]
 
@@ -86,7 +93,7 @@ class CallHistorySerializer(serializers.ModelSerializer):
             "recording_url", "consent_recorded",
             "ivr_path", "call_reason", "call_reason_display", "notes",
             "provider_name", "provider_call_id",
-            "created_at",
+            "created_at", *AI_FIELDS,
         ]
         read_only_fields = fields
 
@@ -97,3 +104,76 @@ class TelephonyWebhookSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         return data
+
+
+class CallAnalysisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Call
+        fields = ["id", "transcript", "call_reason", *AI_FIELDS]
+        read_only_fields = fields
+
+
+class IVRNodeSerializer(TenantModelSerializer):
+    DIGITS = set("0123456789*#")
+
+    class Meta:
+        model = IVRNode
+        fields = ["id", "menu", "parent", "digit", "label", "action", "prompt", "language", "department",
+                  "queue_target", "queue_agents", "sort_order"]
+        extra_kwargs = {"digit": {"required": False}}  # empty for the welcome menu
+        validators = []  # DRF's (parent, digit) unique validator would force a key on the welcome menu too; see validate()
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        get = lambda name: attrs.get(name, getattr(self.instance, name, None))  # noqa: E731
+        menu, parent, digit, action = get("menu"), get("parent"), get("digit") or "", get("action")
+        if parent is not None:
+            if parent.menu_id != menu.pk:
+                raise serializers.ValidationError({"parent": "Belongs to a different phone menu."})
+            if self.instance is not None and (parent.pk == self.instance.pk or self._is_descendant(parent)):
+                raise serializers.ValidationError({"parent": "An option can't sit under itself."})
+            if digit not in self.DIGITS:
+                raise serializers.ValidationError({"digit": "Pick the key the caller presses: 0-9, * or #."})
+            siblings = IVRNode.objects.filter(parent=parent, digit=digit)
+            if self.instance is not None:
+                siblings = siblings.exclude(pk=self.instance.pk)
+            if siblings.exists():
+                raise serializers.ValidationError({"digit": f"Key {digit} is already used at this level."})
+        else:
+            roots = IVRNode.objects.filter(menu=menu, parent__isnull=True)
+            if self.instance is not None:
+                roots = roots.exclude(pk=self.instance.pk)
+            if roots.exists():
+                raise serializers.ValidationError({"parent": "This menu already has a welcome menu; add options under it."})
+        if action == IVRNode.Action.QUEUE and not get("queue_target"):
+            raise serializers.ValidationError({"queue_target": "Name the PBX queue, ring group or extension to connect to."})
+        if action == IVRNode.Action.LANGUAGE and get("language") not in ("en", "hi", "mr"):
+            raise serializers.ValidationError({"language": "Choose en, hi or mr."})
+        if action == IVRNode.Action.INFO and not (get("prompt") or "").strip():
+            raise serializers.ValidationError({"prompt": "Write the message the caller should hear."})
+        return attrs
+
+    def _is_descendant(self, node):
+        seen = set()
+        while node is not None and node.pk not in seen:
+            if node.pk == self.instance.pk:
+                return True
+            seen.add(node.pk)
+            node = node.parent
+        return False
+
+
+class IVRMenuSerializer(TenantModelSerializer):
+    nodes = IVRNodeSerializer(many=True, read_only=True)
+    webhooks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IVRMenu
+        fields = ["id", "name", "dial_in_number", "is_active", "fallback_target", "hold_announce_seconds",
+                  "hold_info_text", "booking_url", "nodes", "webhooks", "created_at"]
+
+    def get_webhooks(self, obj):
+        request = self.context.get("request")
+        base = f"/api/v1/ivr/{obj.webhook_token}"
+        absolute = request.build_absolute_uri if request is not None else (lambda u: u)
+        return {name: absolute(f"{base}/{name}/") for name in ("step", "hold", "event")}

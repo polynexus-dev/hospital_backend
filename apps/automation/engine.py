@@ -16,8 +16,9 @@ Steps
   create_task {"title", "assign_to": "owner"|"manager", "priority", "due_in_minutes"}
               linked to the enquiry / patient. Titles may use {enquiry_id},
               {source}, {stage}; never names (task titles aren't encrypted).
-  send_whatsapp / send_sms  {"purpose": "<template purpose>", "fallback_sms": true}
-              to the patient, or to the lead if not a patient yet.
+  send_whatsapp / send_sms / send_email  {"purpose": "<template purpose>", "fallback_sms": true}
+              to the patient, or to the lead if not a patient yet. Email goes
+              out through polyMX with an unsubscribe link.
   escalate    {"note"}: urgent task for the escalation manager.
 """
 import logging
@@ -50,7 +51,11 @@ def current_facts(event: Dict[str, Any], hospital_id) -> Dict[str, Any]:
             "department": enquiry.department.name if enquiry.department_id else "", "department_id": enquiry.department_id,
             "assigned": bool(enquiry.assigned_to_id), "assigned_to_id": enquiry.assigned_to_id, "escalation_level": enquiry.escalation_level,
             "service_requested": enquiry.service_requested, "is_patient": bool(enquiry.patient_id), "contacted": enquiry.first_contacted_at is not None,
+            "has_email": bool(enquiry.email or (enquiry.patient_id and enquiry.patient.email)),
         })
+        from apps.enquiries.quiet import quiet_days
+
+        facts["quiet_days"] = quiet_days(enquiry)
     return facts
 
 
@@ -172,7 +177,7 @@ def _send(step, event, hospital_id):
     purpose = cfg.get("purpose") or cfg.get("template")
     if not purpose:
         raise ValueError("No message template chosen for this step.")
-    channel = Channel.WHATSAPP if step.action_type == WorkflowStep.ActionType.SEND_WHATSAPP else Channel.SMS
+    channel = {WorkflowStep.ActionType.SEND_WHATSAPP: Channel.WHATSAPP, WorkflowStep.ActionType.SEND_EMAIL: Channel.EMAIL}.get(step.action_type, Channel.SMS)
     fallback = Channel.SMS if channel == Channel.WHATSAPP and cfg.get("fallback_sms", True) else None
     enquiry = _enquiry(event, hospital_id)
     if enquiry is not None:
@@ -187,8 +192,9 @@ def _send(step, event, hospital_id):
         msg = send_message(patient=patient, channel=channel, purpose=purpose, context={"patient_name": patient.full_name, "hospital_name": patient.hospital.name},
                            fallback_channel=fallback)
     if msg is None:
-        return "skipped", f"Not sent ('{purpose}'): opted out, lost lead, no number or no template."
-    return ("passed" if msg.status != "failed" else "failed"), f"{msg.channel} '{purpose}' {msg.status}"
+        return "skipped", f"Not sent ('{purpose}'): opted out, lost lead, no {'email address' if channel == Channel.EMAIL else 'number'} or no template."
+    detail = f"{msg.channel} '{purpose}' {msg.status}" + (f": {msg.error}" if msg.error else "")
+    return ("passed" if msg.status != "failed" else "failed"), detail
 
 
 # --- running ----------------------------------------------------------------------
@@ -233,7 +239,7 @@ def run_steps(run: WorkflowRun, steps, event, hospital_id, start_order=0, dry_ru
             elif step.action_type == WorkflowStep.ActionType.CREATE_TASK:
                 task, owner = _create_task(wf, step, event, current_facts(event, hospital_id), hospital_id)
                 entry["details"] = f"Task #{task.pk} for {owner.email if owner else 'the team (no owner)'}"
-            elif step.action_type in (WorkflowStep.ActionType.SEND_WHATSAPP, WorkflowStep.ActionType.SEND_SMS):
+            elif step.action_type in (WorkflowStep.ActionType.SEND_WHATSAPP, WorkflowStep.ActionType.SEND_SMS, WorkflowStep.ActionType.SEND_EMAIL):
                 entry["status"], entry["details"] = _send(step, event, hospital_id)
             elif step.action_type == WorkflowStep.ActionType.ESCALATE:
                 facts = current_facts(event, hospital_id)

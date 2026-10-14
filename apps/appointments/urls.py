@@ -23,9 +23,21 @@ urlpatterns = router.urls + [
 
 from django.urls import path as _path  # noqa: E402
 
+from .calendar_views import (  # noqa: E402
+    CalendarCallbackView,
+    CalendarConnectionDetailView,
+    CalendarConnectionsView,
+    CalendarConnectView,
+    CalendarSyncNowView,
+)
 from .views import ConsultationTimeView, DoctorScheduleView  # noqa: E402
 
 urlpatterns = [
+    _path("calendar/connections/", CalendarConnectionsView.as_view(), name="calendar-connections"),
+    _path("calendar/connections/<int:pk>/", CalendarConnectionDetailView.as_view(), name="calendar-connection"),
+    _path("calendar/connections/<int:pk>/sync/", CalendarSyncNowView.as_view(), name="calendar-sync"),
+    _path("calendar/connect/", CalendarConnectView.as_view(), name="calendar-connect"),
+    _path("calendar/callback/<str:provider>/", CalendarCallbackView.as_view(), name="calendar-callback"),
     _path("doctors/<int:pk>/schedule/", DoctorScheduleView.as_view(), name="doctor-schedule"),
     _path("consultation-time/", ConsultationTimeView.as_view(), name="consultation-time"),
 ] + list(urlpatterns)

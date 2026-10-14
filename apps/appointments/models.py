@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from apps.core.fields import EncryptedTextField
 from apps.core.models import Department, TenantScopedModel
 from apps.patients.models import Patient
 
@@ -57,6 +58,10 @@ class Slot(TenantScopedModel):
     end_time = models.TimeField()
     is_blocked = models.BooleanField(default=False, help_text="Manually blocked (leave, procedure, etc.), not bookable.")
     blocked_reason = models.CharField(max_length=255, blank=True, help_text="e.g. doctor on leave, OT block.")
+    # Set when the block came from the doctor's own Google / Outlook calendar
+    # (apps.appointments.calendar_sync); it's lifted again when that event
+    # moves or is deleted. Manual blocks leave this empty.
+    calendar_block = models.ForeignKey("CalendarBusyBlock", on_delete=models.SET_NULL, null=True, blank=True, related_name="slots")
 
     class Meta:
         ordering = ["date", "start_time"]
@@ -224,3 +229,61 @@ class OPDVisit(TenantScopedModel):
 
     def __str__(self):
         return f"{self.visit_number} {self.get_visit_type_display()}"
+
+
+class CalendarConnection(TenantScopedModel):
+    """A doctor's Google Calendar or Microsoft 365 / Outlook calendar,
+    connected once by OAuth (apps.appointments.calendar_sync). Appointments
+    are written into it; the doctor's own busy events block OPD slots."""
+
+    class Provider(models.TextChoices):
+        GOOGLE = "google", "Google Calendar"
+        MICROSOFT = "microsoft", "Outlook / Microsoft 365"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Connected"
+        ERROR = "error", "Needs attention"
+        REVOKED = "revoked", "Access withdrawn"
+
+    doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, related_name="calendar_connection")
+    provider = models.CharField(max_length=16, choices=Provider.choices)
+    account_email = models.CharField(max_length=255, blank=True)
+    calendar_id = models.CharField(max_length=255, default="primary")
+    access_token = EncryptedTextField(blank=True)
+    refresh_token = EncryptedTextField(blank=True)
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+
+    push_appointments = models.BooleanField(default=True, help_text="Write OPD appointments into the doctor's calendar.")
+    block_busy_slots = models.BooleanField(default=True, help_text="Block OPD slots when the doctor's calendar shows them busy.")
+
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=255, blank=True)
+    connected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    def __str__(self):
+        return f"{self.doctor} - {self.get_provider_display()}"
+
+
+class CalendarBusyBlock(TenantScopedModel):
+    """A busy event read from the doctor's calendar. Only its time is kept,
+    never its title: the doctor's private diary stays private."""
+
+    connection = models.ForeignKey(CalendarConnection, on_delete=models.CASCADE, related_name="busy_blocks")
+    external_event_id = models.CharField(max_length=255)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["connection", "external_event_id"], name="unique_busy_block_per_event"),
+        ]
+
+
+class CalendarAppointmentEvent(TenantScopedModel):
+    """The calendar event we created for an appointment."""
+
+    connection = models.ForeignKey(CalendarConnection, on_delete=models.CASCADE, related_name="appointment_events")
+    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="calendar_event")
+    external_event_id = models.CharField(max_length=255, db_index=True)
+    synced_at = models.DateTimeField(auto_now=True)

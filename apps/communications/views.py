@@ -108,9 +108,17 @@ class InboundWebhookView(APIView):
         address = payload.get("from", "")
         body = payload.get("body", "")
 
+        from .delivery import handle_stop_reply
+
+        opted_out = handle_stop_reply(hospital_id, channel, address, body)
         patient = Patient.objects.filter(hospital_id=hospital_id).by_mobile(address).first()
         if patient is None and "@" in address:
             patient = Patient.objects.filter(hospital_id=hospital_id).by_email(address).first()
+        if opted_out:
+            if patient is not None:
+                Message.objects.create(hospital_id=hospital_id, patient=patient, channel=channel, direction=Message.Direction.INBOUND, body=body,
+                                       status=Message.Status.RECEIVED, provider_message_id=payload.get("message_id", ""), raw_payload=payload)
+            return Response({"detail": "Opted out of marketing messages on this channel."}, status=status.HTTP_202_ACCEPTED)
 
         if patient is None:
             return Response({"detail": "No matching patient for this address; message dropped."}, status=status.HTTP_202_ACCEPTED)
@@ -229,99 +237,54 @@ class BroadcastCampaignViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="audience-count")
     def audience_count(self, request):
-        """Returns live recipient estimates across the 5 target audience cohorts."""
-        from datetime import date, timedelta
-        from apps.enquiries.models import Enquiry
+        """People in each target audience right now (before opt-outs)."""
+        from .campaigns import audience_counts
 
         hospital = getattr(request.user, "hospital", None)
         if not hospital:
-            return Response({"all_patients": 0, "unconverted_leads": 0, "follow_up_leads": 0, "chronic_care": 0, "senior_citizens": 0})
+            return Response({t: 0 for t in BroadcastCampaign.TargetAudience.values})
+        return Response(audience_counts(hospital))
 
-        all_patients = Patient.objects.filter(hospital=hospital).count()
-        unconverted_leads = Enquiry.objects.filter(
-            hospital=hospital,
-            stage__in=[Enquiry.Stage.NEW, Enquiry.Stage.CONTACTED, Enquiry.Stage.SCHEDULED, Enquiry.Stage.VISITED],
-        ).count()
-        follow_up_leads = Enquiry.objects.filter(hospital=hospital, follow_up_date__isnull=False).count()
-        
-        # Dates of birth are encrypted; birth year is enough to pick out seniors.
-        senior_citizens = Patient.objects.filter(hospital=hospital, birth_year__lte=date.today().year - 60).count()
-        chronic_care = Patient.objects.filter(hospital=hospital).exclude(blood_group="").count() or max(1, all_patients // 4)
+    # Not named `dispatch`: that would override APIView.dispatch, the entry
+    # point of every request to this viewset.
+    @action(detail=True, methods=["post"], url_path="dispatch")
+    def dispatch_campaign(self, request, pk=None):
+        """Sends the campaign now, or at scheduled_for if that's in the future.
+        Messages go out from the background worker; counts fill in as they do."""
+        from django.utils import timezone
 
-        return Response({
-            "all_patients": all_patients,
-            "unconverted_leads": unconverted_leads,
-            "follow_up_leads": follow_up_leads,
-            "chronic_care": chronic_care,
-            "senior_citizens": senior_citizens,
-        })
-
-    @action(detail=True, methods=["post"])
-    def dispatch(self, request, pk=None):
-        """Simulates/triggers immediate dispatch of the broadcast campaign."""
-        from datetime import date, timedelta
-        from apps.enquiries.models import Enquiry
+        from .campaigns import check_ready, start
 
         campaign = self.get_object()
-        hospital = getattr(request.user, "hospital", None)
-
-        if campaign.status == BroadcastCampaign.Status.COMPLETED:
-            return Response({"detail": "Campaign has already been completed."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Count targeted recipients
-        recipients_count = 0
-        target_patients = []
-
-        if campaign.target_audience == BroadcastCampaign.TargetAudience.ALL_PATIENTS:
-            pts = list(Patient.objects.filter(hospital=hospital)[:200])
-            recipients_count = Patient.objects.filter(hospital=hospital).count()
-            target_patients = pts
-        elif campaign.target_audience == BroadcastCampaign.TargetAudience.UNCONVERTED_LEADS:
-            recipients_count = Enquiry.objects.filter(
-                hospital=hospital,
-                stage__in=[Enquiry.Stage.NEW, Enquiry.Stage.CONTACTED, Enquiry.Stage.SCHEDULED, Enquiry.Stage.VISITED],
-            ).count()
-        elif campaign.target_audience == BroadcastCampaign.TargetAudience.FOLLOW_UP_LEADS:
-            recipients_count = Enquiry.objects.filter(hospital=hospital, follow_up_date__isnull=False).count()
-        elif campaign.target_audience == BroadcastCampaign.TargetAudience.SENIOR_CITIZENS:
-            seniors = Patient.objects.filter(hospital=hospital, birth_year__lte=date.today().year - 60)
-            recipients_count = seniors.count()
-            target_patients = list(seniors[:200])
+        if campaign.status not in (BroadcastCampaign.Status.DRAFT, BroadcastCampaign.Status.SCHEDULED, BroadcastCampaign.Status.FAILED):
+            return Response({"detail": f"This campaign is already {campaign.get_status_display().lower()}."}, status=status.HTTP_400_BAD_REQUEST)
+        problems = check_ready(campaign)
+        if problems:
+            return Response({"detail": " ".join(problems)}, status=status.HTTP_400_BAD_REQUEST)
+        if campaign.scheduled_for and campaign.scheduled_for > timezone.now():
+            campaign.status, campaign.error = BroadcastCampaign.Status.SCHEDULED, ""
+            campaign.save(update_fields=["status", "error", "updated_at"])
+            detail = f"Scheduled for {timezone.localtime(campaign.scheduled_for):%d %b %Y %H:%M}."
         else:
-            recipients_count = Patient.objects.filter(hospital=hospital).count()
-            target_patients = list(Patient.objects.filter(hospital=hospital)[:200])
+            start(campaign)
+            detail = "Sending now. Counts update as messages go out."
+        return Response({"detail": detail, "campaign": BroadcastCampaignSerializer(campaign).data})
 
-        total = max(1, recipients_count)
-        sent = total
-        delivered = int(total * 0.96)
-        read = int(total * 0.74)
-        failed = total - delivered
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        campaign = self.get_object()
+        if campaign.status != BroadcastCampaign.Status.SCHEDULED:
+            return Response({"detail": "Only a scheduled campaign can be cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+        campaign.status = BroadcastCampaign.Status.DRAFT
+        campaign.save(update_fields=["status", "updated_at"])
+        return Response(BroadcastCampaignSerializer(campaign).data)
 
-        campaign.status = BroadcastCampaign.Status.COMPLETED
-        campaign.total_recipients = total
-        campaign.sent_count = sent
-        campaign.delivered_count = delivered
-        campaign.read_count = read
-        campaign.failed_count = failed
-        campaign.save()
+    def perform_update(self, serializer):
+        from rest_framework.exceptions import ValidationError
 
-        # Create sample outbound messages for patients so it appears in timelines
-        for pt in target_patients[:10]:
-            msg_body = campaign.custom_message.replace("{{patient_name}}", pt.full_name or "Valued Patient")
-            Message.objects.create(
-                hospital=hospital,
-                patient=pt,
-                channel=campaign.channel,
-                direction=Message.Direction.OUTBOUND,
-                body=msg_body,
-                status=Message.Status.DELIVERED,
-                provider_message_id=f"bcast_{campaign.id}_{pt.id}",
-            )
-
-        return Response({
-            "detail": f"Campaign successfully dispatched to {total} recipients.",
-            "campaign": BroadcastCampaignSerializer(campaign).data,
-        })
+        if serializer.instance.status not in (BroadcastCampaign.Status.DRAFT, BroadcastCampaign.Status.FAILED):
+            raise ValidationError("A campaign that has been scheduled or sent can't be edited.")
+        serializer.save()
 
 
 

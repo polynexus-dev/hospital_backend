@@ -26,3 +26,10 @@ def recompute_enquiry_scores():
     for hospital in Hospital.objects.filter(is_active=True):
         updated += recompute_hospital_scores(hospital)
     return updated
+
+
+@shared_task
+def sweep_quiet_enquiries():
+    from .quiet import sweep_quiet_enquiries as run
+
+    return run()

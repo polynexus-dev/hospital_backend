@@ -85,6 +85,7 @@ class Workflow(TenantScopedModel):
         APPOINTMENT_NO_SHOW = "appointment_no_show", "Appointment No-Show"
         NPS_DETRACTOR = "nps_detractor", "NPS Detractor Rating Received"
         PATIENT_RECALL_DUE = "patient_recall_due", "Patient Recall Due (scheduled)"
+        ENQUIRY_WENT_QUIET = "enquiry_went_quiet", "Lead Went Quiet (no reply for 2 days)"
 
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -114,6 +115,7 @@ class WorkflowStep(models.Model):
         CREATE_TASK = "create_task", "Create Task / Callback Task"
         SEND_WHATSAPP = "send_whatsapp", "Send WhatsApp Notification"
         SEND_SMS = "send_sms", "Send SMS Notification"
+        SEND_EMAIL = "send_email", "Send Email"
         ESCALATE = "escalate", "Escalate to Manager / Owner"
         WAIT_DELAY = "wait_delay", "Wait / Delay Timer"
 

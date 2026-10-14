@@ -3,6 +3,7 @@ NABH AAC.1 registration capabilities: duplicate detection & merge (AAC.1.f),
 mobile OTP verification (AAC.1.b), configurable UHID (AAC.1.d), and
 idempotent offline-registration sync (AAC.1.g).
 """
+import logging
 import secrets
 from datetime import timedelta
 
@@ -19,6 +20,8 @@ from rest_framework.views import APIView
 from apps.core.encryption import blind_index, name_query_tokens, normalize_phone
 
 from .models import MobileOTP, Patient, UHIDConfig
+
+logger = logging.getLogger(__name__)
 
 OTP_TTL_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
@@ -132,11 +135,25 @@ def issue_otp(hospital, mobile, purpose="registration"):
         hospital=hospital, mobile_hash=blind_index(normalize_phone(mobile)), purpose=purpose,
         code_hash=make_password(code), expires_at=timezone.now() + timedelta(minutes=OTP_TTL_MINUTES),
     )
+    # SMS goes out on the hospital's DLT-registered "registration_otp"
+    # template (MSG91 needs its template id); plain text is the fallback for
+    # the stub / test provider.
+    from apps.clinical.notify import ensure_default_templates
+    from apps.communications.services import get_active_template
+
+    ensure_default_templates(hospital)
+    context = {"otp": code, "hospital_name": hospital.name, "minutes": OTP_TTL_MINUTES}
+    template = get_active_template(hospital, purpose="registration_otp", channel="sms", language="en")
     text = f"{code} is your OTP to verify your mobile number with {hospital.name}. Valid for {OTP_TTL_MINUTES} minutes."
+    if template is not None:
+        try:
+            text = template.render(context)
+        except (KeyError, IndexError, ValueError):
+            logger.warning("Hospital %s's registration_otp template uses a placeholder we don't fill", hospital.pk)
     try:
-        get_sms_provider().send(to=mobile, body=text, subject="")
+        get_sms_provider().send(to=mobile, body=text, subject="", template=template, context=context)
     except Exception:
-        pass
+        logger.warning("Registration OTP SMS to hospital %s failed", hospital.pk, exc_info=True)
     return code
 
 

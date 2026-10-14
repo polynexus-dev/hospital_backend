@@ -90,6 +90,8 @@ class Enquiry(TenantScopedModel):
     follow_up_date = models.DateField(null=True, blank=True, help_text="Scheduled callback / follow-up date")
     escalation_level = models.PositiveSmallIntegerField(default=0)
     first_contacted_at = models.DateTimeField(null=True, blank=True, help_text="When the enquiry first left New (response-time KPI).")
+    went_quiet_at = models.DateTimeField(null=True, blank=True, editable=False,
+                                         help_text="When the 'lead went quiet' workflows last started for this enquiry (apps.enquiries.quiet).")
     last_escalated_at = models.DateTimeField(null=True, blank=True)
     follow_up_reminded_on = models.DateField(null=True, blank=True, help_text="Last day an overdue follow-up reminder was raised.")
 

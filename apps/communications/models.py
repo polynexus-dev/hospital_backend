@@ -31,6 +31,12 @@ class Template(TenantScopedModel):
     subject = models.CharField(max_length=255, blank=True, help_text="Email subject / WhatsApp template header.")
     body = models.TextField(help_text="Use {variable} placeholders, e.g. {patient_name}, {doctor_name}, {date}, {time}.")
     is_active = models.BooleanField(default=True)
+    # The provider's own registration of this text: the MSG91 DLT template id
+    # for SMS, the Meta-approved template name for WhatsApp (needed outside
+    # the 24-hour reply window). Variables are filled from the same context.
+    provider_template_id = models.CharField(max_length=100, blank=True, help_text="SMS: MSG91 template id (DLT). WhatsApp: approved template name.")
+    provider_variables = models.CharField(max_length=255, blank=True,
+                                          help_text="Placeholders the provider template takes, comma-separated, in its order, e.g. patient_name,date,time.")
 
     class Meta:
         constraints = [
@@ -41,7 +47,15 @@ class Template(TenantScopedModel):
         return f"{self.name} [{self.channel}/{self.language}]"
 
     def render(self, context: dict) -> str:
+        """Raises KeyError for a placeholder the context doesn't fill: a
+        typo must not go out as "Dear ,"."""
         return self.body.format(**context)
+
+    def render_subject(self, context: dict) -> str:
+        return self.subject.format(**context) if self.subject else ""
+
+    def variables(self):
+        return [v.strip() for v in self.provider_variables.split(",") if v.strip()]
 
 
 class ConsentOptOut(TenantScopedModel):
@@ -101,6 +115,8 @@ class Message(TenantScopedModel):
 
     provider_message_id = models.CharField(max_length=128, blank=True, db_index=True)
     raw_payload = models.JSONField(default=dict, blank=True)
+    campaign = models.ForeignKey("BroadcastCampaign", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
+    error = models.CharField(max_length=255, blank=True)
 
     sent_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
@@ -167,9 +183,9 @@ class BroadcastCampaign(TenantScopedModel):
 
     class TargetAudience(models.TextChoices):
         ALL_PATIENTS = "all_patients", "All Registered Patients"
-        UNCONVERTED_LEADS = "unconverted_leads", "Unconverted CRM Leads"
+        UNCONVERTED_LEADS = "unconverted_leads", "Open CRM Leads"
         FOLLOW_UP_LEADS = "follow_up_leads", "Leads in Follow-up Queue"
-        CHRONIC_CARE = "chronic_care", "Chronic Care & Recalls Due"
+        CHRONIC_CARE = "chronic_care", "Patients with a Recall Due"
         SENIOR_CITIZENS = "senior_citizens", "Senior Citizens (60+)"
 
     title = models.CharField(max_length=255)
@@ -185,6 +201,10 @@ class BroadcastCampaign(TenantScopedModel):
     delivered_count = models.PositiveIntegerField(default=0)
     read_count = models.PositiveIntegerField(default=0)
     failed_count = models.PositiveIntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0, help_text="Opted out, unsubscribed, or no number / email.")
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error = models.CharField(max_length=255, blank=True)
 
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
@@ -194,3 +214,19 @@ class BroadcastCampaign(TenantScopedModel):
     def __str__(self):
         return f"Campaign: {self.title} ({self.status})"
 
+
+
+class ContactSuppression(TenantScopedModel):
+    """A number or email address that asked not to get marketing messages
+    (email unsubscribe link, STOP reply) — covers leads that aren't
+    registered patients, who have no ConsentOptOut row. Stored as the same
+    keyed hash used for lookups, never the address itself."""
+
+    channel = models.CharField(max_length=16, choices=Channel.choices)
+    contact_hash = models.CharField(max_length=64, db_index=True)
+    source = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["hospital", "channel", "contact_hash"], name="unique_suppression_per_contact"),
+        ]

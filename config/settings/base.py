@@ -419,6 +419,16 @@ TELEMEDICINE_JITSI_BASE_URL = env("TELEMEDICINE_JITSI_BASE_URL", default="https:
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
 OLLAMA_TIMEOUT_SECONDS = env.int("OLLAMA_TIMEOUT_SECONDS", default=6)
 
+# AI call analysis (apps.telephony.call_ai): a self-hosted Whisper server
+# with the OpenAI-compatible /v1/audio/transcriptions endpoint (e.g.
+# speaches), so call audio stays on the hospital's own servers. Empty =
+# call analysis off. Summaries use the Ollama server above.
+WHISPER_BASE_URL = env("WHISPER_BASE_URL", default="")
+WHISPER_MODEL = env("WHISPER_MODEL", default="Systran/faster-whisper-large-v3")
+CALL_AI_TIMEOUT_SECONDS = env.int("CALL_AI_TIMEOUT_SECONDS", default=180)
+# PBX recording servers often use self-signed certificates.
+CALL_RECORDING_VERIFY_TLS = env.bool("CALL_RECORDING_VERIFY_TLS", default=True)
+
 
 # Cache — backs DRF's request throttling (see REST_FRAMEWORK below). Redis,
 # not Django's default LocMemCache: LocMemCache is per-process, so with more
@@ -473,6 +483,31 @@ CELERY_BEAT_SCHEDULE = {
     "escalate-overdue-callbacks": {
         "task": "apps.telephony.tasks.escalate_overdue_callbacks",
         "schedule": 300.0,  # every 5 minutes
+    },
+    # Phone-menu sessions the PBX never closed (no hang-up event).
+    "close-stale-ivr-sessions": {
+        "task": "apps.telephony.tasks.close_stale_ivr_sessions",
+        "schedule": 900.0,
+    },
+    # Missed calls never returned / booking calls that didn't book.
+    "flag-missed-call-opportunities": {
+        "task": "apps.telephony.tasks.flag_missed_opportunities",
+        "schedule": 3600.0,
+    },
+    # Leads that went quiet -> "Lead went quiet" workflows.
+    "sweep-quiet-enquiries": {
+        "task": "apps.enquiries.tasks.sweep_quiet_enquiries",
+        "schedule": 3600.0,
+    },
+    # Doctors' Google / Outlook busy times -> blocked OPD slots.
+    "sync-doctor-calendars": {
+        "task": "apps.appointments.tasks.sync_all_doctor_calendars",
+        "schedule": 300.0,
+    },
+    # Scheduled WhatsApp / SMS / email campaigns.
+    "dispatch-scheduled-campaigns": {
+        "task": "apps.communications.tasks.dispatch_scheduled_campaigns",
+        "schedule": 60.0,
     },
     # §2 — enquiry SLA ageing / auto-escalation.
     "escalate-overdue-enquiries": {
@@ -614,6 +649,26 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Polynexus <no-reply@polynexus.in>")
+# Patient / lead email (EMAIL_PROVIDER=polymx): sent through the same SMTP
+# server above, pointed at polyMX. The display name becomes the hospital's.
+MESSAGING_FROM_EMAIL = env("MESSAGING_FROM_EMAIL", default=DEFAULT_FROM_EMAIL)
+
+# Doctors' calendars (apps.appointments.calendar_sync). Register
+# <CALENDAR_OAUTH_REDIRECT_BASE>/api/v1/calendar/callback/google/ and
+# .../microsoft/ as redirect URIs in Google Cloud / Azure. Empty client id =
+# that provider isn't offered.
+GOOGLE_CALENDAR_CLIENT_ID = env("GOOGLE_CALENDAR_CLIENT_ID", default="")
+GOOGLE_CALENDAR_CLIENT_SECRET = env("GOOGLE_CALENDAR_CLIENT_SECRET", default="")
+MICROSOFT_CALENDAR_CLIENT_ID = env("MICROSOFT_CALENDAR_CLIENT_ID", default="")
+MICROSOFT_CALENDAR_CLIENT_SECRET = env("MICROSOFT_CALENDAR_CLIENT_SECRET", default="")
+MICROSOFT_CALENDAR_TENANT = env("MICROSOFT_CALENDAR_TENANT", default="common")
+CALENDAR_OAUTH_REDIRECT_BASE = env("CALENDAR_OAUTH_REDIRECT_BASE", default="")
+
+# SMS_PROVIDER=msg91 — MSG91 Flow API. Delivery reports: point MSG91's
+# "On Report Received" webhook at /api/v1/webhooks/msg91/<MSG91_WEBHOOK_TOKEN>/.
+MSG91_AUTH_KEY = env("MSG91_AUTH_KEY", default="")
+MSG91_FLOW_URL = env("MSG91_FLOW_URL", default="https://control.msg91.com/api/v5/flow")
+MSG91_WEBHOOK_TOKEN = env("MSG91_WEBHOOK_TOKEN", default="")
 
 # Only used when WHATSAPP_PROVIDER=aws (AWSEndUserMessagingWhatsAppProvider).
 # AWS credentials themselves come from boto3's standard credential chain

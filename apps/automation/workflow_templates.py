@@ -33,6 +33,27 @@ WORKFLOW_TEMPLATES = [
         ],
     },
     {
+        "key": "lead_went_quiet_sequence",
+        "name": "Lead went quiet: 3-step follow-up",
+        "description": "When an open lead hasn't replied or moved for 2 days: WhatsApp (SMS if WhatsApp fails) at once, an email 3 days later, "
+                       "and after 9 quiet days a task for the owner to call or close it. Stops as soon as the lead replies, a call is answered "
+                       "or the enquiry moves on.",
+        "trigger_type": "enquiry_went_quiet",
+        "steps": [
+            (T, "create_task", "Lead went quiet", {}),
+            (A, "send_whatsapp", "WhatsApp follow-up", {"purpose": "enquiry_follow_up", "fallback_sms": True}),
+            (A, "wait_delay", "Wait 3 days", {"delay_minutes": 4320}),
+            (C, "create_task", "Still quiet (5+ days)?", {"field": "quiet_days", "op": "gte", "value": 5}),
+            (C, "create_task", "Still open?", {"field": "stage", "op": "in", "value": "new,contacted,scheduled,follow_up"}),
+            (A, "send_email", "Email follow-up", {"purpose": "enquiry_follow_up_email"}),
+            (A, "wait_delay", "Wait 4 days", {"delay_minutes": 5760}),
+            (C, "create_task", "Still quiet (9+ days)?", {"field": "quiet_days", "op": "gte", "value": 9}),
+            (C, "create_task", "Still open?", {"field": "stage", "op": "in", "value": "new,contacted,scheduled,follow_up"}),
+            (A, "create_task", "Task: call or close", {"title": "Enquiry #{enquiry_id} quiet for 9 days: call once more or mark lost", "assign_to": "owner",
+                                                        "priority": "normal", "due_in_minutes": 1440}),
+        ],
+    },
+    {
         "key": "hot_lead_fast_track",
         "name": "Urgent or high-score lead: fast track",
         "description": "When an urgent or high-scoring enquiry arrives, give the owner an urgent task due in 15 minutes.",

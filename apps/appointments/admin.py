@@ -27,3 +27,13 @@ class AppointmentAdmin(admin.ModelAdmin):
     list_display = ["patient", "doctor", "slot", "status", "source"]
     list_filter = ["hospital", "status", "source", "doctor"]
     search_fields = ["patient__uhid"]
+
+
+from .models import CalendarConnection  # noqa: E402
+
+
+@admin.register(CalendarConnection)
+class CalendarConnectionAdmin(admin.ModelAdmin):
+    list_display = ["doctor", "provider", "account_email", "status", "last_synced_at"]
+    list_filter = ["hospital", "provider", "status"]
+    exclude = ["access_token", "refresh_token"]

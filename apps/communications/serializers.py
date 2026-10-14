@@ -6,7 +6,7 @@ from .models import BroadcastCampaign, Channel, ConsentOptOut, Message, Template
 class TemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Template
-        fields = ["id", "name", "purpose", "channel", "language", "subject", "body", "is_active"]
+        fields = ["id", "name", "purpose", "channel", "language", "subject", "body", "is_active", "provider_template_id", "provider_variables"]
         read_only_fields = ["id"]
 
 
@@ -76,13 +76,32 @@ class BroadcastCampaignSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "channel", "target_audience", "template", "custom_message",
             "scheduled_for", "status", "total_recipients", "sent_count",
-            "delivered_count", "read_count", "failed_count",
+            "delivered_count", "read_count", "failed_count", "skipped_count",
+            "started_at", "completed_at", "error", "delivery_reported",
             "created_by", "created_by_name", "created_at", "updated_at",
         ]
         read_only_fields = [
-            "id", "total_recipients", "sent_count", "delivered_count",
-            "read_count", "failed_count", "created_by", "created_at", "updated_at",
+            "id", "status", "total_recipients", "sent_count", "delivered_count", "read_count", "failed_count", "skipped_count",
+            "started_at", "completed_at", "error", "created_by", "created_at", "updated_at",
         ]
+
+    delivery_reported = serializers.SerializerMethodField()
+
+    def get_delivery_reported(self, obj) -> bool:
+        """Whether delivered / read counts come back for this channel: MSG91
+        sends SMS delivery reports; email (SMTP) and WhatsApp don't report
+        here yet, so their delivered / read figures aren't real numbers."""
+        from django.conf import settings
+
+        return obj.channel == "sms" and settings.SMS_PROVIDER == "msg91"
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        template = attrs.get("template")
+        if template is not None and request is not None and template.hospital_id != request.user.hospital_id:
+            raise serializers.ValidationError({"template": "Refers to a record from a different hospital."})
+        return attrs
 
     def get_created_by_name(self, obj) -> str:
         if not obj.created_by:

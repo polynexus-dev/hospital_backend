@@ -65,3 +65,41 @@ def mark_overdue_appointments_as_no_show():
             mark_no_show(appointment)
             marked += 1
     return marked
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=120)
+def sync_appointment_to_calendar(self, appointment_id):
+    """Writes one appointment into its doctor's calendar (retried if the
+    calendar provider is briefly unreachable)."""
+    from .calendar_sync import AccessRevoked, CalendarError, sync_appointment
+
+    appointment = Appointment.objects.filter(pk=appointment_id).select_related("slot", "patient", "hospital").first()
+    if appointment is None:
+        return "gone"
+    try:
+        return sync_appointment(appointment)
+    except AccessRevoked:
+        return "revoked"
+    except CalendarError as exc:
+        raise self.retry(exc=exc)
+
+
+@shared_task
+def sync_doctor_calendar(connection_id):
+    from .calendar_sync import sync_connection
+    from .models import CalendarConnection
+
+    conn = CalendarConnection.objects.filter(pk=connection_id).select_related("doctor").first()
+    return sync_connection(conn) if conn is not None else None
+
+
+@shared_task
+def sync_all_doctor_calendars():
+    """Every few minutes: read each connected doctor's busy times."""
+    from .models import CalendarConnection
+
+    ids = list(CalendarConnection.objects.filter(status__in=[CalendarConnection.Status.ACTIVE, CalendarConnection.Status.ERROR])
+               .values_list("pk", flat=True))
+    for pk in ids:
+        sync_doctor_calendar(pk)
+    return len(ids)

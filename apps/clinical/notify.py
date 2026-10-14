@@ -20,22 +20,42 @@ DEFAULT_TEMPLATES = {
     "enquiry_follow_up": "Hello {patient_name}, thank you for contacting {hospital_name}. We'd like to help with your enquiry: reply here or call us to book a convenient time.",
     "no_show_recall": "Dear {patient_name}, we missed you at your appointment at {hospital_name}. Reply here or call us to book a new time that suits you.",
     "homecare_booking": "Dear {patient_name}, your {service} home visit is booked for {time}.",
+    "booking_link": "Dear {patient_name}, thank you for calling {hospital_name}. Book your appointment here: {link}",
+    "enquiry_follow_up_email": "Dear {patient_name},\n\nThank you for getting in touch with {hospital_name}. We haven't heard back from you and "
+                               "wanted to check whether we can still help.\n\nReply to this email or call us, and we'll find a time that suits you."
+                               "\n\nWarm regards,\n{hospital_name}",
 }
+
+# Email subjects; purposes without one get "Message from {hospital_name}".
+EMAIL_SUBJECTS = {
+    "enquiry_follow_up": "Your enquiry with {hospital_name}",
+    "enquiry_follow_up_email": "Can we still help? - {hospital_name}",
+    "no_show_recall": "We missed you at {hospital_name}",
+    "report_ready": "Your report is ready - {hospital_name}",
+    "booking_link": "Book your appointment - {hospital_name}",
+    "payment_link": "Payment link - {hospital_name}",
+}
+# OTPs only ever go by SMS / WhatsApp.
+NO_EMAIL = {"portal_otp", "registration_otp"}
 
 
 def ensure_default_templates(hospital):
     from apps.communications.models import Template
 
-    if Template.objects.filter(hospital=hospital, purpose__in=list(DEFAULT_TEMPLATES)).count() >= len(DEFAULT_TEMPLATES) * 6:
+    expected = (len(DEFAULT_TEMPLATES) * 2 + len(set(DEFAULT_TEMPLATES) - NO_EMAIL)) * 3
+    if Template.objects.filter(hospital=hospital, purpose__in=list(DEFAULT_TEMPLATES)).count() >= expected:
         return
     # English text is seeded for every language as a working fallback;
     # hospitals replace the hi/mr bodies with their own translations.
     for purpose, body in DEFAULT_TEMPLATES.items():
-        for channel in ("whatsapp", "sms"):
+        for channel in ("whatsapp", "sms", "email"):
+            if channel == "email" and purpose in NO_EMAIL:
+                continue
             for language in ("en", "hi", "mr"):
                 Template.objects.get_or_create(
                     hospital=hospital, purpose=purpose, channel=channel, language=language,
-                    defaults={"name": f"{purpose.replace('_', ' ').title()} ({language})", "body": body},
+                    defaults={"name": f"{purpose.replace('_', ' ').title()} ({language})", "body": body,
+                              "subject": EMAIL_SUBJECTS.get(purpose, "Message from {hospital_name}") if channel == "email" else ""},
                 )
 
 
