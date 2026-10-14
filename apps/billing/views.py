@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from apps.core.permissions import ActionPermissionRequired
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 from .models import Bill, BillItem, InsuranceClaim, Payment
-from .serializers import BillItemSerializer, BillSerializer, InsuranceClaimSerializer, PaymentSerializer
+from .serializers import BillItemSerializer, BillSerializer, CreditNoteSerializer, InsuranceClaimSerializer, PaymentSerializer
 
 
 class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -22,6 +22,12 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "interim": "billing.add_bill",
         "bed_charges": "billing.view_bill",
         "post_bed_charges": "billing.change_bill",
+        "hold": "billing.hold_bill",
+        "release": "billing.hold_bill",
+        "hold_history": "billing.view_bill",
+        "change_category": "billing.change_bill",
+        "credit_note": "billing.change_bill",
+        "credit_notes": "billing.view_bill",
     }
     serializer_class = BillSerializer
     queryset = Bill.objects.all()
@@ -33,9 +39,72 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         serializer.save(hospital=hospital)
         self._log("create", serializer.instance)
 
+    def perform_update(self, serializer):
+        from .adjustments import ensure_open
+
+        ensure_open(serializer.instance)
+        super().perform_update(serializer)
+
+    @action(detail=True, methods=["post"])
+    def hold(self, request, pk=None):
+        """POST {reason} — stop charges, payments, discounts and discharge until released."""
+        from .adjustments import hold
+
+        bill = hold(self.get_object(), request.user, request.data.get("reason"))
+        self._log("update", bill)
+        return Response(BillSerializer(bill).data)
+
+    @action(detail=True, methods=["post"])
+    def release(self, request, pk=None):
+        """POST {note}"""
+        from .adjustments import release
+
+        bill = release(self.get_object(), request.user, request.data.get("note"))
+        self._log("update", bill)
+        return Response(BillSerializer(bill).data)
+
+    @action(detail=True, methods=["get"], url_path="hold-history")
+    def hold_history(self, request, pk=None):
+        bill = self.get_object()
+        return Response([{"action": e.action, "reason": e.reason, "by": e.by.get_full_name() if e.by_id else "", "at": e.created_at}
+                         for e in bill.hold_events.select_related("by")])
+
+    @action(detail=True, methods=["post"], url_path="change-category")
+    def change_category(self, request, pk=None):
+        """POST {category, preview?: true} — re-price the tariff lines for the new patient category."""
+        from .adjustments import change_category
+
+        bill = self.get_object()
+        result = change_category(bill, str(request.data.get("category", "")), request.user, apply=not request.data.get("preview"))
+        if result["applied"]:
+            self._log("update", bill)
+        return Response(result)
+
+    @action(detail=True, methods=["post"], url_path="credit-note")
+    def credit_note(self, request, pk=None):
+        """POST {reason, amount? | items?: [{item, amount}], settlement: reduce_due|advance|refund, refund_method?, refund_reference?}
+        — amounts are before GST; with only `amount` it's spread across the bill's services."""
+        from .adjustments import credit_note
+
+        bill = self.get_object()
+        d = request.data
+        note = credit_note(bill, request.user, reason=d.get("reason", ""), amount=d.get("amount"), items=d.get("items") or None,
+                           settlement=d.get("settlement") or "reduce_due", refund_method=str(d.get("refund_method", "")),
+                           refund_reference=str(d.get("refund_reference", "")))
+        self._log("update", bill)
+        bill.refresh_from_db()
+        return Response({"credit_note": CreditNoteSerializer(note).data, "bill": BillSerializer(bill).data}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="credit-notes")
+    def credit_notes(self, request, pk=None):
+        return Response(CreditNoteSerializer(self.get_object().credit_notes.all(), many=True).data)
+
     @action(detail=True, methods=["post"], url_path="add-item")
     def add_item(self, request, pk=None):
         bill = self.get_object()
+        from .adjustments import ensure_open
+
+        ensure_open(bill, "add charges")
         desc = request.data.get("description")
         qty = request.data.get("quantity", 1)
         price = request.data.get("unit_price")
@@ -106,6 +175,9 @@ class PaymentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewset
     audited_fields = ("amount", "payment_method", "transaction_id")
 
     def perform_create(self, serializer):
+        from .adjustments import ensure_open
+
+        ensure_open(serializer.validated_data["bill"], "take a payment")
         hospital = getattr(self.request.user, "hospital", None)
         payment = serializer.save(hospital=hospital)
         self._log("create", payment)

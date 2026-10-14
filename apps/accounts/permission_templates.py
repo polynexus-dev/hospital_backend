@@ -276,6 +276,10 @@ VERIFY_PERM_ROLES = {
     "verify_radiologyreport": {"radiologist", "doctor", "owner", "admin", "hospital_administrator"},
     # Discounts above the front-desk limit: managers, never the counter that asks.
     "authorize_discount": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager"},
+    # Putting a bill on hold stops discharge and collections: managers only.
+    "hold_bill": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager", "insurance_tpa_executive"},
+    # The checker in maker-checker vouchers: not every accounts user.
+    "approve_journalentry": {"owner", "admin", "hospital_administrator", "finance_manager"},
 }
 
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.patients.serializers import PatientSerializer
-from .models import Bill, BillItem, InsuranceClaim, Payment
+from .models import Bill, BillCreditNote, BillItem, InsuranceClaim, Payment
 
 
 class BillItemSerializer(serializers.ModelSerializer):
@@ -17,6 +17,11 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ["id", "bill", "amount", "payment_method", "transaction_id", "paid_at"]
         read_only_fields = ["id", "paid_at"]
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Must be more than 0 (refunds go through a credit note).")
+        return value
 
 
 class InsuranceClaimSerializer(serializers.ModelSerializer):
@@ -47,5 +52,21 @@ class BillSerializer(serializers.ModelSerializer):
             "items",
             "payments",
             "insurance_claim", "patient_category", "is_interim", "bill_number", "tax_amount",
+            "on_hold", "hold_reason", "held_at",
         ]
-        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount"]
+        # The category changes through /change-category/ (which re-prices);
+        # the hold through /hold/ and /release/.
+        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount", "on_hold", "hold_reason", "held_at"]
+
+    def validate_patient_category(self, value):
+        if self.instance is not None and value != self.instance.patient_category:
+            raise serializers.ValidationError("Use “Change category” so the bill is re-priced.")
+        return value
+
+
+class CreditNoteSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True, default="")
+
+    class Meta:
+        model = BillCreditNote
+        exclude = ["hospital"]

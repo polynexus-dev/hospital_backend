@@ -70,6 +70,8 @@ def refresh_bill_status(bill):
 def create_payment_link(bill, *, amount=None, user=None, channel="staff", notify=True) -> OnlinePaymentLink:
     if bill.status == Bill.Status.CANCELLED:
         raise GatewayError("This bill is cancelled.")
+    if bill.on_hold:
+        raise GatewayError(f"This bill is on hold ({bill.hold_reason}).")
     balance = bill_balance(bill)
     amount = Decimal(str(amount)) if amount not in (None, "") else balance
     if amount <= 0 or amount > balance:

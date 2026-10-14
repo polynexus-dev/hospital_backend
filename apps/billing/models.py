@@ -30,6 +30,12 @@ class Bill(TenantScopedModel):
     # Paise dropped when the net is rounded down to the rupee (front-desk policy).
     round_off = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     discount_reason = models.CharField(max_length=255, blank=True)
+    # Bill block (MedNet "bill block"): while on hold, no charges, payments,
+    # discounts, credit notes, re-pricing or discharge until released.
+    on_hold = models.BooleanField(default=False)
+    hold_reason = models.CharField(max_length=255, blank=True)
+    held_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    held_at = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.bill_number and self.hospital_id:
@@ -41,6 +47,7 @@ class Bill(TenantScopedModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["hospital", "status"])]
+        permissions = [("hold_bill", "Can put a bill on hold and release it")]
 
     def __str__(self):
         return f"Bill #{self.id} for {self.patient} - ₹{self.net_amount} ({self.status})"
@@ -268,3 +275,45 @@ class OnlinePaymentLink(TenantScopedModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class BillHoldEvent(TenantScopedModel):
+    """History of a bill being put on hold and released."""
+
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="hold_events")
+    action = models.CharField(max_length=8, help_text="hold | release")
+    reason = models.CharField(max_length=255)
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class BillCreditNote(TenantScopedModel):
+    """A credit against a bill: per service, or spread across its services.
+    It adds negative lines to the bill (so totals, GST and the ledger follow),
+    and any amount already paid beyond the new total is refunded or kept as
+    the patient's advance."""
+
+    class Settlement(models.TextChoices):
+        REDUCE_DUE = "reduce_due", "Reduce the amount due"
+        ADVANCE = "advance", "Keep as the patient's advance"
+        REFUND = "refund", "Refund to the patient"
+
+    bill = models.ForeignKey(Bill, on_delete=models.PROTECT, related_name="credit_notes")
+    note_number = models.CharField(max_length=30, blank=True)
+    reason = models.CharField(max_length=255)
+    taxable_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    settlement = models.CharField(max_length=12, choices=Settlement.choices)
+    refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Paid back or moved to the advance")
+    refund_method = models.CharField(max_length=20, blank=True)
+    refund_reference = models.CharField(max_length=100, blank=True)
+    allocation = models.JSONField(default=list, help_text="[{item, description, amount, tax}]")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["hospital", "note_number"], condition=~models.Q(note_number=""), name="unique_bill_credit_note_number")]
+

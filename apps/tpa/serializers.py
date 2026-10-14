@@ -2,6 +2,15 @@ from rest_framework import serializers
 from .models import Claim, PreAuthRequest, TPACompany
 
 
+def active_tpa(serializer, value):
+    """New pre-auths and claims can't go to an insurer/TPA marked inactive;
+    existing ones keep theirs."""
+    current = getattr(serializer.instance, "tpa_company_id", None)
+    if value is not None and not value.is_active and value.pk != current:
+        raise serializers.ValidationError(f"{value.name} is inactive. Reactivate it in the TPA list, or choose another.")
+    return value
+
+
 class TPACompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = TPACompany
@@ -26,6 +35,9 @@ class PreAuthRequestSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "submitted_at"]
 
+    def validate_tpa_company(self, value):
+        return active_tpa(self, value)
+
 
 class ClaimSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
@@ -40,3 +52,6 @@ class ClaimSerializer(serializers.ModelSerializer):
             "status", "rejection_reason", "notes", "submitted_at", "settled_at",
         ]
         read_only_fields = ["id", "submitted_at"]
+
+    def validate_tpa_company(self, value):
+        return active_tpa(self, value)

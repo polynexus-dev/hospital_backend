@@ -315,6 +315,9 @@ class DiscountApprovalViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelVi
         approval = self.get_object()
         if approval.status != DiscountApproval.Status.PENDING:
             raise ValidationError({"detail": "Already decided."})
+        from apps.billing.adjustments import ensure_open
+
+        ensure_open(approval.bill, "decide its discount")
         approval.status = DiscountApproval.Status.APPROVED if approve else DiscountApproval.Status.REJECTED
         approval.approver, approval.decided_at = request.user, timezone.now()
         approval.save(update_fields=["status", "approver", "decided_at"])

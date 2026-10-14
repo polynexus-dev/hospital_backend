@@ -88,6 +88,10 @@ def discharge_patient(admission: Admission, *, status: str = Admission.Status.DI
 
     if not DischargeSummary.objects.filter(admission=admission).exists():
         raise DischargeSummaryRequired("A discharge summary must be created before discharging this admission.")
+    if status == Admission.Status.DISCHARGED:  # LAMA / death are never held back
+        from apps.billing.adjustments import ensure_admission_open
+
+        ensure_admission_open(admission)
     # NABH AAC.6.c — once discharge has been initiated (clearances raised),
     # every department must have cleared before the patient leaves.
     from .models import DischargeClearance

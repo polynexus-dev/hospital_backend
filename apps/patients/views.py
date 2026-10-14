@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -102,6 +103,34 @@ class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDel
         if msg is None:
             return Response({"detail": "Couldn't send: the patient may have opted out, or messaging isn't set up."}, status=422)
         return Response({"sent": True, "channel": msg.channel, "missing": result["missing_names"]})
+
+    @action(detail=True, methods=["post"], url_path="upload-link")
+    def upload_link(self, request, pk=None):
+        """POST {category?, requirement?, minutes?} — a QR-code link for the
+        patient (or staff) to upload documents from a phone."""
+        from . import mobile_upload
+
+        if not request.user.has_perm("patients.add_document"):
+            return Response({"detail": "You can't add documents."}, status=403)
+        session = mobile_upload.start(self.get_object(), request.user, category=request.data.get("category") or "other",
+                                      requirement_id=request.data.get("requirement"), minutes=request.data.get("minutes"))
+        return Response({"session": session.pk, "token": mobile_upload.make_token(session), **mobile_upload.describe(session)}, status=201)
+
+    @action(detail=True, methods=["get", "post"], url_path=r"upload-link/(?P<session_id>\d+)")
+    def upload_link_status(self, request, pk=None, session_id=None):
+        """GET: uploads so far. POST: close the link."""
+        from . import mobile_upload
+        from .models import MobileUploadSession
+
+        if not request.user.has_perm("patients.add_document"):
+            return Response({"detail": "You can't add documents."}, status=403)
+        session = MobileUploadSession.objects.filter(pk=session_id, patient=self.get_object()).first()
+        if session is None:
+            return Response({"detail": "Not found."}, status=404)
+        if request.method == "POST" and session.closed_at is None:
+            session.closed_at = timezone.now()
+            session.save(update_fields=["closed_at"])
+        return Response(mobile_upload.describe(session))
 
     @action(detail=False, methods=["get"], url_path="recalls")
     def recalls(self, request):

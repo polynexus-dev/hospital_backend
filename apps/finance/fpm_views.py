@@ -244,10 +244,16 @@ class ServiceTariffViewSet(TenantCRUDViewSet):
     audited_fields = ("rate", "category_rates", "gst_rate", "is_active")
 
 
+def _active_tpa_only(self, value):
+    from apps.tpa.serializers import active_tpa
+
+    return active_tpa(self, value)
+
+
 class InsurancePolicyViewSet(TenantCRUDViewSet):
-    serializer_class = model_serializer(InsurancePolicy, read_only=("eligibility_checked_at",), extra={
+    serializer_class = type("InsurancePolicySerializer", (model_serializer(InsurancePolicy, read_only=("eligibility_checked_at",), extra={
         "patient_name": serializers.CharField(source="patient.full_name", read_only=True),
-    })
+    }),), {"validate_tpa_company": _active_tpa_only})
     queryset = InsurancePolicy.objects.select_related("patient")
     filterset_fields = ["patient", "eligibility_status", "tpa_company"]
 

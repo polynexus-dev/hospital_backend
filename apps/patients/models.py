@@ -395,3 +395,26 @@ class MobileOTP(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class MobileUploadSession(TenantScopedModel):
+    """A short-lived link (shown as a QR code) that lets a phone upload
+    documents straight into a patient's record without signing in."""
+
+    patient = models.ForeignKey("Patient", on_delete=models.CASCADE, related_name="+")
+    category = models.CharField(max_length=32, default="other")
+    requirement = models.ForeignKey("DocumentRequirement", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    expires_at = models.DateTimeField()
+    max_files = models.PositiveSmallIntegerField(default=10)
+    uploads = models.PositiveSmallIntegerField(default=0)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def is_open(self):
+        from django.utils import timezone
+
+        return self.closed_at is None and self.expires_at > timezone.now() and self.uploads < self.max_files

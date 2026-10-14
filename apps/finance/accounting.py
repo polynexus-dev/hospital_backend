@@ -91,6 +91,12 @@ def post_bill(bill):
 
 def post_payment(payment):
     acct = PAYMENT_ACCOUNT.get(payment.payment_method, "1010")
+    if payment.amount < 0:  # a refund (credit note): money goes back out
+        amt = -payment.amount
+        return post(payment.hospital_id, voucher_type="payment", voucher_number=f"RFND{payment.pk}", source_type="payment", source_id=payment.pk,
+                    lines=[("1100", amt, 0), (acct, 0, amt)],
+                    narration=f"Refund against bill {payment.bill.bill_number} ({payment.transaction_id or payment.payment_method})",
+                    party=payment.bill.patient.full_name, entry_date=timezone.localdate(payment.paid_at))
     return post(payment.hospital_id, voucher_type="receipt", voucher_number=f"RCPT{payment.pk}", source_type="payment", source_id=payment.pk,
                 lines=[(acct, payment.amount, 0), ("1100", 0, payment.amount)],
                 narration=f"Receipt against bill {payment.bill.bill_number} ({payment.payment_method})", party=payment.bill.patient.full_name,

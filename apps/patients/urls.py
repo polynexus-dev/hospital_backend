@@ -11,5 +11,10 @@ router.register("patients", PatientViewSet, basename="patient")
 router.register("documents", DocumentViewSet, basename="document")
 router.register("prescriptions", PrescriptionViewSet, basename="prescription")
 
-urlpatterns = [path("patients/uhid-config/", UHIDConfigView.as_view(), name="uhid-config")] + router.urls
+from .mobile_upload import MobileUploadView  # noqa: E402
+
+urlpatterns = [
+    path("patients/uhid-config/", UHIDConfigView.as_view(), name="uhid-config"),
+    path("mobile-upload/<str:token>/", MobileUploadView.as_view(), name="mobile-upload"),
+] + router.urls
 

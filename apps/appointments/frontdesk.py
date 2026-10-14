@@ -293,6 +293,8 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
         obj = model.objects.filter(pk=value, hospital=hospital).first()
         if obj is None:
             raise ValidationError({key: "Not found in this hospital."})
+        if key in ("tpa", "corporate_client", "scheme") and getattr(obj, "is_active", True) is False:
+            raise ValidationError({key: f"{obj} is inactive; choose another or reactivate it."})
         return obj
 
     record = OPDVisit.objects.create(
