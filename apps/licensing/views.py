@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.conf import settings
 from rest_framework import status as http
 from rest_framework.permissions import IsAuthenticated
@@ -27,7 +29,7 @@ class LicenseStatusView(APIView):
         if not service.is_on_premise():
             return Response({"mode": "saas", "app_version": settings.APP_VERSION, "support": _support()})
         is_admin = _is_installation_admin(request.user)
-        data = service.current_status().as_dict(detail=is_admin)
+        data: dict[str, Any] = service.current_status().as_dict(detail=is_admin)
         if is_admin:
             # What's in use against the licence limits, counted as the usage report does.
             from apps.accounts.models import User

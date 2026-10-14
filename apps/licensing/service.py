@@ -8,6 +8,7 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -53,7 +54,7 @@ class LicenseStatus:
     def read_only(self) -> bool:
         return not self.usable
 
-    def as_dict(self, detail=False):
+    def as_dict(self, detail: bool = False) -> dict[str, Any]:
         data = {
             "mode": "on_premise",
             "state": self.state,
