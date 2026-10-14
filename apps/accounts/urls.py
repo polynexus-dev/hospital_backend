@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from . import sso_views
+from .signature_views import MySignatureView
 from .views import ExpiredPasswordChangeView, HospitalTokenObtainPairView, MFAVerifyView, RoleViewSet, UserViewSet
 
 router = DefaultRouter()
@@ -23,5 +24,6 @@ urlpatterns = [
     path("auth/sso/callback/", sso_views.SSOCallbackView.as_view(), name="sso_callback"),
     path("auth/sso/exchange/", sso_views.SSOExchangeView.as_view(), name="sso_exchange"),
     path("auth/password/expired-change/", ExpiredPasswordChangeView.as_view(), name="expired_password_change"),
+    path("users/me/signature/", MySignatureView.as_view(), name="my-signature"),
     path("", include(router.urls)),
 ]

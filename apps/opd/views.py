@@ -40,6 +40,24 @@ class EncounterViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
     assignment_scope_field = "doctor__user"
 
 
+    @action(detail=True, methods=["post"], url_path="case-type")
+    def case_type(self, request, pk=None):
+        """POST {case_type: new_complaint | old_complaint} — the doctor corrects
+        the case type; the consultation screen reloads the assessment template."""
+        from apps.appointments.models import OPDVisit
+
+        enc = self.get_object()
+        value = request.data.get("case_type")
+        if value not in OPDVisit.CaseType.values:
+            return Response({"case_type": "new_complaint | old_complaint"}, status=400)
+        visit = getattr(enc.appointment, "opd_visit", None)
+        if visit is None:
+            return Response({"detail": "This encounter has no front-desk registration."}, status=400)
+        visit.case_type = value
+        visit.save(update_fields=["case_type"])
+        self._log("update", enc)
+        return Response(self.get_serializer(enc).data)
+
 class VitalsReadingViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = VitalsReadingSerializer

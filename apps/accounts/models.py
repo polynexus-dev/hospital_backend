@@ -205,6 +205,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     blocked_reason = models.CharField(max_length=255, blank=True)
     signature_image = models.ImageField(upload_to="signatures/", blank=True, help_text="Digital signature stamped on signed clinical documents (COP.1.e).")
     registration_number = models.CharField(max_length=64, blank=True, help_text="Medical/nursing council registration number, printed with the signature.")
+    stamp_image = models.ImageField(upload_to="signatures/stamps/", blank=True, help_text="Doctor's seal / stamp printed beside the signature.")
+    signature_width_mm = models.PositiveSmallIntegerField(default=35, help_text="Printed width of the signature (mm); height keeps the image's proportions.")
+    stamp_width_mm = models.PositiveSmallIntegerField(default=28, help_text="Printed width of the stamp (mm).")
 
     objects = UserManager()
 

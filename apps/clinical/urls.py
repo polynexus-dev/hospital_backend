@@ -9,6 +9,9 @@ router.register("allergies", views.AllergyViewSet, basename="allergy")
 router.register("assessment-templates", views.AssessmentTemplateViewSet, basename="assessmenttemplate")
 router.register("assessments", views.ClinicalAssessmentViewSet, basename="clinicalassessment")
 router.register("risk-assessments", views.RiskAssessmentViewSet, basename="riskassessment")
+from . import emr_extras  # noqa: E402
+
+router.register("intervention-bundles", emr_extras.InterventionBundleViewSet, basename="interventionbundle")
 router.register("order-sets", views.OrderSetViewSet, basename="orderset")
 router.register("consents", views.ConsentRecordViewSet, basename="consent")
 router.register("handovers", views.ShiftHandoverViewSet, basename="handover")
@@ -34,5 +37,7 @@ urlpatterns = router.urls + [
     path("shared-with-me/<int:share_id>/", views_extra.SharedWithMeView.as_view(), name="shared-with-me-detail"),
     path("device-ingest/", views_extra.DeviceVitalsIngestView.as_view(), name="device-vitals-ingest"),
     path("sign/", views.SignDocumentView.as_view(), name="sign-document"),
+    path("patient-history/<int:patient_id>/", emr_extras.PatientHistoryView.as_view(), name="patient-history"),
+    path("patient-header/<int:patient_id>/", emr_extras.PatientHeaderView.as_view(), name="patient-header"),
     path("patients/<int:patient_id>/summary/", views.PatientClinicalSummaryView.as_view(), name="patient-clinical-summary"),
 ]

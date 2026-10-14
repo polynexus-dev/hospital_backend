@@ -168,6 +168,7 @@ class RiskAssessment(TenantScopedModel):
 
     class Tool(models.TextChoices):
         MORSE_FALL = "morse_fall", "Morse Fall Scale"
+        HUMPTY_DUMPTY = "humpty_dumpty", "Humpty Dumpty (paediatric falls)"
         BRADEN = "braden", "Braden (pressure ulcer)"
         CAPRINI = "caprini", "Caprini (VTE/DVT)"
         NEWS2 = "news2", "NEWS2 (early warning)"
@@ -180,11 +181,50 @@ class RiskAssessment(TenantScopedModel):
     score = models.IntegerField(default=0, editable=False)
     risk_level = models.CharField(max_length=20, blank=True, editable=False)
     interventions = models.TextField(blank=True)
+    # The checklist for this tool and risk level (snapshotted when scored)
+    # and who ticked each item when: {item: {"by": name, "at": iso}}.
+    intervention_items = models.JSONField(default=list, blank=True, editable=False)
+    interventions_done = models.JSONField(default=dict, blank=True, editable=False)
     assessed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     assessed_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ["-assessed_at"]
+
+    @property
+    def interventions_pending(self):
+        return [i for i in self.intervention_items if i not in (self.interventions_done or {})]
+
+
+class InterventionBundle(TenantScopedModel):
+    """The hospital's own checklist for a risk tool and level, replacing the
+    built-in one (apps.clinical.scoring.DEFAULT_INTERVENTIONS)."""
+
+    tool = models.CharField(max_length=16, choices=RiskAssessment.Tool.choices)
+    risk_level = models.CharField(max_length=20)
+    items = models.JSONField(default=list)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["tool", "risk_level"]
+        constraints = [models.UniqueConstraint(fields=["hospital", "tool", "risk_level"], name="one_intervention_bundle_per_level")]
+
+
+class PatientHistory(TenantScopedModel):
+    """Past medical, surgical, family, personal (habits) and obstetric
+    history — the cards in the patient header. Lists hold dicts:
+    past_medical [{condition, since, ongoing, notes}], surgical [{procedure, year, notes}],
+    family [{relation, condition}]; habits {smoking, alcohol, tobacco, diet, exercise, other};
+    obstetric {gravida, para, living, abortions, lmp}."""
+
+    patient = models.OneToOneField("patients.Patient", on_delete=models.CASCADE, related_name="history_record")
+    past_medical = models.JSONField(default=list, blank=True)
+    surgical = models.JSONField(default=list, blank=True)
+    family = models.JSONField(default=list, blank=True)
+    habits = models.JSONField(default=dict, blank=True)
+    obstetric = models.JSONField(default=dict, blank=True)
+    notes = EncryptedTextField(blank=True)
+    updated_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
 
 class OrderSet(TenantScopedModel):

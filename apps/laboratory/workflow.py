@@ -366,6 +366,14 @@ def render_lab_report(order):
     for a in order.addenda.all():
         story += [Spacer(1, 6), Paragraph(f"<b>Addendum ({timezone.localtime(a.created_at):%d %b %Y %H:%M}):</b> {a.text}", styles["Normal"])]
     story += [Spacer(1, 18), Paragraph("Electronically verified report." if all_signed else "<b>PROVISIONAL — not yet verified by pathologist.</b>", styles["Normal"])]
+    signers = [r.finalized_by for r in results if r.finalized_by_id]
+    if all_signed and signers:
+        from apps.clinical.sign_block import signature_block
+
+        designation = next((r.lab_test.report_template.signatory_designation for r in results if r.lab_test.report_template_id), "Consultant Pathologist")
+        block = signature_block(signers[-1], subtitle=designation)
+        if block is not None:
+            story += [Spacer(1, 8), block]
     doc.build(story)
     return buf.getvalue()
 

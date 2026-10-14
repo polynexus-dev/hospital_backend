@@ -5,6 +5,8 @@ from reportlab.lib.units import mm
 from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 
+from apps.clinical.sign_block import signature_block
+
 
 def _format_patient_age_gender(patient) -> str:
     parts = []
@@ -230,7 +232,8 @@ def render_prescription_pdf(prescription) -> bytes:
     sig_data = [
         [
             Paragraph("<font color='#64748b' size=7>This is a computer generated electronic prescription (e-Rx).<br/>Valid under Indian Telemedicine & Digital Health Guidelines.</font>", cell_norm),
-            Paragraph(f"<b>{dr_name}</b><br/><font color='#64748b'>Authorized Medical Practitioner<br/>Registration Verified</font>", ParagraphStyle("DrSig", parent=cell_norm, alignment=2)),
+            signature_block(doctor, name=dr_name, subtitle="Authorized Medical Practitioner")
+            or Paragraph(f"<b>{dr_name}</b><br/><font color='#64748b'>Authorized Medical Practitioner</font>", ParagraphStyle("DrSig", parent=cell_norm, alignment=2)),
         ]
     ]
     sig_table = Table(sig_data, colWidths=[110 * mm, 64 * mm])

@@ -112,7 +112,7 @@ class AssessmentTemplateViewSet(TenantCRUDViewSet):
 class ClinicalAssessmentViewSet(ClinicalCRUDViewSet):
     serializer_class = ClinicalAssessmentSerializer
     queryset = ClinicalAssessment.objects.select_related("patient", "assessed_by")
-    filterset_fields = ["patient", "encounter", "admission", "episode", "category", "kind"]
+    filterset_fields = ["patient", "encounter", "admission", "episode", "category", "kind", "template"]
     actor_field = "assessed_by"
     audited_fields = ("kind", "category", "provisional_diagnosis", "data")
 
@@ -142,7 +142,10 @@ class ClinicalAssessmentViewSet(ClinicalCRUDViewSet):
         })
 
 
-class RiskAssessmentViewSet(ClinicalCRUDViewSet):
+from .emr_extras import RiskInterventionsMixin  # noqa: E402
+
+
+class RiskAssessmentViewSet(RiskInterventionsMixin, ClinicalCRUDViewSet):
     serializer_class = RiskAssessmentSerializer
     queryset = RiskAssessment.objects.select_related("patient")
     filterset_fields = ["patient", "admission", "tool", "risk_level"]

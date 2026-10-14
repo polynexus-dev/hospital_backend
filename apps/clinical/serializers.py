@@ -124,6 +124,7 @@ class ClinicalAssessmentSerializer(PatientLabelMixin, TenantModelSerializer):
 
 class RiskAssessmentSerializer(PatientLabelMixin, TenantModelSerializer):
     is_high_risk = serializers.SerializerMethodField()
+    interventions_pending = serializers.ListField(read_only=True)
 
     class Meta:
         model = RiskAssessment

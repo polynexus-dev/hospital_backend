@@ -6,11 +6,17 @@ from .models import ClinicalNote, Diagnosis, Encounter, InvestigationOrder, Vita
 class EncounterSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     doctor_name = serializers.CharField(source="doctor.name", read_only=True)
+    case_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Encounter
-        fields = ["id", "appointment", "patient", "patient_name", "doctor", "doctor_name", "department", "created_at"]
+        fields = ["id", "appointment", "patient", "patient_name", "doctor", "doctor_name", "department", "created_at", "case_type"]
         read_only_fields = ["id", "appointment", "patient", "doctor", "department", "created_at"]
+
+    def get_case_type(self, obj):
+        """new_complaint | old_complaint, from the front-desk registration (blank if none)."""
+        visit = getattr(obj.appointment, "opd_visit", None) if obj.appointment_id else None
+        return visit.case_type if visit else ""
 
 
 class VitalsReadingSerializer(serializers.ModelSerializer):
