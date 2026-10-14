@@ -162,4 +162,11 @@ def handle_webhook(hospital_id, raw_body: bytes, signature: str):
         link.status, link.payment, link.paid_at = OnlinePaymentLink.Status.PAID, payment, timezone.now()
         link.save(update_fields=["status", "payment", "paid_at"])
         refresh_bill_status(link.bill)
+    if link.bill.status == Bill.Status.PAID:
+        from apps.appointments.prepay import on_bill_paid
+
+        try:
+            on_bill_paid(link.bill)
+        except Exception:  # the payment is recorded either way
+            logger.exception("Confirming the booking for bill %s failed", link.bill_id)
     return 200, "recorded"

@@ -540,6 +540,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=8, minute=0),
     },
     # §1/§12 — owner's daily WhatsApp MIS, evening dispatch.
+    "release-unpaid-portal-bookings": {
+        "task": "apps.appointments.tasks.release_unpaid_portal_bookings",
+        "schedule": 300.0,
+    },
     "send-scheduled-mis": {
         "task": "apps.analytics.tasks.send_scheduled_mis",
         "schedule": crontab(hour=7, minute=30),

@@ -76,11 +76,22 @@ class Slot(TenantScopedModel):
         return f"{self.doctor} {self.date} {self.start_time}"
 
     @property
+    def appointment(self):
+        """The slot's active appointment, or None. Cancelled and rescheduled
+        appointments stay on the slot as history but don't occupy it."""
+        rows = self.appointments.all()  # uses prefetch_related("appointments") when given
+        return next((a for a in rows if a.status not in Appointment.INACTIVE_STATUSES), None)
+
+    @property
     def is_booked(self):
-        return hasattr(self, "appointment") and self.appointment.status not in (
-            Appointment.Status.CANCELLED,
-            Appointment.Status.RESCHEDULED,
-        )
+        return self.appointment is not None
+
+    @staticmethod
+    def free_q():
+        """Filter for slots with no active appointment: Slot.objects.filter(Slot.free_q())."""
+        from django.db.models import Exists, OuterRef
+
+        return ~Exists(Appointment.objects.filter(slot=OuterRef("pk")).exclude(status__in=Appointment.INACTIVE_STATUSES))
 
 
 class Appointment(TenantScopedModel):
@@ -95,6 +106,8 @@ class Appointment(TenantScopedModel):
         CANCELLED = "cancelled", "Cancelled"
         RESCHEDULED = "rescheduled", "Rescheduled"
 
+    INACTIVE_STATUSES = ("cancelled", "rescheduled")
+
     class Source(models.TextChoices):
         CRM = "crm", "CRM / front desk"
         WHATSAPP = "whatsapp", "WhatsApp"
@@ -106,7 +119,9 @@ class Appointment(TenantScopedModel):
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="appointments")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="appointments")
-    slot = models.OneToOneField(Slot, on_delete=models.PROTECT, related_name="appointment")
+    # Several appointments can point at a slot over time (a cancelled one and
+    # the rebooking); only one may be active (constraint below).
+    slot = models.ForeignKey(Slot, on_delete=models.PROTECT, related_name="appointments")
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.BOOKED)
     source = models.CharField(max_length=16, choices=Source.choices, default=Source.CRM)
@@ -129,6 +144,9 @@ class Appointment(TenantScopedModel):
     checked_in_at = models.DateTimeField(null=True, blank=True)
     consult_started_at = models.DateTimeField(null=True, blank=True)  # NABH OPD waiting-time KPI (AAC.2.c)
     completed_at = models.DateTimeField(null=True, blank=True)
+    # Booked and paid online from the patient portal (apps.appointments.prepay).
+    prepaid_bill = models.ForeignKey("billing.Bill", on_delete=models.SET_NULL, null=True, blank=True, related_name="prepaid_appointments")
+    payment_hold_until = models.DateTimeField(null=True, blank=True, help_text="Released if not paid by then.")
     external_reference = models.CharField(max_length=100, blank=True, help_text="Booking id in the external system (AAC.2.d: aggregator app, ABDM, partner portal).")
     cancelled_at = models.DateTimeField(null=True, blank=True)
     no_show_at = models.DateTimeField(null=True, blank=True)
@@ -138,6 +156,9 @@ class Appointment(TenantScopedModel):
     booked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["slot"], condition=~models.Q(status__in=["cancelled", "rescheduled"]), name="one_active_appointment_per_slot"),
+        ]
         ordering = ["-slot__date", "-slot__start_time"]
 
     def __str__(self):

@@ -146,7 +146,7 @@ class DoctorSlotsView(BasePatientAPIView):
             status_text = "free"
             if slot.is_blocked:
                 status_text = "blocked"
-            elif hasattr(slot, "appointment") and slot.appointment.status not in ["cancelled", "no_show", "rescheduled"]:
+            elif slot.appointment is not None and slot.appointment.status != "no_show":
                 status_text = "booked"
                 
             out.append({

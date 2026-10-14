@@ -61,6 +61,18 @@ class FrontDeskPolicy(TenantScopedModel):
     round_down_to_rupee = models.BooleanField(default=True)
     default_rate_category = models.CharField(max_length=20, default="general")
 
+    class PortalPayment(models.TextChoices):
+        AT_HOSPITAL = "at_hospital", "Pay at the hospital"
+        OPTIONAL = "optional", "Offer online payment when booking"
+        REQUIRED = "required", "Online payment required to confirm"
+
+    # Patient-portal bookings (apps.appointments.prepay).
+    portal_payment = models.CharField(max_length=12, choices=PortalPayment.choices, default=PortalPayment.AT_HOSPITAL)
+    portal_payment_hold_minutes = models.PositiveSmallIntegerField(
+        default=15, validators=[MinValueValidator(5), MaxValueValidator(120)],
+        help_text="With payment required, how long the slot is held while the patient pays.",
+    )
+
     class Meta:
         app_label = "finance"
         constraints = [models.UniqueConstraint(fields=["hospital"], name="one_front_desk_policy_per_hospital")]

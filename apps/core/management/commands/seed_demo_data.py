@@ -308,7 +308,7 @@ class Command(BaseCommand):
         record_timeline_event(patient=p1, event_type="appointment", summary="Completed OPD Consultation with Dr. Ramesh Kulkarni", occurred_at=timezone.now() - datetime.timedelta(days=1), created_by=doctor_user)
 
         # 9. Appointments & Waitlists
-        slots = list(Slot.objects.filter(hospital=hospital, is_blocked=False, appointment__isnull=True)[:10])
+        slots = list(Slot.objects.filter(Slot.free_q(), hospital=hospital, is_blocked=False)[:10])
         if len(slots) >= 4:
             # Appt 1: Checked In
             first_or_create(Appointment, 

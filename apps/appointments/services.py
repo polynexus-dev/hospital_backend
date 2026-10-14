@@ -139,7 +139,7 @@ def block_doctor_slots(doctor: Doctor, *, start_date, end_date, reason: str = ""
     counted separately so front desk knows how many patients still need a
     manual reschedule/callback."""
     slots = Slot.objects.select_for_update().filter(doctor=doctor, date__gte=start_date, date__lte=end_date)
-    bookable = slots.select_related("appointment").filter(is_blocked=False)
+    bookable = slots.prefetch_related("appointments").filter(is_blocked=False)
 
     blocked_ids, booked_ids = [], []
     for slot in bookable:

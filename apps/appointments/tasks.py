@@ -103,3 +103,11 @@ def sync_all_doctor_calendars():
     for pk in ids:
         sync_doctor_calendar(pk)
     return len(ids)
+
+
+@shared_task
+def release_unpaid_portal_bookings():
+    """Portal bookings that required payment and weren't paid in time."""
+    from .prepay import release_expired_holds
+
+    return release_expired_holds()

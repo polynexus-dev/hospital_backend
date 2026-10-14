@@ -144,7 +144,7 @@ class SlotsView(PortalView):
         from apps.appointments.models import Slot
 
         day = request.query_params.get("date") or str(timezone.localdate())
-        qs = Slot.objects.filter(hospital=request.user.hospital, doctor_id=doctor_id, date=day, is_blocked=False, appointment__isnull=True).order_by("start_time")
+        qs = Slot.objects.filter(Slot.free_q(), hospital=request.user.hospital, doctor_id=doctor_id, date=day, is_blocked=False).order_by("start_time")
         now = timezone.localtime()
         return Response([{"id": s.pk, "date": s.date, "start_time": s.start_time, "end_time": s.end_time} for s in qs
                          if str(s.date) > str(now.date()) or s.start_time > now.time()])
@@ -155,8 +155,10 @@ class AppointmentsView(PortalView):
         from apps.appointments.models import Appointment
 
         p = self.patient(request)
-        rows = Appointment.objects.filter(patient=p).select_related("doctor", "slot").order_by("-slot__date", "-slot__start_time")[:50]
-        return Response([{"id": a.pk, "doctor": a.doctor.name, "date": a.slot.date, "time": a.slot.start_time, "status": a.status, "token": a.queue_token} for a in rows])
+        rows = Appointment.objects.filter(patient=p).select_related("doctor", "slot", "prepaid_bill").order_by("-slot__date", "-slot__start_time")[:50]
+        return Response([{"id": a.pk, "doctor": a.doctor.name, "date": a.slot.date, "time": a.slot.start_time, "status": a.status, "token": a.queue_token,
+                          "awaiting_payment_until": a.payment_hold_until,
+                          "paid_online": bool(a.prepaid_bill_id and a.prepaid_bill.status == "paid")} for a in rows])
 
     def post(self, request):
         """AAC.2.f — the patient books a displayed slot themselves."""
@@ -167,11 +169,14 @@ class AppointmentsView(PortalView):
         slot = Slot.objects.filter(pk=request.data.get("slot"), hospital=request.user.hospital).first()
         if slot is None:
             return Response({"slot": "Not found."}, status=404)
+        from apps.appointments.prepay import offer_payment
+
         try:
             appt = book_appointment(patient=p, slot=slot, source=Appointment.Source.PATIENT_PORTAL, reason=str(request.data.get("reason", ""))[:255])
         except SlotUnavailable as exc:
             return Response({"detail": str(exc)}, status=409)
-        return Response({"id": appt.pk, "status": appt.status, "doctor": appt.doctor.name, "date": slot.date, "time": slot.start_time}, status=201)
+        return Response({"id": appt.pk, "status": appt.status, "doctor": appt.doctor.name, "date": slot.date, "time": slot.start_time,
+                         **offer_payment(appt)}, status=201)
 
 
 class ReportsView(PortalView):

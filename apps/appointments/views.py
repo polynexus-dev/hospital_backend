@@ -88,12 +88,12 @@ class SlotTemplateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class SlotViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = SlotSerializer
-    queryset = Slot.objects.select_related("appointment").all()
+    queryset = Slot.objects.prefetch_related("appointments").all()
     filterset_fields = ["doctor", "date", "is_blocked"]
 
     @action(detail=False, methods=["get"])
     def available(self, request):
-        qs = self.filter_queryset(self.get_queryset()).filter(is_blocked=False, appointment__isnull=True)
+        qs = self.filter_queryset(self.get_queryset()).filter(Slot.free_q(), is_blocked=False)
         return Response(SlotSerializer(qs, many=True).data)
 
 
@@ -201,8 +201,8 @@ def _doctor_schedule(doctor, day):
     from .models import Slot
 
     rows = []
-    for slot in Slot.objects.filter(doctor=doctor, date=day).order_by("start_time").select_related("appointment__patient"):
-        appt = getattr(slot, "appointment", None)
+    for slot in Slot.objects.filter(doctor=doctor, date=day).order_by("start_time").prefetch_related("appointments__patient"):
+        appt = slot.appointment
         rows.append({
             "start": slot.start_time.strftime("%H:%M"), "end": slot.end_time.strftime("%H:%M"), "blocked": slot.is_blocked,
             "patient": appt.patient.full_name if appt else None, "uhid": appt.patient.uhid if appt else None,

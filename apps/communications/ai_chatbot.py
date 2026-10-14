@@ -48,11 +48,7 @@ def _available_slots(hospital, doctor, limit: int = 5):
 
     today = timezone.localdate()
     return (
-        Slot.objects.filter(hospital=hospital, doctor=doctor, date__gte=today, is_blocked=False)
-        .filter(
-            Q(appointment__isnull=True)
-            | Q(appointment__status__in=[Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED])
-        )
+        Slot.objects.filter(Slot.free_q(), hospital=hospital, doctor=doctor, date__gte=today, is_blocked=False)
         .order_by("date", "start_time")[:limit]
     )
 

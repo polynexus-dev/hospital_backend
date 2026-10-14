@@ -278,6 +278,10 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
     )
 
     appointment = appointment_for_today(hospital=hospital, patient=patient, doctor=doctor, user=user)
+    prepaid = appointment.prepaid_bill if appointment.prepaid_bill_id and appointment.prepaid_bill.status == "paid" else None
+    if prepaid is not None:  # booked and paid online: the consultation is already billed
+        sheet.charges = [c for c in sheet.charges if c.source != "consultation"]
+        sheet.warnings.append(f"Consultation already paid online (bill {prepaid.bill_number or prepaid.pk}).")
 
     def fk(model_path, key):
         from django.apps import apps as django_apps
@@ -302,10 +306,13 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
         marketing_person_id=visit.get("marketing_person") or None, registered_by=user,
     )
 
-    bill, awaiting_approval = bill_and_settle(
-        request=request, patient=patient, charges=sheet.charges, rate_category=rate_category,
-        payer_type=payer_type, billing=billing, policy=policy,
-    )
+    if prepaid is not None and not sheet.charges:
+        bill, awaiting_approval = prepaid, None
+    else:
+        bill, awaiting_approval = bill_and_settle(
+            request=request, patient=patient, charges=sheet.charges, rate_category=rate_category,
+            payer_type=payer_type, billing=billing, policy=policy,
+        )
 
     record.bill = bill
     record.save(update_fields=["bill"])

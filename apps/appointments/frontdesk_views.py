@@ -370,7 +370,8 @@ class FrontDeskPolicyView(APIView):
     """GET for everyone at the desk; PATCH for finance administrators."""
 
     permission_classes = [IsAuthenticated]
-    FIELDS = ("registration_fee_tariff", "discount_limit_percent", "credit_payer_types", "round_down_to_rupee", "default_rate_category")
+    FIELDS = ("registration_fee_tariff", "discount_limit_percent", "credit_payer_types", "round_down_to_rupee", "default_rate_category",
+              "portal_payment", "portal_payment_hold_minutes")
 
     def _data(self, policy):
         return {f: getattr(policy, f + "_id" if f == "registration_fee_tariff" else f) for f in self.FIELDS}
