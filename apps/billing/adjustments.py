@@ -75,7 +75,7 @@ def release(bill, user, note):
 
 # --- category change ------------------------------------------------------------
 
-CATEGORIES = ("general", "private", "insurance", "corporate")
+CATEGORIES = ("general", "private", "insurance", "corporate", "staff")
 
 
 def reprice_preview(bill, category):

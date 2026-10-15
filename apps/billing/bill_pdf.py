@@ -151,7 +151,7 @@ def render_bill_pdf(bill) -> bytes:
         for idx, itm in enumerate(items, start=1):
             item_rows.append([
                 Paragraph(str(idx), cell_norm),
-                Paragraph(itm.description, cell_norm),
+                Paragraph(f"{itm.description}{' *' if itm.non_payable else ''}", cell_norm),
                 Paragraph(str(itm.quantity), cell_right),
                 Paragraph(_money(itm.unit_price), cell_right),
                 Paragraph(_money(itm.total_price), cell_right_bold),
@@ -191,6 +191,13 @@ def render_bill_pdf(bill) -> bytes:
         [Paragraph("<b>Total Payments Received:</b>", cell_right), Paragraph(_money(total_paid), cell_right)],
         [Paragraph("<b>Balance Outstanding:</b>", cell_right_bold), Paragraph(f"<font color='#b91c1c'><b>{_money(balance_due)}</b></font>", cell_right_bold)],
     ]
+
+    non_payable = Decimal(str(bill.non_payable_amount or 0))
+    if non_payable > 0:
+        summary_rows[3:3] = [
+            [Paragraph("<b>Payable by patient (* not covered by insurer):</b>", cell_right), Paragraph(_money(non_payable), cell_right)],
+            [Paragraph("<b>Claimable from insurer:</b>", cell_right), Paragraph(_money(max(Decimal(str(bill.net_amount)) - non_payable, Decimal(0))), cell_right)],
+        ]
 
     summary_table = Table(summary_rows, colWidths=[120 * mm, 54 * mm])
     summary_table.setStyle(TableStyle([

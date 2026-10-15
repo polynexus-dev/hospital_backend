@@ -36,6 +36,11 @@ class OTScheduleWorkflowMixin:
         reason = str(request.data.get("reason", "")).strip()
         if not reason:
             return Response({"reason": "A cancellation reason is required."}, status=400)
+        if sch.status == OTSchedule.Status.COMPLETED:
+            return Response({"detail": "A completed surgery can't be cancelled."}, status=400)
+        from .charges import remove_ot_charges
+
+        remove_ot_charges(sch)  # refuses (bill on hold) before anything changes
         sch.status = OTSchedule.Status.CANCELLED
         sch.cancelled_at = timezone.now()
         sch.cancellation_reason = reason[:255]
@@ -66,7 +71,28 @@ class OTScheduleWorkflowMixin:
         sch.save(update_fields=["actual_end", "status"])
         sch.surgery_request.status = "completed"
         sch.surgery_request.save(update_fields=["status"])
-        return Response(self.get_serializer(sch).data)
+        posted = self._post_charges_quietly(sch)
+        data = dict(self.get_serializer(sch).data)
+        data["charges"] = posted
+        return Response(data)
+
+    def _post_charges_quietly(self, sch):
+        """Bills the OT tariff when the surgery ends. A billing problem (no
+        grade, no tariff, bill on hold) must never stop the clinical step, so
+        it's reported back instead and charges can be posted later."""
+        from rest_framework.exceptions import ValidationError
+
+        from . import charges
+
+        if sch.surgery_request.surgery_grade_id is None:
+            return {"posted": False, "problem": "No surgery grade — OT charges not posted."}
+        try:
+            bill, result = charges.post_ot_charges(sch)
+        except ValidationError as e:
+            detail = e.detail.get("detail") if isinstance(e.detail, dict) else e.detail
+            return {"posted": False, "problem": str(detail[0] if isinstance(detail, list) else detail)}
+        sch.refresh_from_db()
+        return {"posted": True, **charges.describe(result, bill)}
 
 
 class SurgicalSafetyChecklistSerializer(model_serializer(

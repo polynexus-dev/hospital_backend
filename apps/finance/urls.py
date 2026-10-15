@@ -31,6 +31,11 @@ router.register(r"doctor-payout-rules", payout_views.DoctorPayoutRuleViewSet, ba
 router.register(r"doctor-payouts", payout_views.DoctorPayoutViewSet, basename="doctorpayout")
 router.register(r"payout-deduction-heads", payout_views.PayoutDeductionHeadViewSet, basename="payoutdeductionhead")
 
+from . import ot_tariff_views  # noqa: E402
+
+router.register(r"surgery-grades", ot_tariff_views.SurgeryGradeViewSet, basename="surgerygrade")
+router.register(r"ot-tariffs", ot_tariff_views.OTTariffViewSet, basename="ottariff")
+
 urlpatterns = router.urls + [
     path("day-book/", ar_views.DayBookView.as_view(), name="day-book"),
     path("accounts-settings/", ar_views.AccountsSettingsView.as_view(), name="accounts-settings"),

@@ -64,7 +64,22 @@ class OperativeNoteSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "finalized_at", "finalized_by", "created_at", "updated_at"]
 
 
+def _rows(value, name):
+    if not isinstance(value, list) or not all(isinstance(r, dict) for r in value):
+        raise serializers.ValidationError(f"{name} must be a list of rows.")
+    return value
+
+
 class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
+    def validate_vitals(self, value):
+        return _rows(value, "Vitals")
+
+    def validate_drugs(self, value):
+        return _rows(value, "Drugs")
+
+    def validate_fluids(self, value):
+        return _rows(value, "Fluids")
+
     class Meta:
         model = AnaesthesiaRecord
         fields = [
@@ -83,6 +98,7 @@ class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
 
 class OTScheduleSerializer(serializers.ModelSerializer):
     surgeon_detail = DoctorSerializer(source="surgeon", read_only=True)
+    assistant_surgeon_name = serializers.CharField(source="assistant_surgeon.name", read_only=True, default="")
     operative_note = OperativeNoteSerializer(read_only=True)
     anaesthesia_record = AnaesthesiaRecordSerializer(read_only=True)
     consumable_usages = ConsumableUsageSerializer(many=True, read_only=True)
@@ -96,6 +112,8 @@ class OTScheduleSerializer(serializers.ModelSerializer):
             "operation_theatre_room",
             "surgeon",
             "surgeon_detail",
+            "assistant_surgeon",
+            "assistant_surgeon_name",
             "anaesthetist",
             "scheduled_start",
             "scheduled_end",
@@ -104,15 +122,25 @@ class OTScheduleSerializer(serializers.ModelSerializer):
             "consumable_usages",
             "implant_usages",
             "created_at",
-            "updated_at", "status", "last_reschedule_reason", "cancellation_reason", "actual_start", "actual_end", "wheeled_in_at", "wheeled_out_at", "reschedule_count", "cancelled_at",
+            "updated_at", "status", "last_reschedule_reason", "cancellation_reason", "actual_start", "actual_end", "wheeled_in_at", "wheeled_out_at", "reschedule_count", "cancelled_at", "charges_posted_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "reschedule_count", "cancelled_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "reschedule_count", "cancelled_at", "charges_posted_at"]
 
 
 class SurgeryRequestSerializer(serializers.ModelSerializer):
     patient_detail = PatientSerializer(source="patient", read_only=True)
     schedule = OTScheduleSerializer(read_only=True)
     preop_checklist = PreOpChecklistSerializer(read_only=True)
+    surgery_grade_name = serializers.CharField(source="surgery_grade.name", read_only=True, default="")
+    encounter = serializers.CharField(read_only=True)
+
+    def validate_surgery_grade(self, value):
+        user = self.context["request"].user
+        if value is not None and value.hospital_id != getattr(user, "hospital_id", None):
+            raise serializers.ValidationError("Refers to a record from a different hospital.")
+        if value is not None and not value.is_active and getattr(self.instance, "surgery_grade_id", None) != value.pk:
+            raise serializers.ValidationError("That surgery grade is inactive.")
+        return value
 
     class Meta:
         model = SurgeryRequest
@@ -128,5 +156,6 @@ class SurgeryRequestSerializer(serializers.ModelSerializer):
             "preop_checklist",
             "created_at",
             "updated_at", "is_unplanned_return", "previous_surgery", "priority", "procedure_type",
+            "surgery_grade", "surgery_grade_name", "encounter_type", "encounter",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]

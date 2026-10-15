@@ -7,9 +7,9 @@ class BillItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillItem
         fields = ["id", "description", "quantity", "unit_price", "total_price", "tariff", "hsn_sac", "gst_rate", "tax_amount",
-                  "doctor", "service_date", "source",
+                  "doctor", "service_date", "source", "non_payable", "non_payable_reason",
         ]
-        read_only_fields = ["id", "total_price", "tax_amount", "source"]
+        read_only_fields = ["id", "total_price", "tax_amount", "source", "non_payable", "non_payable_reason"]
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -52,11 +52,11 @@ class BillSerializer(serializers.ModelSerializer):
             "items",
             "payments",
             "insurance_claim", "patient_category", "is_interim", "bill_number", "tax_amount",
-            "on_hold", "hold_reason", "held_at",
+            "on_hold", "hold_reason", "held_at", "non_payable_amount",
         ]
         # The category changes through /change-category/ (which re-prices);
         # the hold through /hold/ and /release/.
-        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount", "on_hold", "hold_reason", "held_at"]
+        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount", "on_hold", "hold_reason", "held_at", "non_payable_amount"]
 
     def validate_patient_category(self, value):
         if self.instance is not None and value != self.instance.patient_category:

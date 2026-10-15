@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import action
@@ -12,7 +13,8 @@ from rest_framework.response import Response
 
 from apps.core.crud import TenantCRUDViewSet, model_serializer
 
-from .models import Attendance, Employee, LeaveRequest, Shift
+from .leave import unpaid_days
+from .models import Attendance, Employee, LeaveRequest, OvertimeEntry, Shift
 from .models_hrm import (
     Appraisal,
     Candidate,
@@ -26,6 +28,7 @@ from .models_hrm import (
     StaffProfile,
     TrainingAttendance,
     TrainingProgram,
+    esi_coverage,
 )
 
 _emp = {"employee_name": serializers.CharField(source="employee.user.get_full_name", read_only=True, default=None),
@@ -139,13 +142,11 @@ class PayrollRunViewSet(TenantCRUDViewSet):
             for st in SalaryStructure.objects.filter(hospital_id=run.hospital_id).select_related("employee"):
                 emp = st.employee
                 absent = Attendance.objects.filter(employee=emp, date__range=(month, end), status="absent").count()
-                unpaid = sum(
-                    (min(l.end_date, end) - max(l.start_date, month)).days + 1
-                    for l in LeaveRequest.objects.filter(employee=emp, status="approved", leave_type__icontains="unpaid", start_date__lte=end, end_date__gte=month)
-                )
-                paid_days = max(Decimal(days - absent - unpaid), Decimal("0"))
-                calc = Payslip.compute(st, days, paid_days, month)
-                Payslip.objects.create(hospital_id=run.hospital_id, run=run, employee=emp, days_in_month=days, paid_days=paid_days, **calc)
+                unpaid = unpaid_days(emp, month, end)
+                paid_days = max(Decimal(days - absent) - unpaid, Decimal("0"))
+                ot_hours = OvertimeEntry.objects.filter(employee=emp, status="approved", date__range=(month, end)).aggregate(h=Sum("hours"))["h"] or Decimal("0")
+                calc = Payslip.compute(st, days, paid_days, month, overtime_hours=ot_hours, esi_covered=esi_coverage(st, month))
+                Payslip.objects.create(hospital_id=run.hospital_id, run=run, employee=emp, days_in_month=days, paid_days=paid_days, overtime_hours=ot_hours, **calc)
                 tg += calc["gross"]
                 tn += calc["net_pay"]
             run.total_gross, run.total_net = tg, tn

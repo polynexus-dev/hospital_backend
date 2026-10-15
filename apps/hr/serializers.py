@@ -7,6 +7,7 @@ from .models import Attendance, Employee, LeaveRequest, Shift
 class EmployeeSerializer(serializers.ModelSerializer):
     user_detail = UserSerializer(source="user", read_only=True)
     department_detail = DepartmentSerializer(source="department", read_only=True)
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True, default="")
 
     class Meta:
         model = Employee
@@ -22,8 +23,17 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "employment_type",
             "bank_account_number",
             "pan_number",
+            "patient",
+            "patient_name",
         ]
         read_only_fields = ["id"]
+
+
+    def validate_patient(self, patient):
+        user = self.context["request"].user if self.context.get("request") else None
+        if patient is not None and user is not None and patient.hospital_id != user.hospital_id:
+            raise serializers.ValidationError("Refers to a record from a different hospital.")
+        return patient
 
 
 class AttendanceSerializer(serializers.ModelSerializer):
@@ -39,6 +49,16 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     employee_code = serializers.ReadOnlyField(source="employee.employee_code")
     approved_by_name = serializers.ReadOnlyField(source="approved_by.get_full_name")
 
+    def validate(self, attrs):
+        hospital_id = getattr(self.context.get("request").user, "hospital_id", None) if self.context.get("request") else None
+        for name in ("employee", "leave_type_master"):
+            obj = attrs.get(name)
+            if obj is not None and hospital_id is not None and obj.hospital_id != hospital_id:
+                raise serializers.ValidationError({name: "Refers to a record from a different hospital."})
+        if not attrs.get("leave_type_master") and not attrs.get("leave_type") and self.instance is None:
+            raise serializers.ValidationError({"leave_type_master": "Choose the leave type."})
+        return attrs
+
     class Meta:
         model = LeaveRequest
         fields = [
@@ -46,13 +66,18 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             "employee",
             "employee_code",
             "leave_type",
+            "leave_type_master",
             "start_date",
             "end_date",
+            "half_day",
+            "days",
+            "reason",
+            "short_balance",
             "status",
             "approved_by",
             "approved_by_name",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "days", "short_balance", "status", "approved_by"]
 
 
 class ShiftSerializer(serializers.ModelSerializer):

@@ -474,6 +474,11 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_BEAT_SCHEDULE = {
+    # Insurance inbox: import new insurer / TPA emails.
+    "poll-tpa-mailboxes": {
+        "task": "apps.tpa.tasks.poll_tpa_mailboxes",
+        "schedule": 300.0,  # every 5 minutes
+    },
     # On-premise: re-verify the installed licence (no-op in SaaS mode).
     "check-license": {
         "task": "apps.licensing.tasks.check_license",

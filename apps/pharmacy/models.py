@@ -55,6 +55,9 @@ class Medicine(TenantScopedModel):
     is_controlled = models.BooleanField(default=False, help_text="NDPS schedule — narcotic register.")
     is_restricted_antimicrobial = models.BooleanField(default=False)
     storage = models.CharField(max_length=60, blank=True, help_text="e.g. 2–8 °C")
+    # Billing: batch MRP includes GST; the bill shows it split out at this rate.
+    gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=12)
+    hsn_code = models.CharField(max_length=10, default="3004", blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -97,6 +100,10 @@ class DispenseRecord(TenantScopedModel):
     verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     is_non_formulary = models.BooleanField(default=False)
     override_reason = models.CharField(max_length=255, blank=True)
+    # The patient-bill line this dispense was charged on (apps.pharmacy.billing),
+    # or why it wasn't (no patient, issued free, bill on hold).
+    bill_item = models.ForeignKey("billing.BillItem", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    billing_note = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ["-dispensed_at"]
@@ -138,6 +145,10 @@ class MedicineReturn(TenantScopedModel):
     reason = models.CharField(max_length=255)
     restocked = models.BooleanField(default=True, help_text="False = destroyed / not fit for reuse.")
     returned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    # A patient return of a billed dispense is credited on that bill.
+    dispense_record = models.ForeignKey(DispenseRecord, on_delete=models.SET_NULL, null=True, blank=True, related_name="returns")
+    credit_item = models.ForeignKey("billing.BillItem", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    billing_note = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -26,7 +26,7 @@ class EmployeeViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewse
         # (source="user"/"department") — user_detail itself is a full UserSerializer,
         # so user's role/hospital need joining too (see apps.accounts.serializers).
         return Employee.objects.filter(hospital=self.request.user.hospital).select_related(
-            "user", "user__role", "user__hospital", "department",
+            "user", "user__role", "user__hospital", "department", "patient",
         )
 
     def perform_create(self, serializer):
@@ -88,12 +88,38 @@ class LeaveRequestViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, vi
         return LeaveRequest.objects.filter(hospital=self.request.user.hospital).select_related("employee", "approved_by")
 
     def perform_create(self, serializer):
-        leave = serializer.save(hospital=self.request.user.hospital)
+        from django.db import transaction
+
+        from .leave import validate_request
+
+        with transaction.atomic():
+            leave = serializer.save(hospital=self.request.user.hospital)
+            validate_request(leave)  # raises before commit when the balance is short on a "block" type
+            leave.save()
         self._log("create", leave)
+
+    def perform_update(self, serializer):
+        from django.db import transaction
+        from rest_framework.exceptions import ValidationError
+
+        from .leave import validate_request
+
+        if serializer.instance.status != LeaveRequest.Status.PENDING:
+            raise ValidationError({"detail": "Only a pending request can be changed."})
+        with transaction.atomic():
+            leave = serializer.save()
+            validate_request(leave)
+            leave.save()
+        self._log("update", leave)
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+        from .leave import validate_approval
+
         leave = self.get_object()
+        if leave.status != LeaveRequest.Status.PENDING:
+            return Response({"detail": f"The request is already {leave.status}."}, status=status.HTTP_400_BAD_REQUEST)
+        validate_approval(leave)
         leave.status = LeaveRequest.Status.APPROVED
         leave.approved_by = request.user
         leave.save()
@@ -103,6 +129,8 @@ class LeaveRequestViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, vi
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         leave = self.get_object()
+        if leave.status != LeaveRequest.Status.PENDING:
+            return Response({"detail": f"The request is already {leave.status}."}, status=status.HTTP_400_BAD_REQUEST)
         leave.status = LeaveRequest.Status.REJECTED
         leave.approved_by = request.user
         leave.save()

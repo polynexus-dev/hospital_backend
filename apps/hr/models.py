@@ -25,6 +25,9 @@ class Employee(TenantScopedModel):
     employment_type = models.CharField(max_length=20, choices=EmploymentType.choices, default=EmploymentType.PERMANENT)
     bank_account_number = models.CharField(max_length=100, blank=True)
     pan_number = models.CharField(max_length=50, blank=True)
+    # The employee's own patient record — staff rate category in billing
+    # (dependents: hr.EmployeeDependent).
+    patient = models.OneToOneField("patients.Patient", on_delete=models.SET_NULL, null=True, blank=True, related_name="employee_record")
 
     class Meta:
         unique_together = ("hospital", "employee_code")
@@ -63,9 +66,16 @@ class LeaveRequest(TenantScopedModel):
         REJECTED = "rejected", "Rejected"
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="leave_requests")
-    leave_type = models.CharField(max_length=50)
+    # Label shown on screens; the leave type's name when `leave_type_master` is set.
+    leave_type = models.CharField(max_length=50, blank=True)
+    leave_type_master = models.ForeignKey("hr.LeaveType", on_delete=models.PROTECT, null=True, blank=True, related_name="requests")
     start_date = models.DateField()
     end_date = models.DateField()
+    half_day = models.BooleanField(default=False, help_text="Single-day request for half a day.")
+    days = models.DecimalField(max_digits=5, decimal_places=1, default=0, editable=False)
+    reason = models.CharField(max_length=255, blank=True)
+    # Applied for more than the balance on a "warn" leave type.
+    short_balance = models.BooleanField(default=False, editable=False)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -77,6 +87,14 @@ class LeaveRequest(TenantScopedModel):
 
     class Meta:
         ordering = ["-start_date"]
+
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+
+        self.days = Decimal("0.5") if self.half_day else Decimal((self.end_date - self.start_date).days + 1)
+        if self.leave_type_master_id and not self.leave_type:
+            self.leave_type = self.leave_type_master.name[:50]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"LeaveRequest ({self.leave_type}) for {self.employee}: {self.status}"
@@ -114,3 +132,4 @@ from .models_hrm import (  # noqa: E402,F401
     TrainingAttendance,
     TrainingProgram,
 )
+from .models_leave import EmployeeDependent, LeaveBalance, LeaveType, OvertimeEntry  # noqa: E402,F401

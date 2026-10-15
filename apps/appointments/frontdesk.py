@@ -16,6 +16,8 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from apps.hr.staff_rate import default_category
+
 from .models import Appointment, Doctor, OPDVisit, Slot
 
 ZERO = Decimal("0")
@@ -270,7 +272,7 @@ def register_opd_visit(*, request, patient, is_new_patient, data) -> dict:
     if payer_type not in OPDVisit.PayerType.values:
         raise ValidationError({"payer_type": "Unknown payer type."})
     policy = FrontDeskPolicy.for_hospital(hospital.pk)
-    rate_category = visit.get("rate_category") or policy.default_rate_category
+    rate_category = default_category(patient, visit.get("rate_category") or policy.default_rate_category)
 
     sheet = build_charges(
         hospital_id=hospital.pk, patient=patient, doctor=doctor, rate_category=rate_category, is_new_patient=is_new_patient,
@@ -332,7 +334,7 @@ def register_patient_only(*, request, patient, is_new_patient, data) -> dict:
     from apps.finance.models import FrontDeskPolicy
 
     policy = FrontDeskPolicy.for_hospital(request.user.hospital_id)
-    rate_category = (data.get("visit") or {}).get("rate_category") or policy.default_rate_category
+    rate_category = default_category(patient, (data.get("visit") or {}).get("rate_category") or policy.default_rate_category)
     charges = []
     if is_new_patient and policy.registration_fee_tariff_id:
         t = policy.registration_fee_tariff

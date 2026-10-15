@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -55,8 +56,15 @@ class DispenseRecordViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, 
     permission_classes = CLINICAL_PERMISSION_CLASSES
     serializer_class = DispenseRecordSerializer
     # select_related: DispenseRecordSerializer.medicine_name (source="batch.medicine.name")
-    queryset = DispenseRecord.objects.select_related("batch__medicine")
-    filterset_fields = ["prescription", "batch"]
+    queryset = DispenseRecord.objects.select_related("batch__medicine", "bill_item__bill")
+    filterset_fields = ["prescription", "batch", "patient"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        billed = self.request.query_params.get("billed")
+        if billed in ("true", "false"):
+            qs = qs.filter(bill_item__isnull=billed == "false")
+        return qs
 
     def create(self, request, *args, **kwargs):
         serializer = DispenseRequestSerializer(data=request.data)
@@ -82,7 +90,23 @@ class DispenseRecordViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, 
         for field, value in extra.items():
             setattr(record, field, value)
         record.save(update_fields=list(extra))
+        from .billing import bill_dispense, mark_unbilled
+
+        if data.get("bill", True):
+            bill_dispense(record)
+        else:
+            mark_unbilled(record, f"Issued without charge: {data['no_charge_reason'].strip()}")
         return Response(DispenseRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def bill(self, request, pk=None):
+        """Charge an unbilled dispense now (e.g. after the bill's hold is released)."""
+        from .billing import bill_dispense
+
+        record = self.get_object()
+        if bill_dispense(record) is None:
+            return Response({"detail": record.billing_note}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(DispenseRecordSerializer(record).data)
 
 
 class StockAdjustmentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):

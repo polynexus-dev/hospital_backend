@@ -35,12 +35,20 @@ class MedicineBatchSerializer(serializers.ModelSerializer):
 
 class DispenseRecordSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source="batch.medicine.name", read_only=True)
+    bill = serializers.IntegerField(source="bill_item.bill_id", read_only=True, default=None)
+    bill_number = serializers.CharField(source="bill_item.bill.bill_number", read_only=True, default="")
+    amount = serializers.SerializerMethodField()
 
     class Meta:
         model = DispenseRecord
         fields = ["id", "prescription", "batch", "medicine_name", "quantity", "dispensed_by", "dispensed_at", "patient", "verified_by", "is_non_formulary", "override_reason",
+                  "bill_item", "bill", "bill_number", "amount", "billing_note",
         ]
-        read_only_fields = ["id", "dispensed_by", "dispensed_at", "patient", "verified_by", "is_non_formulary", "override_reason"]
+        read_only_fields = ["id", "dispensed_by", "dispensed_at", "patient", "verified_by", "is_non_formulary", "override_reason", "bill_item", "billing_note"]
+
+    def get_amount(self, obj):
+        i = obj.bill_item
+        return (i.total_price + i.tax_amount) if i else None
 
 
 class DispenseRequestSerializer(serializers.Serializer):
@@ -53,6 +61,14 @@ class DispenseRequestSerializer(serializers.Serializer):
     patient = serializers.IntegerField(required=False, allow_null=True)
     verified_by = serializers.IntegerField(required=False, allow_null=True)
     override_reason = serializers.CharField(required=False, allow_blank=True)
+    # Charge it to the patient's bill (apps.pharmacy.billing); false = issued free, say why.
+    bill = serializers.BooleanField(required=False, default=True)
+    no_charge_reason = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get("bill", True) and not str(attrs.get("no_charge_reason", "")).strip():
+            raise serializers.ValidationError({"no_charge_reason": "Say why it's issued without charge."})
+        return attrs
 
 
 class StockAdjustmentSerializer(serializers.ModelSerializer):

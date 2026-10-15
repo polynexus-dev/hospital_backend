@@ -25,7 +25,7 @@ class Bill(TenantScopedModel):
     # NABH AAC.6.e interim bills; FPM.3 GST invoice numbering.
     is_interim = models.BooleanField(default=False)
     bill_number = models.CharField(max_length=30, blank=True, editable=False)
-    patient_category = models.CharField(max_length=12, default="general", help_text="general | private | insurance | corporate")
+    patient_category = models.CharField(max_length=12, default="general", help_text="general | private | insurance | corporate | staff")
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     # Paise dropped when the net is rounded down to the rupee (front-desk policy).
     round_off = models.DecimalField(max_digits=6, decimal_places=2, default=0)
@@ -36,8 +36,16 @@ class Bill(TenantScopedModel):
     hold_reason = models.CharField(max_length=255, blank=True)
     held_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     held_at = models.DateTimeField(null=True, blank=True)
+    # Insurance / corporate bills: what the patient pays because the insurer
+    # won't (non-payable lines incl. their GST); the rest is claimable.
+    non_payable_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
+        if self._state.adding and self.patient_id:
+            # Staff and their dependents get the staff rate (apps.hr.staff_rate).
+            from apps.hr.staff_rate import default_category
+
+            self.patient_category = default_category(self.patient, self.patient_category)
         if not self.bill_number and self.hospital_id:
             prefix = "INT" if self.is_interim else "INV"
             n = Bill.objects.filter(hospital_id=self.hospital_id, bill_number__startswith=f"{prefix}{timezone.localdate():%y}").count() + 1
@@ -70,6 +78,9 @@ class BillItem(models.Model):
     # posting run and replaced wholesale; manual lines have source="".
     source = models.CharField(max_length=20, blank=True, db_index=True)
     source_ref = models.CharField(max_length=60, blank=True)
+    # Insurer won't pay for it (tpa.NonPayableItem) — the patient pays this line.
+    non_payable = models.BooleanField(default=False)
+    non_payable_reason = models.CharField(max_length=255, blank=True)
 
     def save(self, *args, **kwargs):
         from decimal import Decimal

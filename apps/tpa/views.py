@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from apps.core.viewsets import TenantScopedViewSetMixin
 
+from .inbox_views import PreAuthNHCXMixin
 from .models import Claim, PreAuthRequest, TPACompany
 from .serializers import ClaimSerializer, PreAuthRequestSerializer, TPACompanySerializer
 
@@ -12,11 +13,11 @@ class TPACompanyViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code"]
 
 
-class PreAuthRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+class PreAuthRequestViewSet(PreAuthNHCXMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PreAuthRequestSerializer
     # select_related: PreAuthRequestSerializer's patient_name/tpa_name
     # (source="patient.full_name"/"tpa_company.name")
-    queryset = PreAuthRequest.objects.select_related("patient", "tpa_company")
+    queryset = PreAuthRequest.objects.select_related("patient", "tpa_company", "treating_doctor").prefetch_related("messages")
     filterset_fields = ["tpa_company", "status", "patient"]
     search_fields = ["policy_number"]
 

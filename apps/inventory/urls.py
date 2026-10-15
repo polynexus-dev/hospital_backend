@@ -23,4 +23,14 @@ router.register(r"indents", StoreIndentViewSet, basename="storeindent")
 router.register(r"grns", GoodsReceiptNoteViewSet, basename="goodsreceiptnote")
 router.register(r"transfers", StockTransferViewSet, basename="stocktransfer")
 router.register(r"supplier-ratings", SupplierRatingViewSet, basename="supplierrating")
-urlpatterns = router.urls
+
+from django.urls import path  # noqa: E402
+
+from . import contract_views  # noqa: E402
+
+router.register(r"rate-contracts", contract_views.RateContractViewSet, basename="ratecontract")
+router.register(r"rate-contract-lines", contract_views.RateContractLineViewSet, basename="ratecontractline")
+urlpatterns = router.urls + [
+    path("cart/<str:kind>/", contract_views.CartView.as_view(), name="procurement-cart"),
+    path("cart/<str:kind>/submit/", contract_views.CartSubmitView.as_view(), name="procurement-cart-submit"),
+]

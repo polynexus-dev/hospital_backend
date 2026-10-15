@@ -11,7 +11,11 @@ def recalculate_bill(bill: Bill) -> Bill:
     bill.total_amount = sum((i.total_price for i in items), Decimal("0"))
     bill.tax_amount = sum((i.tax_amount for i in items), Decimal("0"))
     bill.net_amount = bill.total_amount + bill.tax_amount - Decimal(bill.discount_amount or 0) - Decimal(bill.round_off or 0)
-    fields = ["total_amount", "tax_amount", "net_amount"]
+    fields = ["total_amount", "tax_amount", "net_amount", "non_payable_amount"]
+    # Insurance non-payable lines (apps.tpa.non_payable) — the patient's share.
+    from apps.tpa.non_payable import flag_bill
+
+    bill.non_payable_amount = flag_bill(bill, items)
     if bill.status in (Bill.Status.UNPAID, Bill.Status.PARTIALLY_PAID, Bill.Status.PAID):
         paid = sum((p.amount for p in bill.payments.all()), Decimal("0"))
         if paid <= 0:

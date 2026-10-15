@@ -71,6 +71,11 @@ class POItem(models.Model):
     ordered_quantity = models.PositiveIntegerField()
     received_quantity = models.PositiveIntegerField(default=0)
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
+    # Rate contract the line was priced from (PRC-1), its rate at the time,
+    # and why a different (higher) rate was used.
+    contract_line = models.ForeignKey("inventory.RateContractLine", on_delete=models.SET_NULL, null=True, blank=True, related_name="po_items")
+    contract_rate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    rate_override_reason = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return f"POItem for {self.item}: {self.ordered_quantity} pcs @ {self.unit_cost}"
@@ -202,3 +207,6 @@ class SupplierRating(TenantScopedModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+from .models_contracts import PODelivery, ProcurementCart, RateContract, RateContractLine  # noqa: E402,F401

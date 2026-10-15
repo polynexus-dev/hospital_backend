@@ -100,17 +100,20 @@ class BatchWorkflowMixin:
 
 
 class MedicineReturnViewSet(ClinicalCRUDViewSet):
-    serializer_class = model_serializer(MedicineReturn, read_only=("returned_by",), extra={"medicine_name": serializers.CharField(source="batch.medicine.name", read_only=True)})
+    serializer_class = model_serializer(MedicineReturn, read_only=("returned_by", "credit_item", "billing_note"), extra={"medicine_name": serializers.CharField(source="batch.medicine.name", read_only=True)})
     queryset = MedicineReturn.objects.select_related("batch__medicine")
     filterset_fields = ["batch", "patient", "restocked"]
     actor_field = "returned_by"
 
     def perform_create(self, serializer):
+        from .billing import credit_return
+
         with transaction.atomic():
             super().perform_create(serializer)
             r = serializer.instance
             if r.restocked:
                 MedicineBatch.objects.filter(pk=r.batch_id).update(quantity_available=F("quantity_available") + r.quantity)
+            credit_return(r)  # a billed dispense is credited on its bill
 
 
 class MedicineRecallViewSet(TenantCRUDViewSet):

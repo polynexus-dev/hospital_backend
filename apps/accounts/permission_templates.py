@@ -299,6 +299,9 @@ BASELINE_VIEW_MODELS = [
     ("laboratory", "labtest"),
     ("pharmacy", "medicine"),
     ("radiology", "radiologyprocedure"),
+    # OT tariff templates: read by the OT screens (grade on a request, charge preview).
+    ("finance", "surgerygrade"),
+    ("finance", "ottariff"),
 ]
 
 

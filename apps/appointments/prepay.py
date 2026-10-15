@@ -30,7 +30,9 @@ def portal_charges(patient, doctor):
     from .frontdesk import build_charges
 
     policy = FrontDeskPolicy.for_hospital(patient.hospital_id)
-    sheet = build_charges(hospital_id=patient.hospital_id, patient=patient, doctor=doctor, rate_category=policy.default_rate_category, is_new_patient=False)
+    from apps.hr.staff_rate import default_category
+
+    sheet = build_charges(hospital_id=patient.hospital_id, patient=patient, doctor=doctor, rate_category=default_category(patient, policy.default_rate_category), is_new_patient=False)
     return policy, sheet
 
 

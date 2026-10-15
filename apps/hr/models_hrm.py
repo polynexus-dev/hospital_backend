@@ -75,11 +75,20 @@ class SalaryStructure(TenantScopedModel):
     esi_applicable = models.BooleanField(default=True)
     professional_tax = models.DecimalField(max_digits=8, decimal_places=2, default=200, help_text="Monthly PT (Maharashtra: ₹200; ₹300 in February).")
     monthly_tds = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    overtime_hourly_rate = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        help_text="0 = twice the ordinary hourly rate (monthly gross / 26 days / 8 hours), as under the Factories Act s.59.")
     effective_from = models.DateField(default=timezone.localdate)
 
     @property
     def gross(self):
         return self.basic + self.hra + self.special_allowance + self.other_allowances
+
+    @property
+    def overtime_rate(self):
+        if self.overtime_hourly_rate:
+            return self.overtime_hourly_rate
+        return (self.gross / Decimal("208") * 2).quantize(Decimal("0.01"))
 
 
 class PayrollRun(TenantScopedModel):
@@ -109,6 +118,10 @@ class Payslip(TenantScopedModel):
     employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="payslips")
     days_in_month = models.PositiveSmallIntegerField()
     paid_days = models.DecimalField(max_digits=5, decimal_places=1)
+    overtime_hours = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    # ESI covered this month (see esi_contribution_period) — once covered in a
+    # contribution period, an employee stays covered until it ends.
+    esi_covered = models.BooleanField(default=False)
     earnings = models.JSONField(default=dict)
     deductions = models.JSONField(default=dict)
     employer_contributions = models.JSONField(default=dict)
@@ -122,13 +135,23 @@ class Payslip(TenantScopedModel):
         constraints = [models.UniqueConstraint(fields=["run", "employee"], name="one_payslip_per_employee_per_run")]
 
     @classmethod
-    def compute(cls, structure, days_in_month, paid_days, month):
+    def compute(cls, structure, days_in_month, paid_days, month, overtime_hours=0, esi_covered=None):
+        """Overtime is paid at the structure's overtime rate and is part of
+        the ESI wage (ESI contributions are on all wages, overtime included);
+        whether ESI applies is still judged on the regular monthly gross,
+        so overtime never pushes someone out of ESI. PF stays on basic.
+
+        `esi_covered` (from esi_coverage) carries ESI cover through the
+        contribution period; None = judge this month on its own."""
         f = Decimal(paid_days) / Decimal(days_in_month)
         earnings = {k: _r(getattr(structure, k) * f) for k in ("basic", "hra", "special_allowance", "other_allowances")}
+        if overtime_hours:
+            earnings["overtime"] = _r(Decimal(overtime_hours) * structure.overtime_rate)
         gross = sum(earnings.values(), Decimal("0"))
         pf_base = earnings["basic"] if structure.pf_on_full_basic else min(earnings["basic"], Decimal("15000") * f)
         pf = _r(pf_base * Decimal("0.12")) if structure.pf_applicable else Decimal("0")
-        esi = _r(gross * Decimal("0.0075")) if structure.esi_applicable and structure.gross <= 21000 else Decimal("0")
+        covered = structure.esi_applicable and (structure.gross <= ESI_WAGE_CEILING if esi_covered is None else esi_covered)
+        esi = _r(gross * Decimal("0.0075")) if covered else Decimal("0")
         esi_er = _r(gross * Decimal("0.0325")) if esi else Decimal("0")
         pt = Decimal("300") if month.month == 2 and structure.professional_tax == 200 else structure.professional_tax
         pt = pt if gross > 7500 else Decimal("0")
@@ -138,7 +161,33 @@ class Payslip(TenantScopedModel):
         return {
             "earnings": {k: str(v) for k, v in earnings.items()}, "deductions": {k: str(v) for k, v in deductions.items()},
             "employer_contributions": {k: str(v) for k, v in employer.items()}, "gross": gross, "total_deductions": total_ded, "net_pay": gross - total_ded,
+            "esi_covered": bool(covered),
         }
+
+
+ESI_WAGE_CEILING = Decimal("21000")
+
+
+def esi_contribution_period(month):
+    """ESIC contribution periods: 1 April - 30 September, 1 October - 31 March."""
+    from datetime import date
+
+    if 4 <= month.month <= 9:
+        return date(month.year, 4, 1)
+    return date(month.year if month.month >= 10 else month.year - 1, 10, 1)
+
+
+def esi_coverage(structure, month):
+    """Covered if the regular gross is within the ceiling, or the employee
+    was already covered earlier in the same contribution period (ESI Act
+    s.2(9) proviso: coverage continues to the end of the period even when
+    wages go above the ceiling)."""
+    if not structure.esi_applicable:
+        return False
+    if structure.gross <= ESI_WAGE_CEILING:
+        return True
+    return Payslip.objects.filter(employee_id=structure.employee_id, esi_covered=True,
+                                  run__month__gte=esi_contribution_period(month), run__month__lt=month).exists()
 
 
 class Appraisal(TenantScopedModel):

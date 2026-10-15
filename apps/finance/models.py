@@ -83,6 +83,7 @@ from .models_payout import (  # noqa: E402,F401
     DoctorPayout, DoctorPayoutDeduction, DoctorPayoutLine, DoctorPayoutRule, PayoutDeductionHead, PayoutStatementDelivery,
 )
 from .models_frontdesk import ConsultationFeeRule, FrontDeskPolicy  # noqa: E402,F401
+from .models_ot import OTTariff, SurgeryGrade  # noqa: E402,F401
 from .models_ar import (  # noqa: E402,F401
     AccountsSettings, Customer, CustomerInvoice, CustomerInvoiceLine, CustomerReceipt, RecurringInvoice,
 )

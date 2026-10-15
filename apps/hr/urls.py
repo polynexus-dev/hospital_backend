@@ -19,4 +19,11 @@ router.register(r"job-openings", hrm_views.JobOpeningViewSet, basename="jobopeni
 router.register(r"candidates", hrm_views.CandidateViewSet, basename="candidate")
 router.register(r"exits", hrm_views.ExitRequestViewSet, basename="exitrequest")
 router.register(r"trainings", hrm_views.TrainingProgramViewSet, basename="trainingprogram")
+
+from . import leave_views  # noqa: E402
+
+router.register(r"leave-types", leave_views.LeaveTypeViewSet, basename="leavetype")
+router.register(r"leave-balances", leave_views.LeaveBalanceViewSet, basename="leavebalance")
+router.register(r"dependents", leave_views.EmployeeDependentViewSet, basename="employeedependent")
+router.register(r"overtime", leave_views.OvertimeEntryViewSet, basename="overtimeentry")
 urlpatterns = router.urls

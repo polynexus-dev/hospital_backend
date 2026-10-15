@@ -27,6 +27,16 @@ class SurgeryRequest(TenantScopedModel):
     previous_surgery = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="returns")
     priority = models.CharField(max_length=12, default="elective", help_text="elective | urgent | emergency")
     procedure_type = models.CharField(max_length=20, default="surgery", help_text="surgery | interventional | procedural_sedation (COP.6)")
+    # OT tariff: the grade prices the surgery (finance.OTTariff).
+    surgery_grade = models.ForeignKey("finance.SurgeryGrade", on_delete=models.PROTECT, null=True, blank=True, related_name="surgery_requests")
+
+    class Encounter(models.TextChoices):
+        OPD = "opd", "OPD / day care"
+        IPD = "ipd", "IPD"
+        EMERGENCY = "emergency", "Emergency"
+
+    # Blank = worked out from the request (see `encounter`); set to override.
+    encounter_type = models.CharField(max_length=10, choices=Encounter.choices, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -34,11 +44,25 @@ class SurgeryRequest(TenantScopedModel):
     def __str__(self):
         return f"Surgery Request: {self.proposed_procedure} for {self.patient}"
 
+    @property
+    def encounter(self):
+        """OPD / IPD / emergency, for the OT board colours: the override if
+        set; else emergency for an emergency priority or an admission that
+        came in as an emergency (or from the ED); IPD for any other
+        admission; OPD / day care when there's no admission."""
+        if self.encounter_type:
+            return self.encounter_type
+        a = self.admission
+        if self.priority == "emergency" or (a is not None and (a.admission_type == "emergency" or a.source_ed_visit_id)):
+            return self.Encounter.EMERGENCY
+        return self.Encounter.IPD if a is not None else self.Encounter.OPD
+
 
 class OTSchedule(TenantScopedModel):
     surgery_request = models.OneToOneField(SurgeryRequest, on_delete=models.CASCADE, related_name="schedule")
     operation_theatre_room = models.CharField(max_length=120)
     surgeon = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="ot_schedules")
+    assistant_surgeon = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name="assisted_ot_schedules")
     anaesthetist = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="anaesthesia_schedules")
     scheduled_start = models.DateTimeField()
     scheduled_end = models.DateTimeField()
@@ -59,6 +83,8 @@ class OTSchedule(TenantScopedModel):
     actual_end = models.DateTimeField(null=True, blank=True)
     wheeled_in_at = models.DateTimeField(null=True, blank=True)
     wheeled_out_at = models.DateTimeField(null=True, blank=True)
+    # Last time the OT tariff lines were posted to the bill (apps.ot.charges).
+    charges_posted_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["scheduled_start"]

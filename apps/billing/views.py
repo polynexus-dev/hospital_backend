@@ -28,6 +28,7 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "change_category": "billing.change_bill",
         "credit_note": "billing.change_bill",
         "credit_notes": "billing.view_bill",
+        "payer_split": "billing.view_bill",
     }
     serializer_class = BillSerializer
     queryset = Bill.objects.all()
@@ -94,6 +95,19 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         self._log("update", bill)
         bill.refresh_from_db()
         return Response({"credit_note": CreditNoteSerializer(note).data, "bill": BillSerializer(bill).data}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="payer-split")
+    def payer_split(self, request, pk=None):
+        """Insurer-payable vs patient-payable: lines on the insurer's non-payable
+        lists (apps.tpa.non_payable) are re-checked against the current lists."""
+        from apps.tpa import non_payable
+
+        bill = self.get_object()
+        amount = non_payable.flag_bill(bill)
+        if amount != bill.non_payable_amount:
+            bill.non_payable_amount = amount
+            bill.save(update_fields=["non_payable_amount"])
+        return Response(non_payable.split(bill))
 
     @action(detail=True, methods=["get"], url_path="credit-notes")
     def credit_notes(self, request, pk=None):

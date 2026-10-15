@@ -78,11 +78,17 @@ def bill_medicine_cost(bill):
     return _q(max(issued - returned, Decimal("0")))
 
 
+PHARMACY_SOURCES = ("pharmacy", "pharmacy_return")
+
+
 def medicine_share(item, cache):
-    """This line's part of the bill's medicine cost, split by line value."""
+    """This line's part of the bill's medicine cost, split by line value
+    over the bill's services — the medicine lines themselves (apps.pharmacy.
+    billing) don't take a share of their own cost."""
     bill = item.bill
     if bill.pk not in cache:
-        cache[bill.pk] = (bill_medicine_cost(bill), _gross(bill))
+        services = sum((Decimal(i.total_price) for i in bill.items.all() if i.total_price > 0 and i.source not in ("scheme_package", *PHARMACY_SOURCES)), Decimal("0"))
+        cache[bill.pk] = (bill_medicine_cost(bill), services)
     cost, gross = cache[bill.pk]
     if not cost or not gross or item.total_price <= 0:
         return Decimal("0")
