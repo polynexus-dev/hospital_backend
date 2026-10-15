@@ -36,6 +36,12 @@ class Bill(TenantScopedModel):
     hold_reason = models.CharField(max_length=255, blank=True)
     held_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     held_at = models.DateTimeField(null=True, blank=True)
+    # Bill lock (MedNet "lock / freeze bill"): the final bill. No charge,
+    # discount, credit-note or re-pricing changes; payments of any balance
+    # still go through. Locking releases a hold; only billing.unlock_bill reopens it.
+    is_locked = models.BooleanField(default=False)
+    locked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    locked_at = models.DateTimeField(null=True, blank=True)
     # Insurance / corporate bills: what the patient pays because the insurer
     # won't (non-payable lines incl. their GST); the rest is claimable.
     non_payable_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -55,7 +61,8 @@ class Bill(TenantScopedModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["hospital", "status"])]
-        permissions = [("hold_bill", "Can put a bill on hold and release it")]
+        permissions = [("hold_bill", "Can put a bill on hold and release it"), ("lock_bill", "Can lock (finalise) a bill"),
+                       ("unlock_bill", "Can unlock (unfreeze) a locked bill")]
 
     def __str__(self):
         return f"Bill #{self.id} for {self.patient} - ₹{self.net_amount} ({self.status})"
@@ -292,7 +299,7 @@ class BillHoldEvent(TenantScopedModel):
     """History of a bill being put on hold and released."""
 
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="hold_events")
-    action = models.CharField(max_length=8, help_text="hold | release")
+    action = models.CharField(max_length=8, help_text="hold | release | lock | unlock")
     reason = models.CharField(max_length=255)
     by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
 

@@ -5,12 +5,14 @@ from .views import (
     DiagnosisViewSet,
     EncounterViewSet,
     InvestigationOrderViewSet,
+    OPDTriageViewSet,
     VitalsReadingViewSet,
 )
 
 router = DefaultRouter()
 router.register("encounters", EncounterViewSet, basename="encounter")
 router.register("vitals", VitalsReadingViewSet, basename="vitalsreading")
+router.register("triage", OPDTriageViewSet, basename="opdtriage")
 router.register("clinical-notes", ClinicalNoteViewSet, basename="clinicalnote")
 router.register("diagnoses", DiagnosisViewSet, basename="diagnosis")
 router.register("investigation-orders", InvestigationOrderViewSet, basename="investigationorder")

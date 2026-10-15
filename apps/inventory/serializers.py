@@ -5,7 +5,7 @@ from .models import Item, ItemCategory, POItem, PurchaseOrder, StockLevel, Stock
 class ItemCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemCategory
-        fields = ["id", "name", "code"]
+        fields = ["id", "name", "code", "parent"]
         read_only_fields = ["id"]
 
 
@@ -14,7 +14,7 @@ class ItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Item
-        fields = ["id", "category", "category_name", "name", "code", "unit_of_measure", "min_stock_level"]
+        fields = ["id", "category", "category_name", "name", "code", "unit_of_measure", "min_stock_level", "safety_stock"]
         read_only_fields = ["id"]
 
 
@@ -46,11 +46,13 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     po_items = POItemSerializer(many=True, read_only=True)
     approved_by_name = serializers.ReadOnlyField(source="approved_by.get_full_name", default="")
     total_value = serializers.SerializerMethodField()
+    source_indent = serializers.PrimaryKeyRelatedField(read_only=True)
+    source_indent_number = serializers.ReadOnlyField(source="source_indent.indent_number", default="")
 
     class Meta:
         model = PurchaseOrder
         fields = ["id", "po_number", "vendor", "vendor_name", "status", "ordered_at", "expected_delivery",
-                  "approved_by", "approved_by_name", "approved_at", "total_value", "po_items"]
+                  "approved_by", "approved_by_name", "approved_at", "total_value", "po_items", "source_indent", "source_indent_number"]
         read_only_fields = ["id", "ordered_at", "approved_by", "approved_at"]
         extra_kwargs = {"vendor_name": {"required": False}}
 

@@ -30,11 +30,18 @@ class LabTestPackageSerializer(serializers.ModelSerializer):
 
 class LabOrderSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    processing_state = serializers.SerializerMethodField()
+
+    def get_processing_state(self, obj):
+        """not_started | in_process | results_ready (order view filters)."""
+        from .lab_extras import processing_state
+
+        return processing_state(obj)
 
     class Meta:
         model = LabOrder
         fields = ["id", "investigation_order", "patient", "patient_name", "ordered_tests", "status", "ordered_by", "ordered_at", "priority", "clinical_notes", "admission", "order_number", "patient_notified_at",
-            "department", "dispatch_due_at", "dispatched_at",
+            "department", "dispatch_due_at", "dispatched_at", "processing_state",
         ]
         read_only_fields = ["id", "status", "ordered_by", "ordered_at", "order_number", "patient_notified_at", "department", "dispatch_due_at", "dispatched_at"]
 

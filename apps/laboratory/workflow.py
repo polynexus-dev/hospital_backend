@@ -109,6 +109,12 @@ class LabOrderWorkflowMixin:
         from apps.clinical.services import duplicate_lab_orders
 
         patient_id = request.data.get("patient")
+        if patient_id:
+            from apps.billing.adjustments import ensure_patient_open
+            from apps.patients.models import Patient
+
+            ensure_patient_open(Patient.objects.filter(pk=patient_id, hospital_id=request.user.hospital_id).first(),
+                                "order lab tests", request.data.get("priority", ""))
         tests = [int(t) for t in (request.data.get("ordered_tests") or []) if str(t).isdigit()]
         if patient_id and tests and not request.data.get("confirm_duplicate"):
             from apps.patients.models import Patient
@@ -139,9 +145,52 @@ class LabOrderWorkflowMixin:
         return Response(body, status=201)
 
     def get_queryset(self):
+        from .lab_extras import PROCESSING_STATES, filter_processing, with_processing_counts
+
         qs = super().get_queryset()
         dept = self.request.query_params.get("department")
-        return qs.filter(ordered_tests__department=dept).distinct() if dept else qs
+        if dept:
+            qs = qs.filter(ordered_tests__department=dept).distinct()
+        state = self.request.query_params.get("processing")
+        if state in PROCESSING_STATES:
+            qs = filter_processing(qs, state)
+        elif getattr(self, "action", None) == "list":
+            qs = with_processing_counts(qs)  # processing_state without a query per order
+        return qs
+
+    @action(detail=False, methods=["get"], url_path="patient-report")
+    def patient_report(self, request):
+        """GET ?patient=<id>[&orders=1,2] — one merged PDF of the patient's
+        verified orders (all of them, or the ones listed), by department."""
+        from django.http import HttpResponse
+
+        from .merged_report import render_patient_lab_report
+
+        qs = self.get_queryset().filter(patient_id=request.query_params.get("patient") or 0, status=LabOrder.Status.VERIFIED)
+        wanted = [int(x) for x in str(request.query_params.get("orders", "")).split(",") if x.strip().isdigit()]
+        if wanted:
+            qs = qs.filter(pk__in=wanted)
+        orders = list(qs.select_related("patient", "hospital").distinct())
+        if not orders:
+            return Response({"detail": "No verified reports for this patient."}, status=404)
+        resp = HttpResponse(render_patient_lab_report(orders), content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="Lab_report_{orders[0].patient.uhid}.pdf"'
+        return resp
+
+    @action(detail=False, methods=["get"], url_path="patient-status")
+    def patient_status(self, request):
+        """GET ?patient=<id> — the patient's pending investigations with each
+        one's stage, and the reporting section (MedNet "Pending investigations")."""
+        from apps.patients.models import Patient
+
+        from .lab_extras import patient_lab_status
+
+        patient = Patient.objects.filter(pk=request.query_params.get("patient") or 0, hospital_id=request.user.hospital_id).first()
+        if patient is None:
+            return Response({"patient": "Unknown patient."}, status=400)
+        body = patient_lab_status(request.user.hospital_id, patient.pk)
+        body["patient"] = {"id": patient.pk, "name": patient.full_name, "uhid": patient.uhid}
+        return Response(body)
 
     @action(detail=False, methods=["get"])
     def worklist(self, request):
@@ -151,7 +200,8 @@ class LabOrderWorkflowMixin:
 
         q = request.query_params
         return Response(worklist(request.user.hospital_id, department=q.get("department", ""), status=q.get("status", ""),
-                                 priority=q.get("priority", ""), date_from=q.get("date_from") or None, date_to=q.get("date_to") or None))
+                                 priority=q.get("priority", ""), date_from=q.get("date_from") or None, date_to=q.get("date_to") or None,
+                                 patient=q.get("patient") or None))
 
     @action(detail=True, methods=["post"])
     def dispatch_report(self, request, pk=None):
@@ -444,6 +494,24 @@ class LabReportTemplateViewSet(TenantCRUDViewSet):
     filterset_fields = ["department", "is_active"]
 
 
+def finalize_outside_report(outsourced, user):
+    """The outside report stands as the result: one finalised LabResult for
+    the test pointing at the attached report; verifies the order if nothing
+    else is open."""
+    order, test = outsourced.lab_order, outsourced.lab_test
+    result = LabResult.objects.filter(lab_order=order, lab_test=test, finalized_at__isnull=True).first()
+    if result is None and not LabResult.objects.filter(lab_order=order, lab_test=test, finalized_at__isnull=False).exists():
+        result = LabResult.objects.create(hospital_id=order.hospital_id, lab_order=order, lab_test=test, value="See outside report",
+                                          unit=test.unit, reference_range=test.reference_range, entered_by=user)
+    if result is not None:
+        result.finalize(user)
+    open_tests = [t for t in order.ordered_tests.all() if not order.results.filter(lab_test=t, finalized_at__isnull=False).exists()]
+    if not open_tests and order.status != LabOrder.Status.VERIFIED:
+        order.status = LabOrder.Status.VERIFIED
+        order.save(update_fields=["status"])
+        after_order_verified(order)
+
+
 class OutsourcedLabTestViewSet(ClinicalCRUDViewSet):
     serializer_class = model_serializer(OutsourcedLabTest, extra={
         "test_name": serializers.CharField(source="lab_test.name", read_only=True),
@@ -463,13 +531,23 @@ class OutsourcedLabTestViewSet(ClinicalCRUDViewSet):
 
     @action(detail=True, methods=["post"])
     def record_result(self, request, pk=None):
+        """Records the external lab's result. With report type "outside report"
+        and the report file attached, the test is finalised at once (the
+        external lab's PDF is the report) and the order is verified when it
+        was the last open test."""
         o = self.get_object()
         o.status = OutsourcedLabTest.Status.RESULT_RECEIVED
         o.received_at = timezone.now()
         o.result_text = str(request.data.get("result_text", ""))
+        if request.data.get("report_type") in OutsourcedLabTest.ReportType.values:
+            o.report_type = request.data["report_type"]
         if request.FILES.get("result_file"):
             o.result_file = request.FILES["result_file"]
+        if o.report_type == OutsourcedLabTest.ReportType.OUTSIDE_REPORT and not o.result_file:
+            return Response({"result_file": "Attach the external lab's report to finalise an outside report."}, status=400)
         o.save()
+        if o.report_type == OutsourcedLabTest.ReportType.OUTSIDE_REPORT:
+            finalize_outside_report(o, request.user)
         return Response(self.get_serializer(o).data)
 
 
@@ -491,7 +569,7 @@ class LabSettingsView(APIView):
     """GET/PUT /laboratory/settings/ — NABL, report dispatch, order grouping."""
 
     FIELDS = ("nabl_certificate_number", "nabl_valid_until", "auto_dispatch", "dispatch_channels", "dispatch_times",
-              "dispatch_delay_minutes", "merge_window_minutes", "split_by_department")
+              "dispatch_delay_minutes", "merge_window_minutes", "split_by_department", "dispatch_outsourced", "merge_dispatch_reports")
 
     def _payload(self, s):
         data = {f: getattr(s, f) for f in self.FIELDS}

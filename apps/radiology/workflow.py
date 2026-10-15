@@ -37,6 +37,9 @@ class RadiologyOrderWorkflowMixin:
 
         patient = Patient.objects.filter(pk=request.data.get("patient"), hospital_id=request.user.hospital_id).first()
         procedure = RadiologyProcedure.objects.filter(pk=request.data.get("procedure"), hospital_id=request.user.hospital_id).first()
+        from apps.billing.adjustments import ensure_patient_open
+
+        ensure_patient_open(patient, "order an imaging study", request.data.get("priority", ""))
         if patient and procedure:
             if not request.data.get("confirm_duplicate"):
                 dupes = duplicate_radiology_orders(patient, procedure.pk)

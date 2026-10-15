@@ -130,6 +130,8 @@ def post_bed_charges(admission, *, until=None):
 
     bill = running_bill(admission)
     result = compute_bed_charges(admission, category=bill.patient_category, until=until)
+    if bill.is_locked:  # a final bill is never re-posted
+        return bill, result
     BillItem.objects.filter(bill=bill, source=SOURCE).delete()
     for line in result["lines"]:
         t = line["tariff"]

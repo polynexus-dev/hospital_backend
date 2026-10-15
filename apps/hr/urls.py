@@ -25,5 +25,7 @@ from . import leave_views  # noqa: E402
 router.register(r"leave-types", leave_views.LeaveTypeViewSet, basename="leavetype")
 router.register(r"leave-balances", leave_views.LeaveBalanceViewSet, basename="leavebalance")
 router.register(r"dependents", leave_views.EmployeeDependentViewSet, basename="employeedependent")
+router.register(r"dependent-allowances", leave_views.DependentAllowanceViewSet, basename="dependentallowance")
+router.register(r"dependent-relation-rules", leave_views.DependentRelationRuleViewSet, basename="dependentrelationrule")
 router.register(r"overtime", leave_views.OvertimeEntryViewSet, basename="overtimeentry")
 urlpatterns = router.urls

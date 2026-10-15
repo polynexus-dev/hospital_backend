@@ -173,6 +173,7 @@ class RiskAssessment(TenantScopedModel):
         CAPRINI = "caprini", "Caprini (VTE/DVT)"
         NEWS2 = "news2", "NEWS2 (early warning)"
         VULNERABILITY = "vulnerability", "Vulnerable patient screen"
+        NUMERIC_PAIN = "numeric_pain", "Numeric pain scale (0-10)"
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="risk_assessments")
     admission = models.ForeignKey("ipd.Admission", on_delete=models.SET_NULL, null=True, blank=True, related_name="risk_assessments")

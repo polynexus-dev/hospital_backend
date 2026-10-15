@@ -382,6 +382,9 @@ class HomecareBookingViewSet(ClinicalCRUDViewSet):
         b.visit_notes = request.data.get("visit_notes", b.visit_notes)
         b.vitals = request.data.get("vitals", b.vitals) or {}
         if b.bill_id is None and b.service.price:
+            from apps.billing.adjustments import ensure_patient_open
+
+            ensure_patient_open(b.patient, "bill the homecare visit")
             bill = Bill.objects.create(hospital_id=b.hospital_id, patient=b.patient, total_amount=b.service.price, net_amount=b.service.price)
             BillItem.objects.create(bill=bill, description=f"Homecare: {b.service.name}", quantity=1, unit_price=b.service.price, total_price=b.service.price)
             b.bill = bill

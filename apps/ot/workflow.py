@@ -27,6 +27,7 @@ class OTScheduleWorkflowMixin:
         sch.reschedule_count += 1
         sch.last_reschedule_reason = reason[:255]
         sch.status = OTSchedule.Status.SCHEDULED
+        sch.updated_by = request.user
         sch.save()
         return Response(self.get_serializer(sch).data)
 
@@ -44,9 +45,10 @@ class OTScheduleWorkflowMixin:
         sch.status = OTSchedule.Status.CANCELLED
         sch.cancelled_at = timezone.now()
         sch.cancellation_reason = reason[:255]
-        sch.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
+        sch.updated_by = sch.surgery_request.updated_by = request.user
+        sch.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_by", "updated_at"])
         sch.surgery_request.status = "cancelled"
-        sch.surgery_request.save(update_fields=["status"])
+        sch.surgery_request.save(update_fields=["status", "updated_by", "updated_at"])
         return Response(self.get_serializer(sch).data)
 
     @action(detail=True, methods=["post"])
@@ -57,7 +59,8 @@ class OTScheduleWorkflowMixin:
             return Response({"detail": "Surgical safety checklist Time-Out must be completed before incision."}, status=400)
         sch.actual_start = timezone.now()
         sch.status = OTSchedule.Status.IN_PROGRESS
-        sch.save(update_fields=["actual_start", "status"])
+        sch.updated_by = request.user
+        sch.save(update_fields=["actual_start", "status", "updated_by", "updated_at"])
         checklist.save()  # recompute antibiotic timing against the real incision time
         return Response(self.get_serializer(sch).data)
 
@@ -68,9 +71,10 @@ class OTScheduleWorkflowMixin:
             return Response({"detail": "Surgery has not started."}, status=400)
         sch.actual_end = timezone.now()
         sch.status = OTSchedule.Status.COMPLETED
-        sch.save(update_fields=["actual_end", "status"])
+        sch.updated_by = sch.surgery_request.updated_by = request.user
+        sch.save(update_fields=["actual_end", "status", "updated_by", "updated_at"])
         sch.surgery_request.status = "completed"
-        sch.surgery_request.save(update_fields=["status"])
+        sch.surgery_request.save(update_fields=["status", "updated_by", "updated_at"])
         posted = self._post_charges_quietly(sch)
         data = dict(self.get_serializer(sch).data)
         data["charges"] = posted
@@ -101,6 +105,16 @@ class SurgicalSafetyChecklistSerializer(model_serializer(
     extra={"patient_name": serializers.CharField(source="patient.full_name", read_only=True)},
 )):
     is_complete = serializers.BooleanField(read_only=True)
+    updated_by_name = serializers.SerializerMethodField()
+
+    def get_updated_by_name(self, obj):
+        return (obj.updated_by.get_full_name() or obj.updated_by.email) if obj.updated_by else ""
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        if request is not None and getattr(request.user, "is_authenticated", False):
+            kwargs.setdefault("updated_by", request.user)
+        return super().save(**kwargs)
     items = serializers.SerializerMethodField()
 
     def get_items(self, obj):
@@ -133,6 +147,7 @@ class SurgicalSafetyChecklistViewSet(ClinicalCRUDViewSet):
             from django.utils.dateparse import parse_datetime
 
             c.antibiotic_given_at = parse_datetime(request.data["antibiotic_given_at"])
+        c.updated_by = request.user
         c.save()
         return Response(self.get_serializer(c).data)
 

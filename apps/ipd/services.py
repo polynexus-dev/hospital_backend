@@ -41,6 +41,9 @@ def admit_patient(*, hospital, patient, admitting_doctor, bed, admission_type=Ad
 
 @transaction.atomic
 def request_ward_transfer(*, admission: Admission, to_bed: Bed, reason: str, requested_by) -> WardTransfer:
+    from apps.billing.adjustments import ensure_admission_open
+
+    ensure_admission_open(admission, "transfer the patient to another bed")
     return WardTransfer.objects.create(
         hospital=admission.hospital, admission=admission, from_bed=admission.bed, to_bed=to_bed,
         reason=reason, requested_by=requested_by,
@@ -52,6 +55,9 @@ def approve_ward_transfer(transfer: WardTransfer, *, approved_by) -> WardTransfe
     """Locks both the destination bed and the admission's current bed for
     the duration of the transaction — same race-safety reasoning as
     admit_patient above."""
+    from apps.billing.adjustments import ensure_admission_open
+
+    ensure_admission_open(transfer.admission, "transfer the patient to another bed")
     locked_to_bed = Bed.objects.select_for_update().get(pk=transfer.to_bed_id)
     if locked_to_bed.status != Bed.Status.AVAILABLE:
         raise BedUnavailable(f"Bed {locked_to_bed} is not available (status: {locked_to_bed.get_status_display()}).")

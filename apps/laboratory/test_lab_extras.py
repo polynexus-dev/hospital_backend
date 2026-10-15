@@ -154,7 +154,8 @@ def test_verified_reports_are_dispatched_together_and_logged(auth_client, patien
 
     with mock.patch("apps.communications.adapters.StubWhatsAppProvider.send", return_value="wa") as wa:
         assert dispatch_due(timezone.now() + timedelta(minutes=16)) == 2
-    assert len(mail.outbox) == 1 and len(mail.outbox[0].attachments) == 2  # one email, both reports
+    # one email; both reports merged into one PDF (merge_dispatch_reports is on by default)
+    assert len(mail.outbox) == 1 and [a[0] for a in mail.outbox[0].attachments] == [f"Lab_report_{patient.uhid}.pdf"]
     assert wa.call_count == 1 and "/report-link/" in wa.call_args.kwargs["body"]
     assert LabReportDispatch.objects.filter(sent=True).count() == 4
     assert all(o.dispatched_at for o in LabOrder.objects.all())

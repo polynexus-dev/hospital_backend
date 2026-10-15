@@ -6,6 +6,8 @@ from apps.core.models import TenantScopedModel
 class ItemCategory(TenantScopedModel):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50)
+    # A sub-category points at its category (e.g. Pharmaceuticals > Capsules).
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="subcategories")
 
     class Meta:
         ordering = ["name"]
@@ -20,6 +22,8 @@ class Item(TenantScopedModel):
     code = models.CharField(max_length=50)
     unit_of_measure = models.CharField(max_length=50, default="pcs")
     min_stock_level = models.PositiveIntegerField(default=10)
+    # Kept in hand on top of the expected consumption (inventory consumption screen).
+    safety_stock = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["name"]
@@ -57,9 +61,15 @@ class PurchaseOrder(TenantScopedModel):
     expected_delivery = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     ordered_at = models.DateTimeField(default=timezone.now)
+    # The requisition (store indent) this PO was raised from: one live PO per requisition.
+    source_indent = models.ForeignKey("inventory.StoreIndent", on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_orders")
 
     class Meta:
         ordering = ["-ordered_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["source_indent"], condition=models.Q(source_indent__isnull=False) & ~models.Q(status="cancelled"),
+                                    name="one_live_po_per_indent"),
+        ]
 
     def __str__(self):
         return f"PO #{self.po_number} ({self.vendor_name}) - {self.status}"

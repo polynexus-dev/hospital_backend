@@ -78,6 +78,22 @@ class StoreIndentViewSet(TenantCRUDViewSet):
         ind.save()
         return Response(self.get_serializer(ind).data)
 
+    @action(detail=True, methods=["post"], url_path="raise-po")
+    def raise_po(self, request, pk=None):
+        """POST {vendor, expected_delivery?} — draft PO from an approved indent; one live PO per indent."""
+        from apps.finance.models import Vendor
+
+        from .consumption import raise_po_from_indent
+
+        if not request.user.has_perm("inventory.add_purchaseorder"):
+            return Response({"detail": "You don't have permission to raise a PO."}, status=403)
+        ind = self.get_object()
+        vendor = Vendor.objects.filter(hospital_id=ind.hospital_id, pk=request.data.get("vendor") or 0).first()
+        if vendor is None:
+            return Response({"vendor": "Choose the vendor."}, status=400)
+        po = raise_po_from_indent(ind, request.user, vendor, request.data.get("expected_delivery") or None, request.data.get("rates") or None)
+        return Response({"id": po.pk, "po_number": po.po_number, "lines": po.po_items.count()}, status=201)
+
     @action(detail=True, methods=["post"])
     def issue(self, request, pk=None):
         ind = self.get_object()

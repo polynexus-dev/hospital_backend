@@ -6,12 +6,14 @@ from rest_framework.response import Response
 from apps.core.permissions import ActionPermissionRequired, RequiresClinicalDetailPermission, RoleBasedModelPermissions
 from apps.core.viewsets import AuditedModelViewSetMixin, TenantScopedViewSetMixin
 
-from .models import ClinicalNote, Diagnosis, Encounter, InvestigationOrder, VitalsReading
+from .models import ClinicalNote, Diagnosis, Encounter, InvestigationOrder, OPDTriage, VitalsReading
 from .serializers import (
     ClinicalNoteSerializer,
     DiagnosisSerializer,
     EncounterSerializer,
     InvestigationOrderSerializer,
+    OPDTriageSerializer,
+    VITAL_FIELDS,
     VitalsReadingSerializer,
 )
 
@@ -57,6 +59,70 @@ class EncounterViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, views
         visit.save(update_fields=["case_type"])
         self._log("update", enc)
         return Response(self.get_serializer(enc).data)
+
+class OPDTriageViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """/opd/triage/?encounter=<id> — the nurse records it after check-in;
+    the doctor reads and corrects it from the consultation screen."""
+
+    permission_classes = CLINICAL_PERMISSION_CLASSES
+    serializer_class = OPDTriageSerializer
+    queryset = OPDTriage.objects.select_related("vitals", "recorded_by", "updated_by", "encounter__patient", "encounter__doctor__user").order_by("-created_at")
+    filterset_fields = ["encounter"]
+    http_method_names = ["get", "post", "patch", "put", "head", "options"]
+
+    def _save(self, serializer, **extra):
+        from django.db import transaction
+
+        data = serializer.validated_data
+        vitals = {f: data.pop(f) for f in VITAL_FIELDS if f in data}
+        with transaction.atomic():
+            triage = serializer.save(updated_by=self.request.user, **extra)
+            self._sync_vitals(triage, vitals)
+            self._sync_pain(triage)
+            if triage.priority == OPDTriage.Priority.EMERGENCY and ("priority" in serializer.initial_data):
+                self._alert_doctor(triage)
+        return triage
+
+    def _sync_vitals(self, triage, vitals):
+        if not any(v is not None for v in vitals.values()) and triage.vitals_id is None:
+            return
+        if triage.vitals_id:
+            VitalsReading.objects.filter(pk=triage.vitals_id).update(**vitals)
+        else:
+            reading = VitalsReading.objects.create(hospital_id=triage.hospital_id, encounter=triage.encounter, recorded_by=self.request.user, **vitals)
+            OPDTriage.objects.filter(pk=triage.pk).update(vitals=reading)
+            triage.vitals = reading
+
+    def _sync_pain(self, triage):
+        from apps.clinical import scoring
+        from apps.clinical.models import RiskAssessment
+
+        if triage.pain_score is None:
+            return
+        score, level = scoring.score("numeric_pain", {"score": triage.pain_score})
+        if triage.pain_assessment_id:
+            RiskAssessment.objects.filter(pk=triage.pain_assessment_id).update(answers={"score": score}, score=score, risk_level=level)
+            return
+        ra = RiskAssessment.objects.create(hospital_id=triage.hospital_id, patient=triage.encounter.patient, tool="numeric_pain",
+                                           answers={"score": score}, score=score, risk_level=level, assessed_by=self.request.user)
+        OPDTriage.objects.filter(pk=triage.pk).update(pain_assessment=ra)
+
+    def _alert_doctor(self, triage):
+        from apps.clinical.models import ClinicalAlert
+
+        enc = triage.encounter
+        ClinicalAlert.objects.create(
+            hospital_id=triage.hospital_id, patient=enc.patient, alert_type=ClinicalAlert.AlertType.EARLY_WARNING, severity=ClinicalAlert.Severity.CRITICAL,
+            target_user=getattr(enc.doctor, "user", None), title=f"Triage: emergency — see {enc.patient.full_name} now",
+            message=triage.chief_complaint or "Marked emergency at OPD triage.", object_id=str(triage.pk),
+        )
+
+    def perform_create(self, serializer):
+        self._save(serializer, hospital=self.request.user.hospital, recorded_by=self.request.user)
+
+    def perform_update(self, serializer):
+        self._save(serializer)
+
 
 class VitalsReadingViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_classes = CLINICAL_PERMISSION_CLASSES

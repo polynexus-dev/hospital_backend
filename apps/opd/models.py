@@ -30,6 +30,37 @@ class Encounter(TenantScopedModel):
         return f"Encounter: {self.patient} with {self.doctor}"
 
 
+class OPDTriage(TenantScopedModel):
+    """Pre-consultation triage by the OPD nurse (MedNet "Triage" band):
+    chief complaint, vitals, pain score, allergies checked, priority. The
+    doctor sees it at the top of the consultation and can correct it in
+    place; every edit is recorded (updated_by / updated_at + audit log).
+    Vitals go into a VitalsReading and the pain score into a numeric pain
+    RiskAssessment, so they show wherever vitals and risks already show."""
+
+    class Priority(models.TextChoices):
+        NORMAL = "normal", "Normal"
+        URGENT = "urgent", "Urgent — see soon"
+        EMERGENCY = "emergency", "Emergency — see now"
+
+    encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name="triage")
+    chief_complaint = models.CharField(max_length=500, blank=True)
+    complaint_duration = models.CharField(max_length=60, blank=True, help_text="e.g. 3 days")
+    respiratory_rate = models.PositiveSmallIntegerField(null=True, blank=True)
+    blood_sugar_mg_dl = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Random capillary glucose, if checked")
+    pain_score = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Numeric pain scale 0-10")
+    allergies_checked = models.BooleanField(default=False)
+    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    notes = models.TextField(blank=True)
+    vitals = models.OneToOneField("VitalsReading", on_delete=models.SET_NULL, null=True, blank=True, related_name="triage")
+    pain_assessment = models.ForeignKey("clinical.RiskAssessment", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    def __str__(self):
+        return f"Triage for {self.encounter}"
+
+
 class VitalsReading(TenantScopedModel):
     encounter = models.ForeignKey(Encounter, on_delete=models.CASCADE, related_name="vitals_readings")
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")

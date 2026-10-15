@@ -232,10 +232,18 @@ class InsurancePolicy(TenantScopedModel):
     eligibility_status = models.CharField(max_length=12, default="unverified", help_text="unverified | eligible | ineligible")
     eligibility_checked_at = models.DateTimeField(null=True, blank=True)
     card_image = models.FileField(upload_to="insurance_cards/", blank=True)
+    # MedNet "inactive patient insurance": an inactive policy can't be chosen
+    # for a visit or a bill and is hidden from the patient's insurance list,
+    # except for users with finance.manage_inactive_insurance.
+    is_active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True, editable=False)
+    deactivated_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
+    deactivation_reason = models.CharField(max_length=255, blank=True, editable=False)
 
     class Meta:
         app_label = "finance"
-        ordering = ["-valid_to"]
+        ordering = ["-is_active", "-valid_to"]
+        permissions = [("manage_inactive_insurance", "Can view, update and reactivate inactive patient insurance")]
 
 
 class ClaimSettlement(TenantScopedModel):

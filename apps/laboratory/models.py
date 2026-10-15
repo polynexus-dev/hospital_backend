@@ -240,6 +240,13 @@ class OutsourcedLabTest(TenantScopedModel):
     result_text = models.TextField(blank=True)
     result_file = models.FileField(upload_to="outsourced_reports/%Y/%m/", blank=True)
 
+    class ReportType(models.TextChoices):
+        RESULT_ENTRY = "result_entry", "Results entered here"
+        OUTSIDE_REPORT = "outside_report", "Outside report (the external lab's PDF is the report)"
+
+    # Outside report: uploading the external lab's report finalises the test.
+    report_type = models.CharField(max_length=16, choices=ReportType.choices, default=ReportType.RESULT_ENTRY)
+
     class Meta:
         ordering = ["-created_at"]
 
@@ -272,6 +279,10 @@ class LabSettings(TenantScopedModel):
     dispatch_channels = models.JSONField(default=list, blank=True, help_text='["email", "whatsapp"]')
     dispatch_times = models.JSONField(default=list, blank=True, help_text='Send in batches at these times, e.g. ["10:00", "17:00"]; empty = as soon as verified')
     dispatch_delay_minutes = models.PositiveSmallIntegerField(default=15, help_text="Wait this long after verification so reports verified close together go in one message")
+    # MedNet M2.22 "Dispatch outsourced report": off = orders with an outsourced
+    # test are never sent automatically; staff review and send them by hand.
+    dispatch_outsourced = models.BooleanField(default=True, help_text="Send reports that include outsourced tests automatically too")
+    merge_dispatch_reports = models.BooleanField(default=True, help_text="A patient's reports sent together go as one merged PDF, grouped by department")
 
     merge_window_minutes = models.PositiveSmallIntegerField(default=0, help_text="Add tests to the patient's open order placed within this many minutes instead of opening a new one (0 = off)")
     split_by_department = models.BooleanField(default=False, help_text="One order (sample run, report) per lab department")

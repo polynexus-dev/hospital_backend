@@ -19,6 +19,10 @@ class Employee(TenantScopedModel):
         related_name="employee_profile",
     )
     employee_code = models.CharField(max_length=50)
+    # Printed before the name on the payslip and staff documents (Mr. / Ms. / Dr. …).
+    name_prefix = models.CharField(max_length=10, blank=True, help_text="e.g. Mr., Ms., Mrs., Dr.")
+    marital_status = models.CharField(max_length=10, blank=True, choices=[("single", "Single"), ("married", "Married"), ("widowed", "Widowed"), ("divorced", "Divorced")],
+                                      help_text="Used by the dependent policy (how many dependents may be linked).")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="employees")
     designation = models.CharField(max_length=100)
     date_of_joining = models.DateField(default=timezone.localdate)
@@ -132,4 +136,4 @@ from .models_hrm import (  # noqa: E402,F401
     TrainingAttendance,
     TrainingProgram,
 )
-from .models_leave import EmployeeDependent, LeaveBalance, LeaveType, OvertimeEntry  # noqa: E402,F401
+from .models_leave import DependentAllowance, DependentRelationRule, EmployeeDependent, LeaveBalance, LeaveType, OvertimeEntry  # noqa: E402,F401

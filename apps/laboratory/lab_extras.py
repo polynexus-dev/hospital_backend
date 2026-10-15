@@ -14,6 +14,7 @@
 import ast
 import logging
 import math
+import os
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -206,9 +207,11 @@ def place_order(*, hospital_id, user, patient, tests, fields):
 
 # --- worklist -------------------------------------------------------------------
 
-def worklist(hospital_id, *, department="", status="", date_from=None, date_to=None, priority="", limit=500):
+def worklist(hospital_id, *, department="", status="", date_from=None, date_to=None, priority="", limit=500, patient=None):
     orders = (LabOrder.objects.filter(hospital_id=hospital_id).select_related("patient")
               .prefetch_related("ordered_tests", "results", "sample_collections", "outsourced_tests").order_by("-ordered_at"))
+    if patient:
+        orders = orders.filter(patient_id=patient)
     if date_from:
         orders = orders.filter(ordered_at__date__gte=date_from)
     if date_to:
@@ -254,6 +257,63 @@ def worklist(hospital_id, *, department="", status="", date_from=None, date_to=N
     return rows
 
 
+PROCESSING_STATES = ("not_started", "in_process", "results_ready")
+
+
+def with_processing_counts(qs):
+    """Annotates tests ordered and tests with a result, for the order-level
+    processing filter: not started / in process / results ready."""
+    from django.db.models import Count
+
+    return qs.annotate(n_tests=Count("ordered_tests", distinct=True), n_resulted=Count("results__lab_test", distinct=True)).order_by("-ordered_at", "-pk")
+
+
+def filter_processing(qs, state):
+    from django.db.models import F
+
+    qs = with_processing_counts(qs)
+    if state == "not_started":
+        return qs.filter(n_resulted=0)
+    if state == "in_process":
+        return qs.filter(n_resulted__gt=0, n_resulted__lt=F("n_tests"))
+    if state == "results_ready":
+        return qs.filter(n_tests__gt=0, n_resulted__gte=F("n_tests"))
+    return qs
+
+
+def processing_state(order):
+    tests = getattr(order, "n_tests", None)
+    done = getattr(order, "n_resulted", None)
+    if tests is None:
+        tests = order.ordered_tests.count()
+        done = order.results.values("lab_test").distinct().count()
+    return "not_started" if not done else "results_ready" if tests and done >= tests else "in_process"
+
+
+def patient_lab_status(hospital_id, patient_id):
+    """Every open investigation of the patient with its stage (colour-coded on
+    screen), counts per stage, and the reporting section: verified orders
+    with who finalised them and whether the report went out."""
+    rows = worklist(hospital_id, patient=patient_id, limit=300)
+    pending = [r for r in rows if r["status"] != "verified"]
+    counts = {}
+    for r in rows:
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    reported = (LabOrder.objects.filter(hospital_id=hospital_id, patient_id=patient_id, status=LabOrder.Status.VERIFIED)
+                .prefetch_related("ordered_tests", "results__finalized_by").order_by("-ordered_at")[:30])
+    reporting = []
+    for o in reported:
+        final = max((r for r in o.results.all() if r.finalized_at), key=lambda r: r.finalized_at, default=None)
+        by = final.finalized_by if final else None
+        reporting.append({
+            "order": o.pk, "order_number": o.order_number, "department": o.department or ", ".join(sorted({t.department for t in o.ordered_tests.all()})),
+            "tests": ", ".join(t.name for t in o.ordered_tests.all()), "ordered_at": o.ordered_at, "verified_at": final.finalized_at if final else None,
+            "verified_by": (by.get_full_name() or by.email) if by else "", "dispatched_at": o.dispatched_at,
+            "status": "dispatched" if o.dispatched_at else "verified",
+        })
+    return {"pending": pending, "counts": counts, "reporting": reporting}
+
+
 # --- report dispatch ---------------------------------------------------------------
 
 LINK_SALT = "laboratory.report-link"
@@ -297,7 +357,13 @@ def schedule_dispatch(order):
     """Called when an order becomes verified."""
     lab_settings = LabSettings.for_hospital(order.hospital_id)
     if lab_settings.auto_dispatch and lab_settings.dispatch_channels and not order.dispatched_at:
+        if not lab_settings.dispatch_outsourced and has_outsourced(order):
+            return  # held for staff to review and send by hand
         LabOrder.objects.filter(pk=order.pk).update(dispatch_due_at=next_dispatch_time(lab_settings))
+
+
+def has_outsourced(order):
+    return order.outsourced_tests.exclude(status="cancelled").exists()
 
 
 def send_reports(orders, channels, *, user=None, automatic=False):
@@ -334,8 +400,17 @@ def send_reports(orders, channels, *, user=None, automatic=False):
                 msg = EmailMessage(subject=f"Your lab report{'s' if len(orders) > 1 else ''} from {hospital.name}",
                                    body=f"Dear {patient.full_name},\n\nYour laboratory report{'s are' if len(orders) > 1 else ' is'} attached ({numbers}).\n\n{hospital.name}",
                                    from_email=settings.MESSAGING_FROM_EMAIL, to=[patient.email])
+                if len(orders) > 1 and LabSettings.for_hospital(orders[0].hospital_id).merge_dispatch_reports:
+                    from .merged_report import render_patient_lab_report
+
+                    msg.attach(f"Lab_report_{patient.uhid}.pdf", render_patient_lab_report(orders), "application/pdf")
+                else:
+                    for o in orders:
+                        msg.attach(f"Lab_report_{o.order_number}.pdf", render_lab_report(o), "application/pdf")
                 for o in orders:
-                    msg.attach(f"Lab_report_{o.order_number}.pdf", render_lab_report(o), "application/pdf")
+                    for out in o.outsourced_tests.filter(report_type="outside_report").exclude(result_file=""):
+                        with out.result_file.open("rb") as fh:  # the external lab's own report goes along with ours
+                            msg.attach(f"Outside_report_{o.order_number}_{out.lab_test.code or out.pk}{os.path.splitext(out.result_file.name)[1]}", fh.read())
                 msg.send(fail_silently=False)
                 log("email", patient.email)
             except Exception as exc:  # noqa: BLE001 - logged for staff to resend
@@ -370,6 +445,13 @@ def dispatch_due(now=None):
     sent = 0
     for (hospital_id, _), orders in by_patient.items():
         lab_settings = LabSettings.for_hospital(hospital_id)
+        if not lab_settings.dispatch_outsourced:
+            held = [o for o in orders if has_outsourced(o)]
+            if held:  # setting turned off after scheduling: stop the automatic send
+                LabOrder.objects.filter(pk__in=[o.pk for o in held]).update(dispatch_due_at=None)
+            orders = [o for o in orders if o not in held]
+            if not orders:
+                continue
         rows = send_reports(orders, lab_settings.dispatch_channels, automatic=True)
         if any(r.sent for r in rows):
             sent += len(orders)

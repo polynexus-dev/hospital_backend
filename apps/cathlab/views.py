@@ -161,6 +161,9 @@ class CathProcedureViewSet(ClinicalCRUDViewSet):
         if proc.admission_id is None:
             return Response({"admission": "Link the procedure to an admission to bill it."}, status=status.HTTP_400_BAD_REQUEST)
         bill = running_bill(proc.admission)
+        from apps.billing.adjustments import ensure_open
+
+        ensure_open(bill, "post cath lab charges")
         ref = f"cath:{proc.pk}"
         BillItem.objects.filter(bill=bill, source=CHARGE_SOURCE, source_ref=ref).delete()
         day = timezone.localdate(proc.started_at or proc.scheduled_at or timezone.now())

@@ -9,6 +9,8 @@ from apps.patients.models import Patient
 
 
 class SurgeryRequest(TenantScopedModel):
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"
         APPROVED = "approved", "Approved"
@@ -29,6 +31,9 @@ class SurgeryRequest(TenantScopedModel):
     procedure_type = models.CharField(max_length=20, default="surgery", help_text="surgery | interventional | procedural_sedation (COP.6)")
     # OT tariff: the grade prices the surgery (finance.OTTariff).
     surgery_grade = models.ForeignKey("finance.SurgeryGrade", on_delete=models.PROTECT, null=True, blank=True, related_name="surgery_requests")
+    # Pre-operative work-up requested from the anaesthetist's pre-op screen (MedNet M2.22 OT).
+    preop_lab_orders = models.ManyToManyField("laboratory.LabOrder", blank=True, related_name="preop_for")
+    preop_radiology_orders = models.ManyToManyField("radiology.RadiologyOrder", blank=True, related_name="preop_for")
 
     class Encounter(models.TextChoices):
         OPD = "opd", "OPD / day care"
@@ -59,6 +64,8 @@ class SurgeryRequest(TenantScopedModel):
 
 
 class OTSchedule(TenantScopedModel):
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
     surgery_request = models.OneToOneField(SurgeryRequest, on_delete=models.CASCADE, related_name="schedule")
     operation_theatre_room = models.CharField(max_length=120)
     surgeon = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="ot_schedules")
@@ -94,6 +101,8 @@ class OTSchedule(TenantScopedModel):
 
 
 class PreOpChecklist(TenantScopedModel):
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
     surgery_request = models.OneToOneField(SurgeryRequest, on_delete=models.CASCADE, related_name="preop_checklist")
     consent_obtained = models.BooleanField(default=False)
     fasting_confirmed = models.BooleanField(default=False)
@@ -117,6 +126,8 @@ class PreOpChecklist(TenantScopedModel):
 
 
 class OperativeNote(FinalizableModel, TenantScopedModel):
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
     FINALIZED_LOCKED_FIELDS = ("procedure_performed", "findings")
 
     ot_schedule = models.OneToOneField(OTSchedule, on_delete=models.CASCADE, related_name="operative_note")
@@ -136,6 +147,8 @@ class OperativeNote(FinalizableModel, TenantScopedModel):
 
 
 class AnaesthesiaRecord(FinalizableModel, TenantScopedModel):
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
     FINALIZED_LOCKED_FIELDS = ("anaesthesia_type", "intra_op_notes")
 
     ot_schedule = models.OneToOneField(OTSchedule, on_delete=models.CASCADE, related_name="anaesthesia_record")
@@ -195,6 +208,8 @@ class SurgicalSafetyChecklist(TenantScopedModel):
     """COP.6.a — WHO Surgical Safety Checklist (also used for procedures in
     wards/OPD via `setting`). Each phase is a dict of item -> bool, stamped
     with who completed it and when."""
+    # Who last changed it — shown on every OT screen (MedNet M2.22).
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", editable=False)
 
     SIGN_IN_ITEMS = ["identity_confirmed", "site_marked", "consent_signed", "anaesthesia_check_done", "pulse_oximeter_on", "allergy_known", "difficult_airway_risk_assessed", "blood_loss_risk_assessed"]
     TIME_OUT_ITEMS = ["team_introduced", "patient_name_procedure_site_confirmed", "antibiotic_prophylaxis_given", "critical_events_reviewed", "imaging_displayed", "sterility_confirmed"]

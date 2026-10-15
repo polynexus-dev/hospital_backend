@@ -198,6 +198,9 @@ PERMISSION_TEMPLATES = {
         "patients": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
+        # read the pre-op work-up results (ordered from the OT screen)
+        "laboratory": ["view"],
+        "radiology": ["view"],
     },
     "anaesthetist": {
         "ot": ["view", "add", "change", "delete"],
@@ -205,6 +208,8 @@ PERMISSION_TEMPLATES = {
         "patients": ["view", "add", "change"],
         "ipd": ["view", "add", "change"],
         "opd": ["view", "add", "change"],
+        "laboratory": ["view"],
+        "radiology": ["view"],
     },
     "icu_staff": {
         "icu": ["view", "add", "change", "delete"],
@@ -278,6 +283,11 @@ VERIFY_PERM_ROLES = {
     "authorize_discount": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager"},
     # Putting a bill on hold stops discharge and collections: managers only.
     "hold_bill": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager", "insurance_tpa_executive"},
+    # Inactive patient insurance stays out of everyday lists; these roles can see and reactivate it.
+    "manage_inactive_insurance": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager", "insurance_tpa_executive"},
+    # Locking finalises a bill; reopening one is rarer and kept to managers ("Unfreeze bill").
+    "lock_bill": {"owner", "admin", "hospital_administrator", "billing_manager", "billing_executive", "finance_manager", "insurance_tpa_executive"},
+    "unlock_bill": {"owner", "admin", "hospital_administrator", "billing_manager", "finance_manager"},
     # The checker in maker-checker vouchers: not every accounts user.
     "approve_journalentry": {"owner", "admin", "hospital_administrator", "finance_manager"},
 }

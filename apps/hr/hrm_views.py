@@ -121,6 +121,28 @@ class SalaryStructureViewSet(TenantCRUDViewSet):
     queryset = SalaryStructure.objects.select_related("employee__user")
     audited_fields = ("basic", "hra", "special_allowance", "other_allowances", "monthly_tds")
 
+    @action(detail=False, methods=["get"])
+    def export(self, request):
+        """GET ?month=YYYY-MM — salary structures as Excel, with each
+        employee's gross amount and payable days for the month."""
+        from django.http import HttpResponse
+
+        from apps.core.xlsx import build_xlsx
+
+        from .payslip_pdf import salary_structure_rows
+
+        if not request.user.has_perm("hr.view_salarystructure"):
+            return Response({"detail": "You don't have permission to view salary structures."}, status=403)
+        raw = str(request.query_params.get("month") or "")[:7]
+        try:
+            month = date(int(raw[:4]), int(raw[5:7]), 1) if raw else timezone.localdate().replace(day=1)
+        except ValueError:
+            raise ValidationError({"month": "Use YYYY-MM."})
+        resp = HttpResponse(build_xlsx(salary_structure_rows(request.user.hospital_id, month), "Salary structures"),
+                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = f'attachment; filename="salary-structures-{month:%Y-%m}.xlsx"'
+        return resp
+
 
 class PayrollRunViewSet(TenantCRUDViewSet):
     """HRM.1.i — calculate from salary structure × paid days (attendance
@@ -167,18 +189,41 @@ class PayrollRunViewSet(TenantCRUDViewSet):
         run = self.get_object()
         if run.status == PayrollRun.Status.DRAFT:
             return Response({"detail": "Approve the payroll first."}, status=400)
-        from django.core.mail import send_mail
+
+        from django.core.mail import EmailMessage
+
+        from .payslip_pdf import employee_display_name, render_payslips
 
         n = 0
-        for slip in run.payslips.select_related("employee__user"):
+        for slip in run.payslips.select_related("employee__user", "employee__department", "run__hospital"):
             user = slip.employee.user
             if user and user.email:
-                send_mail(f"Payslip {run.month:%B %Y}", f"Net pay ₹{slip.net_pay} (gross ₹{slip.gross}, deductions ₹{slip.total_deductions}).",
-                          None, [user.email], fail_silently=True)
+                msg = EmailMessage(f"Payslip {run.month:%B %Y}",
+                                   f"Dear {employee_display_name(slip.employee)},\n\nYour payslip for {run.month:%B %Y} is attached. "
+                                   f"Net pay ₹{slip.net_pay} (gross ₹{slip.gross}, deductions ₹{slip.total_deductions}).",
+                                   None, [user.email])
+                msg.attach(f"payslip-{run.month:%Y-%m}.pdf", render_payslips([slip]), "application/pdf")
+                msg.send(fail_silently=True)
             slip.shared_at = timezone.now()
             slip.save(update_fields=["shared_at"])
             n += 1
         return Response({"shared": n})
+
+    @action(detail=True, methods=["get"], url_path="payslips-pdf")
+    def payslips_pdf(self, request, pk=None):
+        """All payslips of the run (or ?employee=<id>) as a PDF, one per page,
+        with the employee's prefix before the name."""
+        from django.http import HttpResponse
+
+        from .payslip_pdf import render_payslips
+
+        run = self.get_object()
+        slips = run.payslips.select_related("employee__user", "employee__department", "run__hospital").order_by("employee__employee_code")
+        if request.query_params.get("employee"):
+            slips = slips.filter(employee_id=request.query_params["employee"])
+        resp = HttpResponse(render_payslips(list(slips)), content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="payslips-{run.month:%Y-%m}.pdf"'
+        return resp
 
     @action(detail=True, methods=["get"])
     def payslips(self, request, pk=None):

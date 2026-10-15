@@ -253,9 +253,46 @@ def _active_tpa_only(self, value):
 class InsurancePolicyViewSet(TenantCRUDViewSet):
     serializer_class = type("InsurancePolicySerializer", (model_serializer(InsurancePolicy, read_only=("eligibility_checked_at",), extra={
         "patient_name": serializers.CharField(source="patient.full_name", read_only=True),
-    }),), {"validate_tpa_company": _active_tpa_only})
-    queryset = InsurancePolicy.objects.select_related("patient")
-    filterset_fields = ["patient", "eligibility_status", "tpa_company"]
+        "deactivated_by_name": serializers.SerializerMethodField(),
+    }),), {"validate_tpa_company": _active_tpa_only,
+           "get_deactivated_by_name": lambda self, o: (o.deactivated_by.get_full_name() or o.deactivated_by.email) if o.deactivated_by else ""})
+    queryset = InsurancePolicy.objects.select_related("patient", "deactivated_by")
+    filterset_fields = ["patient", "eligibility_status", "tpa_company", "is_active"]
+    INACTIVE_PERM = "finance.manage_inactive_insurance"
+
+    def get_queryset(self):
+        """Inactive policies are left out unless the user may manage them
+        (and asks with ?include_inactive=1 on lists)."""
+        qs = super().get_queryset()
+        if not self.request.user.has_perm(self.INACTIVE_PERM):
+            return qs.filter(is_active=True)
+        if self.action == "list" and self.request.query_params.get("include_inactive") not in ("1", "true") and "is_active" not in self.request.query_params:
+            return qs.filter(is_active=True)
+        return qs
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        """POST {reason} — the policy can no longer be chosen for visits or bills."""
+        if not request.user.has_perm("finance.change_insurancepolicy"):
+            return Response({"detail": "You don't have permission to change patient insurance."}, status=403)
+        p = self.get_object()
+        reason = str(request.data.get("reason", "")).strip()
+        if not reason:
+            return Response({"reason": "Say why the insurance is being made inactive."}, status=400)
+        p.is_active, p.deactivated_at, p.deactivated_by, p.deactivation_reason = False, timezone.now(), request.user, reason[:255]
+        p.save(update_fields=["is_active", "deactivated_at", "deactivated_by", "deactivation_reason", "updated_at"])
+        self._log("update", p)
+        return Response(self.get_serializer(p).data)
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        if not request.user.has_perm(self.INACTIVE_PERM):
+            return Response({"detail": "You don't have permission to reactivate patient insurance."}, status=403)
+        p = self.get_object()
+        p.is_active, p.deactivated_at, p.deactivated_by, p.deactivation_reason = True, None, None, ""
+        p.save(update_fields=["is_active", "deactivated_at", "deactivated_by", "deactivation_reason", "updated_at"])
+        self._log("update", p)
+        return Response(self.get_serializer(p).data)
 
     @action(detail=True, methods=["post"])
     def verify_eligibility(self, request, pk=None):

@@ -76,11 +76,50 @@ class EmployeeDependent(TenantScopedModel):
     relationship = models.CharField(max_length=16, choices=Relationship.choices)
     valid_until = models.DateField(null=True, blank=True, help_text="e.g. a child's 25th birthday; blank = no end.")
     is_active = models.BooleanField(default=True)
+    is_married = models.BooleanField(default=False, help_text="Checked against relation rules that cover unmarried dependents only.")
 
     class Meta:
         app_label = "hr"
         ordering = ["employee__employee_code", "relationship"]
         constraints = [models.UniqueConstraint(fields=["employee", "patient"], name="unique_dependent_per_employee")]
+
+
+class DependentAllowance(TenantScopedModel):
+    """MedNet M2.22 MRN-linking policy (employee side): how many dependents an
+    employee may link. Blank criteria match anyone; the most specific
+    matching row wins (e.g. married permanent staff: 4; contract staff: 0)."""
+
+    employment_type = models.CharField(max_length=20, blank=True, help_text="permanent | contract | visiting; blank = any")
+    marital_status = models.CharField(max_length=10, blank=True, help_text="single | married | widowed | divorced; blank = any")
+    gender = models.CharField(max_length=16, blank=True, help_text="Employee's gender as on their patient record; blank = any")
+    max_dependents = models.PositiveSmallIntegerField()
+
+    class Meta:
+        app_label = "hr"
+        ordering = ["employment_type", "marital_status", "gender"]
+
+    def matches(self, emp):
+        gender = emp.patient.gender if emp.patient_id else ""
+        return all(not want or want == have for want, have in (
+            (self.employment_type, emp.employment_type), (self.marital_status, emp.marital_status), (self.gender, gender)))
+
+    def specificity(self):
+        return sum(1 for v in (self.employment_type, self.marital_status, self.gender) if v)
+
+
+class DependentRelationRule(TenantScopedModel):
+    """MedNet M2.22 MRN-linking policy (dependent side): per relation, an age
+    limit (cover ends on that birthday), unmarried only, and how many."""
+
+    relationship = models.CharField(max_length=16, choices=EmployeeDependent.Relationship.choices)
+    max_age = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Covered until this birthday; blank = no limit")
+    unmarried_only = models.BooleanField(default=False)
+    max_count = models.PositiveSmallIntegerField(null=True, blank=True, help_text="At most this many of the relation; blank = no limit")
+
+    class Meta:
+        app_label = "hr"
+        ordering = ["relationship"]
+        constraints = [models.UniqueConstraint(fields=["hospital", "relationship"], name="one_rule_per_relationship")]
 
 
 class OvertimeEntry(TenantScopedModel):

@@ -36,9 +36,38 @@ class BillOnHold(ValidationError):
     pass
 
 
-def ensure_open(bill, doing="change this bill"):
+class BillLocked(BillOnHold):
+    """A locked bill refuses changes the same way a held one does (callers
+    that catch BillOnHold, e.g. pharmacy billing later, handle both)."""
+
+
+def ensure_open(bill, doing="change this bill", *, payment=False):
+    """Refuses changes to a held or locked bill. `payment=True`: taking a
+    payment, which a locked bill still accepts (collecting the balance)."""
     if bill.on_hold:
         raise BillOnHold({"detail": f"Bill {bill.bill_number} is on hold ({bill.hold_reason}); release it before you {doing}."})
+    if bill.is_locked and not payment:
+        raise BillLocked({"detail": f"Bill {bill.bill_number} is locked (final); unlock it before you {doing}.", "code": "bill_locked"})
+
+
+OPEN_STATUSES = (Bill.Status.DRAFT, Bill.Status.UNPAID, Bill.Status.PARTIALLY_PAID)
+
+
+def held_bills(patient):
+    """The patient's open bills that are on hold (newest first)."""
+    return Bill.objects.filter(patient=patient, on_hold=True, status__in=OPEN_STATUSES).order_by("-held_at", "-pk")
+
+
+def ensure_patient_open(patient, doing="place this order", priority=""):
+    """While one of the patient's open bills is on hold, refuse new orders
+    and charges for them (MedNet: "The bill is currently blocked").
+    STAT orders are never blocked — emergency care can't wait on billing."""
+    if patient is None or str(priority).lower() == "stat":
+        return
+    held = held_bills(patient).first()
+    if held is not None:
+        raise BillOnHold({"detail": f"Bill {held.bill_number} is on hold ({held.hold_reason}). Further activities cannot be performed "
+                                    f"until it is released; you tried to {doing}.", "code": "bill_on_hold", "bill": held.pk})
 
 
 def ensure_admission_open(admission, doing="discharge the patient"):
@@ -55,6 +84,8 @@ def hold(bill, user, reason):
         raise ValidationError({"detail": "The bill is already on hold."})
     if bill.status == Bill.Status.CANCELLED:
         raise ValidationError({"detail": "The bill is cancelled."})
+    if bill.is_locked:
+        raise ValidationError({"detail": "The bill is locked; unlock it before putting it on hold."})
     bill.on_hold, bill.hold_reason, bill.held_by, bill.held_at = True, reason[:255], user, timezone.now()
     bill.save(update_fields=["on_hold", "hold_reason", "held_by", "held_at"])
     BillHoldEvent.objects.create(hospital_id=bill.hospital_id, bill=bill, action="hold", reason=reason[:255], by=user)
@@ -70,6 +101,39 @@ def release(bill, user, note):
     bill.on_hold, bill.hold_reason = False, ""
     bill.save(update_fields=["on_hold", "hold_reason"])
     BillHoldEvent.objects.create(hospital_id=bill.hospital_id, bill=bill, action="release", reason=note[:255], by=user)
+    return bill
+
+
+# --- lock / unlock ---------------------------------------------------------------
+
+def lock(bill, user, note=""):
+    """Finalises the bill. A hold on it is released automatically. A bill
+    still running for a patient who is in the hospital can't be locked."""
+    if bill.status == Bill.Status.CANCELLED:
+        raise ValidationError({"detail": "The bill is cancelled."})
+    if bill.is_locked:
+        raise ValidationError({"detail": "The bill is already locked."})
+    if bill.admission_id and not bill.is_interim and bill.admission.status == "admitted":
+        raise ValidationError({"detail": "The patient is still admitted; lock the bill after discharge."})
+    with transaction.atomic():
+        if bill.on_hold:
+            bill.on_hold, bill.hold_reason = False, ""
+            BillHoldEvent.objects.create(hospital_id=bill.hospital_id, bill=bill, action="release", reason="Released automatically: bill locked", by=user)
+        bill.is_locked, bill.locked_by, bill.locked_at = True, user, timezone.now()
+        bill.save(update_fields=["is_locked", "locked_by", "locked_at", "on_hold", "hold_reason"])
+        BillHoldEvent.objects.create(hospital_id=bill.hospital_id, bill=bill, action="lock", reason=(note or "Bill finalised")[:255], by=user)
+    return bill
+
+
+def unlock(bill, user, reason):
+    reason = (reason or "").strip()
+    if not bill.is_locked:
+        raise ValidationError({"detail": "The bill isn't locked."})
+    if not reason:
+        raise ValidationError({"reason": "Say why the bill is being reopened."})
+    bill.is_locked = False
+    bill.save(update_fields=["is_locked"])
+    BillHoldEvent.objects.create(hospital_id=bill.hospital_id, bill=bill, action="unlock", reason=reason[:255], by=user)
     return bill
 
 

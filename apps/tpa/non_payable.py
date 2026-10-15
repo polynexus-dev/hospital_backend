@@ -22,7 +22,7 @@ def payer_for(bill):
 
     today = timezone.localdate()
     policy = (
-        InsurancePolicy.objects.filter(patient_id=bill.patient_id, tpa_company__isnull=False)
+        InsurancePolicy.objects.filter(patient_id=bill.patient_id, tpa_company__isnull=False, is_active=True)
         .exclude(eligibility_status="ineligible")
         .filter(Q(valid_from__isnull=True) | Q(valid_from__lte=today), Q(valid_to__isnull=True) | Q(valid_to__gte=today))
         .select_related("tpa_company").order_by("-id").first()

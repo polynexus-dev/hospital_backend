@@ -38,10 +38,60 @@ class SurgeryRequestViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, 
     serializer_class = SurgeryRequestSerializer
     queryset = SurgeryRequest.objects.all()
     filterset_fields = ["patient", "admission", "status"]
+    # An OT action: surgeons and anaesthetists order the pre-op work-up without
+    # needing general lab / imaging order rights.
+    action_permissions = {"investigations": "ot.view_surgeryrequest", "request_investigations": "ot.change_surgeryrequest"}
 
     def perform_create(self, serializer):
         hospital = getattr(self.request.user, "hospital", None)
         serializer.save(hospital=hospital, requested_by=self.request.user)
+
+    @action(detail=True, methods=["get"])
+    def investigations(self, request, pk=None):
+        """The pre-op work-up ordered for this surgery, with each test's status."""
+        req = self.get_object()
+        return Response(_preop_investigations(req))
+
+    @action(detail=True, methods=["post"], url_path="request-investigations")
+    def request_investigations(self, request, pk=None):
+        """POST {lab_tests: [id], radiology_procedures: [id], priority, notes} —
+        orders the anaesthetist's pre-op work-up for the patient (lab orders
+        follow the lab's department-split / merge settings) and links it here."""
+        from apps.billing.adjustments import ensure_patient_open
+        from apps.laboratory.lab_extras import place_order
+        from apps.laboratory.models import LabTest
+        from apps.radiology.models import RadiologyOrder, RadiologyProcedure
+
+        req = self.get_object()
+        hid = request.user.hospital_id
+        lab_ids = [int(x) for x in request.data.get("lab_tests") or [] if str(x).isdigit()]
+        rad_ids = [int(x) for x in request.data.get("radiology_procedures") or [] if str(x).isdigit()]
+        tests = list(LabTest.objects.filter(hospital_id=hid, pk__in=lab_ids, is_active=True))
+        procs = list(RadiologyProcedure.objects.filter(hospital_id=hid, pk__in=rad_ids, is_active=True))
+        if not tests and not procs:
+            return Response({"detail": "Choose at least one lab test or imaging study."}, status=status.HTTP_400_BAD_REQUEST)
+        priority = request.data.get("priority") if request.data.get("priority") in ("routine", "urgent", "stat") else ("urgent" if req.priority != "elective" else "routine")
+        ensure_patient_open(req.patient, "order pre-op investigations", priority)
+        note = f"Pre-anaesthetic work-up for {req.proposed_procedure[:120]}" + (f" — {request.data['notes']}" if request.data.get("notes") else "")
+        if tests:
+            placed = place_order(hospital_id=hid, user=request.user, patient=req.patient, tests=tests,
+                                 fields={"priority": priority, "clinical_notes": note, "admission": req.admission})
+            req.preop_lab_orders.add(*[o for o, _ in placed])
+        for p in procs:
+            o = RadiologyOrder.objects.create(hospital_id=hid, patient=req.patient, procedure=p, ordered_by=request.user, priority=priority, clinical_history=note)
+            req.preop_radiology_orders.add(o)
+        self._log("update", req)
+        return Response(_preop_investigations(req), status=status.HTTP_201_CREATED)
+
+
+def _preop_investigations(req):
+    lab = [
+        {"order": o.pk, "order_number": o.order_number, "test": t.name, "status": o.status, "priority": o.priority, "ordered_at": o.ordered_at}
+        for o in req.preop_lab_orders.prefetch_related("ordered_tests").order_by("-ordered_at") for t in o.ordered_tests.all()
+    ]
+    rad = [{"order": o.pk, "test": o.procedure.name, "status": o.status, "priority": o.priority, "ordered_at": o.ordered_at}
+           for o in req.preop_radiology_orders.select_related("procedure").order_by("-ordered_at")]
+    return {"lab": lab, "radiology": rad}
 
 
 class OTScheduleViewSet(OTScheduleWorkflowMixin, AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):

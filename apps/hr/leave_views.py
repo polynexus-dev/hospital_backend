@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from apps.core.crud import TenantCRUDViewSet, model_serializer
 
 from . import leave
-from .models import Employee, EmployeeDependent, LeaveBalance, LeaveType, OvertimeEntry
+from .models import DependentAllowance, DependentRelationRule, Employee, EmployeeDependent, LeaveBalance, LeaveType, OvertimeEntry
 from .staff_rate import staff_link
 
 
@@ -91,7 +91,25 @@ class DependentSerializer(_EmpNameMixin, model_serializer(EmployeeDependent, ext
         patient = attrs.get("patient", getattr(self.instance, "patient", None))
         if emp is not None and patient is not None and emp.patient_id == patient.pk:
             raise serializers.ValidationError({"patient": "That's the employee's own patient record."})
+        active = attrs.get("is_active", getattr(self.instance, "is_active", True))
+        if emp is not None and patient is not None and active:
+            from .dependent_policy import check_dependent
+
+            until = check_dependent(emp, patient, attrs.get("relationship", getattr(self.instance, "relationship", "")),
+                                    attrs.get("is_married", getattr(self.instance, "is_married", False)), exclude_pk=getattr(self.instance, "pk", None))
+            if until and not attrs.get("valid_until", getattr(self.instance, "valid_until", None)):
+                attrs["valid_until"] = until  # cover ends at the relation's age limit
         return attrs
+
+
+class DependentAllowanceViewSet(TenantCRUDViewSet):
+    serializer_class = model_serializer(DependentAllowance)
+    queryset = DependentAllowance.objects.all()
+
+
+class DependentRelationRuleViewSet(TenantCRUDViewSet):
+    serializer_class = model_serializer(DependentRelationRule)
+    queryset = DependentRelationRule.objects.all()
 
 
 class EmployeeDependentViewSet(TenantCRUDViewSet):

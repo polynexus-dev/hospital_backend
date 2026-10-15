@@ -13,10 +13,27 @@ from .models import (
 )
 
 
-class PreOpChecklistSerializer(serializers.ModelSerializer):
+class StampedSerializerMixin(serializers.Serializer):
+    """Records who last changed the record (updated_by) and shows it with
+    updated_at, so every OT screen can say "Updated by … on …"."""
+
+    updated_by_name = serializers.SerializerMethodField()
+
+    def get_updated_by_name(self, obj):
+        u = getattr(obj, "updated_by", None)
+        return (u.get_full_name() or u.email) if u else ""
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        if request is not None and getattr(request.user, "is_authenticated", False):
+            kwargs.setdefault("updated_by", request.user)
+        return super().save(**kwargs)
+
+
+class PreOpChecklistSerializer(StampedSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = PreOpChecklist
-        fields = [
+        fields = ["updated_by", "updated_by_name", 
             "id",
             "surgery_request",
             "consent_obtained",
@@ -45,10 +62,10 @@ class ImplantUsageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-class OperativeNoteSerializer(serializers.ModelSerializer):
+class OperativeNoteSerializer(StampedSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = OperativeNote
-        fields = [
+        fields = ["updated_by", "updated_by_name", 
             "id",
             "ot_schedule",
             "procedure_performed",
@@ -70,7 +87,7 @@ def _rows(value, name):
     return value
 
 
-class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
+class AnaesthesiaRecordSerializer(StampedSerializerMixin, serializers.ModelSerializer):
     def validate_vitals(self, value):
         return _rows(value, "Vitals")
 
@@ -82,7 +99,7 @@ class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AnaesthesiaRecord
-        fields = [
+        fields = ["updated_by", "updated_by_name", 
             "id",
             "ot_schedule",
             "anaesthesia_type",
@@ -96,7 +113,7 @@ class AnaesthesiaRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "finalized_at", "finalized_by", "created_at", "updated_at"]
 
 
-class OTScheduleSerializer(serializers.ModelSerializer):
+class OTScheduleSerializer(StampedSerializerMixin, serializers.ModelSerializer):
     surgeon_detail = DoctorSerializer(source="surgeon", read_only=True)
     assistant_surgeon_name = serializers.CharField(source="assistant_surgeon.name", read_only=True, default="")
     operative_note = OperativeNoteSerializer(read_only=True)
@@ -106,7 +123,7 @@ class OTScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OTSchedule
-        fields = [
+        fields = ["updated_by", "updated_by_name", 
             "id",
             "surgery_request",
             "operation_theatre_room",
@@ -127,7 +144,7 @@ class OTScheduleSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at", "reschedule_count", "cancelled_at", "charges_posted_at"]
 
 
-class SurgeryRequestSerializer(serializers.ModelSerializer):
+class SurgeryRequestSerializer(StampedSerializerMixin, serializers.ModelSerializer):
     patient_detail = PatientSerializer(source="patient", read_only=True)
     schedule = OTScheduleSerializer(read_only=True)
     preop_checklist = PreOpChecklistSerializer(read_only=True)
@@ -144,7 +161,7 @@ class SurgeryRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SurgeryRequest
-        fields = [
+        fields = ["updated_by", "updated_by_name", 
             "id",
             "patient",
             "patient_detail",

@@ -83,6 +83,58 @@ class _RecheckOpenBillsMixin:
         self._recheck()
 
 
+IMPORT_COLUMNS = ["Item", "Type", "Group", "Note"]
+_GROUPS = {"i": "list_1", "1": "list_1", "list i": "list_1", "ii": "list_2", "2": "list_2", "list ii": "list_2",
+           "iii": "list_3", "3": "list_3", "list iii": "list_3", "iv": "list_4", "4": "list_4", "list iv": "list_4", "other": "other"}
+
+
+def import_non_payable_rows(npl, rows, replace=False):
+    """Matches each row to a medicine (by name), a service tariff (by code or
+    name) or keeps it as a keyword, and adds it to the list."""
+    from django.db import transaction
+    from django.db.models import Q
+
+    from apps.finance.models import ServiceTariff
+    from apps.pharmacy.models import Medicine
+
+    if rows and rows[0] and rows[0][0].strip().lower() in ("item", "item name", "name"):
+        rows = rows[1:]
+    added, duplicates, errors = 0, 0, []
+    hid = npl.hospital_id
+    with transaction.atomic():
+        if replace:
+            npl.items.all().delete()
+        for n, row in enumerate(rows, start=2):
+            row = list(row) + ["", "", "", ""]
+            item, kind, group_raw, note = (str(x).strip() for x in row[:4])
+            if not item:
+                continue
+            group = _GROUPS.get(group_raw.lower(), "list_1" if not group_raw else None)
+            if group is None:
+                errors.append({"row": n, "item": item, "error": f"Unknown group '{group_raw}' (use I, II, III, IV or other)."})
+                continue
+            kind = kind.lower()
+            med = tariff = None
+            if kind in ("", "medicine", "drug"):
+                med = Medicine.objects.filter(hospital_id=hid, name__iexact=item).first()
+            if med is None and kind in ("", "service", "tariff"):
+                tariff = ServiceTariff.objects.filter(hospital_id=hid).filter(Q(code__iexact=item) | Q(name__iexact=item)).first()
+            if kind in ("medicine", "drug") and med is None:
+                errors.append({"row": n, "item": item, "error": "No medicine with this name."})
+                continue
+            if kind in ("service", "tariff") and tariff is None:
+                errors.append({"row": n, "item": item, "error": "No service with this code or name."})
+                continue
+            match = {"medicine": med} if med else {"tariff": tariff} if tariff else {"keyword": item[:100]}
+            lookup = {k: v for k, v in match.items()} if "keyword" not in match else {"keyword__iexact": match["keyword"]}
+            if npl.items.filter(**lookup).exists():
+                duplicates += 1
+                continue
+            NonPayableItem.objects.create(hospital_id=hid, non_payable_list=npl, group=group, note=note[:255], **match)
+            added += 1
+    return {"added": added, "already_on_list": duplicates, "errors": errors, "total_items": npl.items.count()}
+
+
 class NonPayableListViewSet(_RecheckOpenBillsMixin, TenantCRUDViewSet):
     serializer_class = model_serializer(NonPayableList, extra={
         "tpa_name": serializers.CharField(source="tpa_company.name", read_only=True, default="All insurers"),
@@ -91,6 +143,44 @@ class NonPayableListViewSet(_RecheckOpenBillsMixin, TenantCRUDViewSet):
     queryset = NonPayableList.objects.select_related("tpa_company").prefetch_related("items")
     filterset_fields = ["tpa_company", "is_active"]
     audited_fields = ("name", "tpa_company", "applies_to_categories", "is_active")
+
+    @action(detail=False, methods=["get"], url_path="import-template")
+    def import_template(self, request):
+        """The .xlsx layout the import expects, with example rows."""
+        from django.http import HttpResponse
+
+        from apps.core.xlsx import build_xlsx
+
+        rows = [IMPORT_COLUMNS,
+                ["Gloves (sterile)", "keyword", "I", "Consumables are not payable"],
+                ["Pan 40", "medicine", "IV", ""],
+                ["NURS-GEN", "service", "II", "Nursing is part of the room rent"]]
+        resp = HttpResponse(build_xlsx(rows, "Non-payable items"), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = 'attachment; filename="non-payable-items-template.xlsx"'
+        return resp
+
+    @action(detail=True, methods=["post"], url_path="import")
+    def import_items(self, request, pk=None):
+        """POST multipart file=<.xlsx|.csv>[, replace=1] — adds the rows as
+        items of this list. Columns: Item, Type (medicine | service | keyword;
+        blank = work it out), Group (I-IV or other), Note. Rows that match
+        nothing, or are already on the list, are reported back."""
+        from apps.core.xlsx import SpreadsheetError, read_table
+
+        if not request.user.has_perm("tpa.add_nonpayableitem"):
+            return Response({"detail": "You don't have permission to add non-payable items."}, status=status.HTTP_403_FORBIDDEN)
+        npl = self.get_object()
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"file": "Attach an .xlsx or .csv file."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            rows = read_table(upload)
+        except SpreadsheetError as exc:
+            return Response({"file": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        result = import_non_payable_rows(npl, rows, replace=str(request.data.get("replace", "")).lower() in ("1", "true", "yes"))
+        self._log("update", npl)
+        self._recheck()
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class NonPayableItemSerializer(model_serializer(NonPayableItem, extra={

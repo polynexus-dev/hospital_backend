@@ -24,6 +24,8 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         "post_bed_charges": "billing.change_bill",
         "hold": "billing.hold_bill",
         "release": "billing.hold_bill",
+        "lock": "billing.lock_bill",
+        "unlock": "billing.unlock_bill",
         "hold_history": "billing.view_bill",
         "change_category": "billing.change_bill",
         "credit_note": "billing.change_bill",
@@ -61,6 +63,24 @@ class BillViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewsets.M
         from .adjustments import release
 
         bill = release(self.get_object(), request.user, request.data.get("note"))
+        self._log("update", bill)
+        return Response(BillSerializer(bill).data)
+
+    @action(detail=True, methods=["post"])
+    def lock(self, request, pk=None):
+        """POST {note?} — finalise the bill (releases a hold)."""
+        from .adjustments import lock
+
+        bill = lock(self.get_object(), request.user, request.data.get("note", ""))
+        self._log("update", bill)
+        return Response(BillSerializer(bill).data)
+
+    @action(detail=True, methods=["post"])
+    def unlock(self, request, pk=None):
+        """POST {reason} — reopen a locked bill (billing.unlock_bill)."""
+        from .adjustments import unlock
+
+        bill = unlock(self.get_object(), request.user, request.data.get("reason"))
         self._log("update", bill)
         return Response(BillSerializer(bill).data)
 
@@ -191,7 +211,7 @@ class PaymentViewSet(AuditedModelViewSetMixin, TenantScopedViewSetMixin, viewset
     def perform_create(self, serializer):
         from .adjustments import ensure_open
 
-        ensure_open(serializer.validated_data["bill"], "take a payment")
+        ensure_open(serializer.validated_data["bill"], "take a payment", payment=True)
         hospital = getattr(self.request.user, "hospital", None)
         payment = serializer.save(hospital=hospital)
         self._log("create", payment)
@@ -359,3 +379,23 @@ class BedBillingPolicyView(APIView):
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
         policy.save()
         return self.get(request)
+
+
+class BillHoldStatusView(APIView):
+    """GET /billing/hold-status/?patient=<id> — whether the patient has a bill
+    on hold, for the "Bill on hold" badge in reception, EMR, pharmacy, IPD and
+    insurance screens. Open to any signed-in staff of the hospital: it shows
+    only the bill number and the reason, never amounts."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.patients.models import Patient
+
+        from .adjustments import held_bills
+
+        patient = Patient.objects.filter(pk=request.query_params.get("patient") or 0, hospital_id=request.user.hospital_id).first()
+        if patient is None:
+            return Response({"on_hold": False, "bills": []})
+        bills = [{"id": b.pk, "bill_number": b.bill_number, "reason": b.hold_reason, "held_at": b.held_at} for b in held_bills(patient)[:5]]
+        return Response({"on_hold": bool(bills), "bills": bills})

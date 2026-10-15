@@ -2,7 +2,7 @@ from django.urls import path
 
 from .online_views import OnlinePaymentLinkViewSet, PaymentGatewayView, RazorpayWebhookView
 from rest_framework.routers import DefaultRouter
-from .views import BedBillingPolicyView, BedChargeRuleViewSet, BillViewSet, InsuranceClaimViewSet, PaymentViewSet
+from .views import BedBillingPolicyView, BedChargeRuleViewSet, BillHoldStatusView, BillViewSet, InsuranceClaimViewSet, PaymentViewSet
 
 router = DefaultRouter()
 router.register(r"bills", BillViewSet, basename="bill")
@@ -13,6 +13,7 @@ router.register(r"payment-links", OnlinePaymentLinkViewSet, basename="onlinepaym
 
 urlpatterns = [
     path("bed-billing-policy/", BedBillingPolicyView.as_view(), name="bed-billing-policy"),
+    path("hold-status/", BillHoldStatusView.as_view(), name="bill-hold-status"),
     path("payment-gateway/", PaymentGatewayView.as_view(), name="payment-gateway"),
     path("payment-webhook/razorpay/<uuid:hospital_id>/", RazorpayWebhookView.as_view(), name="razorpay-webhook"),
 ] + router.urls

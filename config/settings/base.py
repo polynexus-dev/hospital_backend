@@ -239,8 +239,10 @@ else:
         )
     }
     # Reuse connections across requests instead of opening a fresh TCP+auth
-    # handshake every time (default is 0 = no reuse).
-    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
+    # handshake every time; health checks drop a connection the server closed.
+    # Set DB_CONN_MAX_AGE=0 behind a transaction-mode pooler (PgBouncer).
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 
 # NABH DOM.3.b — every API request is one transaction: an error part-way
 # through a multi-row write rolls the whole thing back automatically

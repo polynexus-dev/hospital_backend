@@ -75,4 +75,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=4).status == 200 else 1)"
 ENTRYPOINT ["/opt/hms/docker-entrypoint.onprem.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+# Workers default to 2 x CPU cores + 1 (GUNICORN_WORKERS overrides), each with
+# GUNICORN_THREADS threads, so the web tier scales with the instance size
+# instead of being capped at 3 concurrent requests.
+CMD ["sh", "-c", "exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-$(( $(nproc) * 2 + 1 ))} --threads ${GUNICORN_THREADS:-2} --worker-class gthread --timeout ${GUNICORN_TIMEOUT:-120} --max-requests ${GUNICORN_MAX_REQUESTS:-2000} --max-requests-jitter 200"]

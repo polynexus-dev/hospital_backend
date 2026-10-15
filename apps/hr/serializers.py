@@ -16,6 +16,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "user",
             "user_detail",
             "employee_code",
+            "name_prefix",
+            "marital_status",
             "department",
             "department_detail",
             "designation",

@@ -1,3 +1,4 @@
+from .consumption import InventoryConsumptionView, InventoryTransferRequestView
 from rest_framework.routers import DefaultRouter
 from .views import ItemCategoryViewSet, ItemViewSet, PurchaseOrderViewSet, StockLevelViewSet, StockTransactionViewSet
 
@@ -32,5 +33,7 @@ router.register(r"rate-contracts", contract_views.RateContractViewSet, basename=
 router.register(r"rate-contract-lines", contract_views.RateContractLineViewSet, basename="ratecontractline")
 urlpatterns = router.urls + [
     path("cart/<str:kind>/", contract_views.CartView.as_view(), name="procurement-cart"),
+    path("consumption/", InventoryConsumptionView.as_view(), name="inventory-consumption"),
+    path("consumption/request/", InventoryTransferRequestView.as_view(), name="inventory-transfer-request"),
     path("cart/<str:kind>/submit/", contract_views.CartSubmitView.as_view(), name="procurement-cart-submit"),
 ]

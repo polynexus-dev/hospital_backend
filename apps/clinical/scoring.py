@@ -134,6 +134,18 @@ def humpty_dumpty(a):
     return score, "high" if score >= 12 else "low"
 
 
+PAIN_SCALE = [  # Numeric pain rating scale 0-10, with the words patients are shown
+    (0, "No pain"), (1, "Very mild"), (2, "Minor"), (3, "Noticeable"), (4, "Moderate"), (5, "Moderately strong"),
+    (6, "Moderately stronger"), (7, "Strong"), (8, "Very strong"), (9, "Very hard to bear"), (10, "Worst possible pain"),
+]
+
+
+def numeric_pain(a):
+    """Numeric pain rating scale: 0 none, 1-3 mild, 4-6 moderate, 7-10 severe."""
+    score = min(max(_i(a, "score"), 0), 10)
+    return score, "none" if score == 0 else "mild" if score <= 3 else "moderate" if score <= 6 else "severe"
+
+
 SCORERS = {
     "morse_fall": morse_fall,
     "humpty_dumpty": humpty_dumpty,
@@ -141,9 +153,10 @@ SCORERS = {
     "caprini": caprini,
     "news2": news2,
     "vulnerability": vulnerability,
+    "numeric_pain": numeric_pain,
 }
 
-HIGH_RISK_LEVELS = {"high", "very_high", "highest", "vulnerable", "medium"}
+HIGH_RISK_LEVELS = {"high", "very_high", "highest", "vulnerable", "medium", "severe"}
 
 
 def score(tool, answers):
@@ -217,6 +230,11 @@ RISK_FORMS = {
         _bool("new_confusion", "New confusion (CVPU)"),
     ],
     "vulnerability": [_bool(k, k.replace("_", " ").capitalize()) for k in VULNERABILITY_FLAGS],
+    "numeric_pain": [
+        _choice("score", "Pain score (0-10)", [(n, f"{n} - {w}") for n, w in PAIN_SCALE]),
+        _choice("location", "Site", [("head", "Head / face"), ("chest", "Chest"), ("abdomen", "Abdomen"), ("back", "Back"), ("limb", "Limb / joint"), ("surgical_site", "Surgical site"), ("other", "Other")]),
+        _choice("character", "Character", [("aching", "Aching"), ("sharp", "Sharp / stabbing"), ("burning", "Burning"), ("throbbing", "Throbbing"), ("colicky", "Colicky"), ("other", "Other")]),
+    ],
 }
 
 FALL_HIGH = [
@@ -242,10 +260,17 @@ DEFAULT_INTERVENTIONS = {
     ("caprini", "low"): ["Early mobilisation"],
     ("news2", "high"): ["Inform the treating doctor immediately", "Call the rapid response team", "Continuous monitoring", "Repeat NEWS2 every 15-30 min"],
     ("news2", "medium"): ["Inform the treating doctor within 30 minutes", "Repeat NEWS2 every hour", "Consider higher level of care"],
+    ("numeric_pain", "severe"): ["Inform the treating doctor now", "Give prescribed analgesia (or rescue dose) as charted", "Position for comfort; splint / support the painful part",
+                                 "Reassess pain within 30 minutes of analgesia", "Monitor sedation score and respiratory rate after opioids", "Document pain score every 2 hours until below 4"],
+    ("numeric_pain", "moderate"): ["Give prescribed analgesia as charted", "Non-drug measures: positioning, cold / warm pack, relaxation", "Reassess pain within 1 hour of analgesia",
+                                   "Inform the doctor if not settling"],
+    ("numeric_pain", "mild"): ["Non-drug measures: positioning, reassurance, distraction", "Offer prescribed PRN analgesia if the patient wishes", "Reassess pain each shift"],
+    ("numeric_pain", "none"): ["Reassess pain each shift and after procedures"],
     ("vulnerability", "vulnerable"): ["Bed near the nursing station", "Attendant present at all times", "Identity band checked", "Safeguarding concerns reported"],
 }
 
 LEVELS = {
     "morse_fall": ["low", "moderate", "high"], "humpty_dumpty": ["low", "high"], "braden": ["no_risk", "mild", "moderate", "high", "very_high"],
     "caprini": ["very_low", "low", "moderate", "high", "highest"], "news2": ["low", "medium", "high"], "vulnerability": ["not_vulnerable", "vulnerable"],
+    "numeric_pain": ["none", "mild", "moderate", "severe"],
 }

@@ -37,6 +37,11 @@ class BillSerializer(serializers.ModelSerializer):
     insurance_claim = InsuranceClaimSerializer(read_only=True)
     patient_detail = PatientSerializer(source="patient", read_only=True)
 
+    locked_by_name = serializers.SerializerMethodField()
+
+    def get_locked_by_name(self, obj):
+        return (obj.locked_by.get_full_name() or obj.locked_by.email) if obj.is_locked and obj.locked_by_id else ""
+
     class Meta:
         model = Bill
         fields = [
@@ -52,11 +57,12 @@ class BillSerializer(serializers.ModelSerializer):
             "items",
             "payments",
             "insurance_claim", "patient_category", "is_interim", "bill_number", "tax_amount",
-            "on_hold", "hold_reason", "held_at", "non_payable_amount",
+            "on_hold", "hold_reason", "held_at", "non_payable_amount", "is_locked", "locked_at", "locked_by_name",
         ]
         # The category changes through /change-category/ (which re-prices);
         # the hold through /hold/ and /release/.
-        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount", "on_hold", "hold_reason", "held_at", "non_payable_amount"]
+        read_only_fields = ["id", "created_at", "is_interim", "bill_number", "tax_amount", "on_hold", "hold_reason", "held_at", "non_payable_amount",
+                            "is_locked", "locked_at"]
 
     def validate_patient_category(self, value):
         if self.instance is not None and value != self.instance.patient_category:
