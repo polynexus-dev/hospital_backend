@@ -138,17 +138,21 @@ def block_doctor_slots(doctor: Doctor, *, start_date, end_date, reason: str = ""
     currently-unbooked slots — already-booked ones are left alone and
     counted separately so front desk knows how many patients still need a
     manual reschedule/callback."""
-    slots = Slot.objects.select_for_update().filter(doctor=doctor, date__gte=start_date, date__lte=end_date)
-    bookable = slots.prefetch_related("appointments").filter(is_blocked=False)
+    # Fetch unblocked slots in the given date range and inspect booking status
+    slots = (
+        Slot.objects.filter(doctor=doctor, date__gte=start_date, date__lte=end_date, is_blocked=False)
+        .prefetch_related("appointments")
+    )
 
     blocked_ids, booked_ids = [], []
-    for slot in bookable:
+    for slot in slots:
         if slot.is_booked:
             booked_ids.append(slot.id)
         else:
             blocked_ids.append(slot.id)
 
-    Slot.objects.filter(id__in=blocked_ids).update(is_blocked=True, blocked_reason=reason)
+    if blocked_ids:
+        Slot.objects.filter(id__in=blocked_ids).update(is_blocked=True, blocked_reason=reason)
     return {"blocked": len(blocked_ids), "skipped_already_booked": len(booked_ids), "booked_slot_ids": booked_ids}
 
 
