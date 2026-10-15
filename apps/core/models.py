@@ -199,8 +199,11 @@ class AuditLog(models.Model):
         REQUEST = "request", "Request"
         EXPORT = "export", "Export"
 
-    hospital = models.ForeignKey(Hospital, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    # DO_NOTHING + no DB constraint: deleting a user or hospital must not touch
+    # these rows (SET_NULL is an UPDATE, which the immutability trigger rejects),
+    # and the trail keeps who/where even after that user or hospital is gone.
+    hospital = models.ForeignKey(Hospital, on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="audit_logs")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="audit_logs")
     action = models.CharField(max_length=16, choices=Action.choices)
     model_name = models.CharField(max_length=100, blank=True)
     object_id = models.CharField(max_length=64, blank=True)

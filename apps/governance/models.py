@@ -32,8 +32,11 @@ class SecurityPolicy(TimeStampedModel):
     lockout_threshold = models.PositiveSmallIntegerField(default=5, help_text="Failed logins before the account locks. 0 = never lock.")
     lockout_minutes = models.PositiveSmallIntegerField(default=30)
 
+    # DOM.4.b only requires a configurable auto lock; NABH sets no time, the
+    # hospital's IT policy does. 15 min is the usual choice for shared
+    # clinical workstations; admins change it under Governance.
     idle_lock_enabled = models.BooleanField(default=True)
-    idle_lock_minutes = models.PositiveSmallIntegerField(default=10)
+    idle_lock_minutes = models.PositiveSmallIntegerField(default=15, help_text="Minutes of inactivity before the screen locks (1–120).")
 
     enforce_mfa_for_all = models.BooleanField(default=False, help_text="Require MFA for every user, not only owner/admin roles.")
     # DAC.1.e — with a sign-in provider enabled, staff must use it; owner/admin

@@ -11,7 +11,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.core import serializers as dj_serializers
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from apps.core.request_utils import get_client_ip
@@ -316,7 +316,12 @@ def purge_expired_audit_logs(now=None):
         path = os.path.join(backup_dir(), f"auditlog-archive-{hospital.slug}-{now:%Y%m%d%H%M%S}.json.gz")
         with gzip.open(path, "wt", encoding="utf-8") as fh:
             json.dump(rows, fh, default=str)
-        total += stale.delete()[0]
+        with transaction.atomic():
+            if connection.vendor == "postgresql":
+                # the immutability trigger lets DELETE through only with this set (core migration 0017)
+                with connection.cursor() as cur:
+                    cur.execute("SET LOCAL hms.audit_purge = 'on'")
+            total += stale.delete()[0]
     return total
 
 

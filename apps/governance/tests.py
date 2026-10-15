@@ -105,12 +105,14 @@ def test_unknown_user_failures_are_logged(api_client, hospital):
 def test_security_policy_readable_by_all_writable_by_admin(user, restricted_client):
     from rest_framework.test import APIClient
 
-    assert restricted_client.get("/api/v1/governance/security-policy/").json()["idle_lock_minutes"] == 10
+    assert restricted_client.get("/api/v1/governance/security-policy/").json()["idle_lock_minutes"] == 15
     assert restricted_client.patch("/api/v1/governance/security-policy/", {"idle_lock_minutes": 5}, format="json").status_code == 403
     admin = APIClient()
     admin.force_authenticate(user=user)
     res = admin.patch("/api/v1/governance/security-policy/", {"idle_lock_minutes": 5}, format="json")
     assert res.status_code == 200 and res.json()["idle_lock_minutes"] == 5
+    for bad in (0, 121):
+        assert admin.patch("/api/v1/governance/security-policy/", {"idle_lock_minutes": bad}, format="json").status_code == 400
     assert SecurityEvent.objects.filter(event_type="policy_changed").exists()
 
 

@@ -48,7 +48,7 @@ class LinenStockViewSet(TenantCRUDViewSet):
         if qty <= 0:
             return Response({"quantity": "A positive number."}, status=status.HTTP_400_BAD_REQUEST)
         h = request.user.hospital_id
-        central = LinenStock.objects.select_for_update().filter(hospital_id=h, ward__isnull=True, linen_type_id=request.data.get("linen_type")).first()
+        central = LinenStock.objects.order_by().select_for_update().filter(hospital_id=h, ward__isnull=True, linen_type_id=request.data.get("linen_type")).first()
         if central is None or central.clean_qty < qty:
             return Response({"quantity": f"Central store has {central.clean_qty if central else 0} clean."}, status=status.HTTP_400_BAD_REQUEST)
         ward_stock, _ = LinenStock.objects.get_or_create(hospital_id=h, ward_id=request.data.get("ward"), linen_type_id=central.linen_type_id)

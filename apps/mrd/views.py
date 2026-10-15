@@ -49,7 +49,7 @@ class MedicalRecordFileViewSet(ClinicalCRUDViewSet):
     })
     queryset = MedicalRecordFile.objects.select_related("patient", "admission")
     filterset_fields = ["status", "patient", "is_mlc"]
-    search_fields = ["file_number", "rack_location"]
+    search_fields = ["file_number", "rack_location", "patient__first_name", "patient__last_name", "patient__uhid"]
     audited_fields = ("status", "rack_location")
 
     @action(detail=True, methods=["post"])

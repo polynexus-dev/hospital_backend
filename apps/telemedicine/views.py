@@ -42,6 +42,16 @@ class TeleConsultationViewSet(ClinicalCRUDViewSet):
     serializer_class = TeleConsultationSerializer
     queryset = TeleConsultation.objects.select_related("patient", "doctor")
     filterset_fields = ["patient", "doctor", "status", "mode"]
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__uhid",
+        "patient__mobile",
+        "doctor__name",
+        "doctor__speciality",
+        "reason",
+        "room_name",
+    ]
     actor_field = "created_by"
     audited_fields = ("status", "scheduled_at", "clinical_notes")
 

@@ -14,8 +14,9 @@ class SecurityPolicySerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, attrs):
-        if attrs.get("idle_lock_minutes") == 0:
-            raise serializers.ValidationError({"idle_lock_minutes": "Must be at least 1 minute."})
+        minutes = attrs.get("idle_lock_minutes")
+        if minutes is not None and not 1 <= minutes <= 120:
+            raise serializers.ValidationError({"idle_lock_minutes": "Choose between 1 and 120 minutes."})
         if "password_min_length" in attrs and attrs["password_min_length"] < 8:
             raise serializers.ValidationError({"password_min_length": "Minimum length cannot be below 8."})
         return attrs

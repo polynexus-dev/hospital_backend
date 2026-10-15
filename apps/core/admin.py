@@ -20,7 +20,7 @@ class DepartmentAdmin(admin.ModelAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "actor", "action", "model_name", "object_id", "method", "path", "status_code")
+    list_display = ("created_at", "actor_id", "action", "model_name", "object_id", "method", "path", "status_code")
     list_filter = ("action", "hospital")
     search_fields = ("model_name", "object_id", "path")
     readonly_fields = [f.name for f in AuditLog._meta.fields]

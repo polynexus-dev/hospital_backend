@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from django.contrib.auth import get_user_model
+
 from .models import AuditLog, EmergencyAccessLog
 
 
@@ -16,7 +18,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_actor_email(self, obj) -> str | None:
-        return obj.actor.email if obj.actor_id else None
+        if not obj.actor_id:
+            return None
+        actor = get_user_model().objects.filter(pk=obj.actor_id).only("email").first()  # the user may since have been deleted
+        return actor.email if actor else f"deleted user #{obj.actor_id}"
 
 
 class EmergencyAccessLogSerializer(serializers.ModelSerializer):

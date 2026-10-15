@@ -29,6 +29,7 @@ class AmbulanceViewSet(TenantCRUDViewSet):
     serializer_class = model_serializer(Ambulance, read_only=("device_token",))
     queryset = Ambulance.objects.all()
     filterset_fields = ["status", "kind"]
+    search_fields = ["vehicle_number", "driver_name", "driver_phone"]
     audited_fields = ("vehicle_number", "status")
 
     @action(detail=True, methods=["post"])
@@ -69,6 +70,16 @@ class AmbulanceTripViewSet(TenantCRUDViewSet):
     serializer_class = AmbulanceTripSerializer
     queryset = AmbulanceTrip.objects.select_related("ambulance", "patient").prefetch_related("vitals")
     filterset_fields = ["status", "ambulance", "patient", "trip_type"]
+    search_fields = [
+        "ambulance__vehicle_number",
+        "caller_name",
+        "caller_phone",
+        "chief_complaint",
+        "pickup_address",
+        "patient__first_name",
+        "patient__last_name",
+        "patient__uhid",
+    ]
     audited_fields = ("status",)
 
     @action(detail=True, methods=["post"], url_path=r"transition/(?P<step>dispatch|at_scene|depart_scene|arrive|complete)")
@@ -224,6 +235,7 @@ class HousekeepingTaskViewSet(TenantCRUDViewSet):
     })
     queryset = HousekeepingTask.objects.all()
     filterset_fields = ["status", "task_type", "assigned_to", "priority"]
+    search_fields = ["location", "task_type", "assigned_to__first_name", "assigned_to__last_name"]
     actor_field = "requested_by"
 
     def _set(self, request, status, stamp=None, **extra):
@@ -286,6 +298,7 @@ class MaintenanceRecordViewSet(TenantCRUDViewSet):
     })
     queryset = MaintenanceRecord.objects.select_related("asset")
     filterset_fields = ["asset", "kind", "status"]
+    search_fields = ["asset__name", "asset__asset_tag", "problem", "engineer"]
     actor_field = "reported_by"
 
     def perform_create(self, serializer):

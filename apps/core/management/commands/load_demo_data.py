@@ -76,6 +76,10 @@ class Command(BaseCommand):
         from apps.core.demo_seed import core, opd
 
         h = core.setup_hospital()
+        # demo tenant: no idle screen lock while people click around (re-enable under Governance → Security policy)
+        from apps.governance.models import SecurityPolicy
+
+        SecurityPolicy.objects.filter(pk=SecurityPolicy.for_hospital(h).pk).update(idle_lock_enabled=False)
         core.fix_base_roles(h)
         core.tidy_base_doctors(h)
         depts = core.departments(h)

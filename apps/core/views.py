@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+import django_filters
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
@@ -128,6 +129,15 @@ class EmergencyAccessLogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(EmergencyAccessLogSerializer(log).data, status=status.HTTP_200_OK)
 
 
+class AuditLogFilter(django_filters.FilterSet):
+    # a plain id, not a ModelChoiceFilter: the trail of a since-deleted user must stay searchable
+    actor = django_filters.NumberFilter(field_name="actor_id")
+
+    class Meta:
+        model = AuditLog
+        fields = ["action", "model_name", "actor"]
+
+
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only view onto the immutable AuditLog trail (models.py). Admin
     Console only — gated with IsAdminUser (is_staff), matching how
@@ -139,7 +149,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AuditLogSerializer
     permission_classes = [IsAdminUser]
     queryset = AuditLog.objects.none()  # schema-generation fallback; get_queryset() below does the real filtering
-    filterset_fields = ["action", "model_name", "actor"]
+    filterset_class = AuditLogFilter
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:
