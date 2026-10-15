@@ -14,6 +14,11 @@ python manage.py import_pincodes --if-empty
 echo "Seeding demo data & accounts (idempotent)..."
 python manage.py seed_demo_data --admin-password changeme123 || true
 
+if [ "${LOAD_DEMO_DATA:-1}" = "1" ]; then
+  echo "Loading Polynexus demo dataset (first start only, ~3 min; skipped once loaded)..."
+  python manage.py load_demo_data || echo "WARNING: demo dataset not loaded - see the error above"
+fi
+
 echo "Ensuring SaaS-company roles and accounts exist (idempotent)..."
 python manage.py seed_saas_company --password "${SAAS_SEED_PASSWORD:-changeme123}" || true
 
