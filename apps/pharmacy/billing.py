@@ -27,18 +27,22 @@ def unit_price(batch):
 
 
 def _target_bill(record):
+    from django.db.models import Exists, OuterRef
+
     from apps.billing.bed_charges import running_bill
-    from apps.billing.models import Bill
+    from apps.billing.models import Bill, BillItem
     from apps.ipd.models import Admission
 
     admission = Admission.objects.filter(patient_id=record.patient_id, status=Admission.Status.ADMITTED).order_by("-admitted_at").first()
     if admission is not None:
         return running_bill(admission)
+    # Exists, not a join + distinct(): PostgreSQL refuses FOR UPDATE with DISTINCT.
     bill = (
         Bill.objects.select_for_update()
-        .filter(hospital_id=record.hospital_id, patient_id=record.patient_id, admission__isnull=True, status=Bill.Status.DRAFT,
-                is_interim=False, created_at__date=timezone.localdate(), items__source=SOURCE)
-        .distinct().order_by("-created_at").first()
+        .filter(Exists(BillItem.objects.filter(bill=OuterRef("pk"), source=SOURCE)),
+                hospital_id=record.hospital_id, patient_id=record.patient_id, admission__isnull=True, status=Bill.Status.DRAFT,
+                is_interim=False, created_at__date=timezone.localdate())
+        .order_by("-created_at").first()
     )
     return bill or Bill.objects.create(hospital_id=record.hospital_id, patient_id=record.patient_id, status=Bill.Status.DRAFT)
 
