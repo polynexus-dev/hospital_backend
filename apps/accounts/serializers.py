@@ -152,6 +152,7 @@ class UserSerializer(serializers.ModelSerializer):
     hospital_address = serializers.CharField(source="hospital.address", read_only=True)
     hospital_city = serializers.CharField(source="hospital.city", read_only=True)
     hospital_state = serializers.CharField(source="hospital.state", read_only=True)
+    hospital_helpline = serializers.CharField(source="hospital.helpline_phone", read_only=True)
     available_hospitals = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     role_domain = serializers.SerializerMethodField()
@@ -164,7 +165,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "phone", "first_name", "last_name",
-            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state",
+            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state", "hospital_helpline",
             "hospital_enabled_modules",
             "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
