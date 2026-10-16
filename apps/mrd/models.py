@@ -21,6 +21,8 @@ class ICD10Code(models.Model):
     is_billable = models.BooleanField(default=True)
     snomed_code = models.CharField(max_length=20, blank=True, help_text="Optional SNOMED CT concept mapping.")
 
+    objects = models.Manager()
+
     class Meta:
         ordering = ["code"]
 

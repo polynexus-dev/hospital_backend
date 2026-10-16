@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import TenantScopedModel
+from apps.core.fields import EncryptedCharField
 
 D2B_TARGET_MINUTES = 90
 # SIR/ACR: peak skin dose follow-up is advised above ~5 Gy reference air kerma.
@@ -40,7 +41,7 @@ class CathProcedure(TenantScopedModel):
     ed_visit = models.ForeignKey("emergency.EDVisit", on_delete=models.SET_NULL, null=True, blank=True, related_name="cath_procedures")
     procedure_type = models.CharField(max_length=12, choices=Type.choices)
     urgency = models.CharField(max_length=10, choices=Urgency.choices, default=Urgency.ELECTIVE)
-    indication = models.CharField(max_length=255)
+    indication = EncryptedCharField(max_length=255)
     operator = models.ForeignKey("appointments.Doctor", on_delete=models.PROTECT, related_name="cath_procedures")
     assistant = models.ForeignKey("appointments.Doctor", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     procedure_tariff = models.ForeignKey("finance.ServiceTariff", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")

@@ -112,8 +112,9 @@ def record_password_change(user, *, request=None):
     from apps.accounts.models import User
 
     now = timezone.now()
-    User.objects.filter(pk=user.pk).update(password_changed_at=now)
+    User.objects.filter(pk=user.pk).update(password_changed_at=now, must_change_password=False)
     user.password_changed_at = now
+    user.must_change_password = False
     PasswordHistory.objects.create(user=user, password_hash=user.password)
     policy = SecurityPolicy.for_hospital(user.hospital_id)
     keep = max(policy.password_history_count, 1)
@@ -122,7 +123,43 @@ def record_password_change(user, *, request=None):
     log_security_event(SecurityEvent.EventType.PASSWORD_CHANGED, request=request, user=user)
 
 
+# Unambiguous characters only (no 0/O, 1/l/I), so a password read out or copied by hand works.
+_TEMP_UPPER, _TEMP_LOWER, _TEMP_DIGITS, _TEMP_SYMBOLS = "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "@#$%&*!?"
+
+
+def generate_temporary_password(hospital_id) -> str:
+    """Random password that satisfies the hospital's own password policy."""
+    import secrets
+
+    policy = SecurityPolicy.for_hospital(hospital_id)
+    length = max(12, policy.password_min_length or 0)
+    chars = [secrets.choice(_TEMP_UPPER), secrets.choice(_TEMP_LOWER), secrets.choice(_TEMP_DIGITS), secrets.choice(_TEMP_SYMBOLS)]
+    pool = _TEMP_UPPER + _TEMP_LOWER + _TEMP_DIGITS + _TEMP_SYMBOLS
+    chars += [secrets.choice(pool) for _ in range(length - len(chars))]
+    secrets.SystemRandom().shuffle(chars)
+    return "".join(chars)
+
+
+def issue_temporary_password(user, *, request=None) -> str:
+    """Admin-issued one-time password (new login or reset). Clears any lockout,
+    and the user must choose their own password at first sign-in. Returned
+    once to the admin; only its hash is stored."""
+    from apps.accounts.models import User
+
+    password = generate_temporary_password(user.hospital_id)
+    user.set_password(password)
+    user.save(update_fields=["password"])
+    record_password_change(user, request=request)
+    User.objects.filter(pk=user.pk).update(must_change_password=True, failed_login_attempts=0, locked_until=None)
+    user.must_change_password = True
+    by = getattr(getattr(request, "user", None), "email", "")
+    log_security_event(SecurityEvent.EventType.PASSWORD_CHANGED, request=request, user=user, details={"temporary": True, "issued_by": by})
+    return password
+
+
 def password_is_expired(user) -> bool:
+    if getattr(user, "must_change_password", False):  # temporary password from an admin
+        return True
     policy = SecurityPolicy.for_hospital(user.hospital_id)
     if not policy.password_expiry_days:
         return False

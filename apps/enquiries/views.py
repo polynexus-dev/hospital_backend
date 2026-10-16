@@ -266,9 +266,10 @@ class EnquiryViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             branches = list(Hospital.objects.filter(group=group, is_active=True).order_by("name"))
             group_name = group.name
         else:
-            # Fallback to current hospital + any active sibling hospitals for demo/chain view
-            branches = list(Hospital.objects.filter(is_active=True).order_by("name")[:6])
-            group_name = "Hospital Healthcare Network"
+            # Not part of a hospital group: only this hospital. (This used to fall back to
+            # any 6 active hospitals on the platform — other tenants' enquiry figures.)
+            branches = [current_hospital]
+            group_name = current_hospital.name
 
         branch_metrics = []
         total_group_enquiries = 0

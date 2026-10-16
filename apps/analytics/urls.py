@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     CallPerformanceView,
+    LiveDashboardView,
     DailyMISLogViewSet,
     DailyMISPreviewView,
     DepartmentDoctorVolumeView,
@@ -21,6 +22,7 @@ router = DefaultRouter()
 router.register("mis-logs", DailyMISLogViewSet, basename="dailymislog")
 
 urlpatterns = router.urls + [
+    path("reports/live-dashboard/", LiveDashboardView.as_view(), name="report-live-dashboard"),
     path("reports/call-performance/", CallPerformanceView.as_view(), name="report-call-performance"),
     path("reports/enquiry-funnel/", EnquiryFunnelView.as_view(), name="report-enquiry-funnel"),
     path("reports/department-doctor-volume/", DepartmentDoctorVolumeView.as_view(), name="report-department-doctor-volume"),

@@ -5,6 +5,7 @@ from apps.core.models import FinalizableModel, TenantScopedModel
 from apps.opd.models import InvestigationOrder
 from apps.patients.models import ALLOWED_DOCUMENT_EXTENSIONS, Patient, validate_document_size
 from django.core.validators import FileExtensionValidator
+from apps.core.fields import EncryptedTextField
 
 
 class RadiologyProcedure(TenantScopedModel):
@@ -52,7 +53,7 @@ class RadiologyOrder(TenantScopedModel):
     # contraindication override, AAC.4.n outsourcing, IMS.1.g DICOM.
     accession_number = models.CharField(max_length=40, blank=True, editable=False, db_index=True)
     priority = models.CharField(max_length=8, default="routine", help_text="routine | urgent | stat")
-    clinical_history = models.TextField(blank=True)
+    clinical_history = EncryptedTextField(blank=True)
     status_history = models.JSONField(default=list, blank=True, editable=False)
     contraindication_override_reason = models.CharField(max_length=255, blank=True)
     is_outsourced = models.BooleanField(default=False)
@@ -88,8 +89,8 @@ class RadiologyReport(TenantScopedModel, FinalizableModel):
     FINALIZED_LOCKED_FIELDS = ("findings", "impression")
 
     radiology_order = models.OneToOneField(RadiologyOrder, on_delete=models.CASCADE, related_name="report")
-    findings = models.TextField(blank=True)
-    impression = models.TextField(blank=True)
+    findings = EncryptedTextField(blank=True)
+    impression = EncryptedTextField(blank=True)
     reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     template = models.ForeignKey("RadiologyTemplate", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     is_amended = models.BooleanField(default=False, editable=False)

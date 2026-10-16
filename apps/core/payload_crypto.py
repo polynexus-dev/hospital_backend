@@ -51,6 +51,13 @@ _server_private_key = generate_private_key(SECP256R1())
 _server_public_key = _server_private_key.public_key()
 
 
+def _b64decode(value: str) -> bytes:
+    """URL-safe base64 with or without '=' padding. The browser (payloadCrypto.ts)
+    strips the padding; Python's decoder insists on it ("Incorrect padding")."""
+    value = value.strip()
+    return base64.urlsafe_b64decode((value + "=" * (-len(value) % 4)).encode("ascii"))
+
+
 def get_server_public_key_b64() -> str:
     """Return the server public P-256 key as URL-safe base64 (uncompressed
     point, X9.62 format) for transmission to the client."""
@@ -69,7 +76,7 @@ def derive_shared_aes_key(client_public_key_b64: str) -> bytes:
     Raises ValueError on bad / undecodable key material.
     """
     try:
-        raw = base64.urlsafe_b64decode(client_public_key_b64.encode("ascii"))
+        raw = _b64decode(client_public_key_b64)
         client_pub = ec.EllipticCurvePublicKey.from_encoded_point(SECP256R1(), raw)
     except Exception as exc:
         raise ValueError(f"Invalid client public key: {exc}") from exc
@@ -106,7 +113,7 @@ def decrypt_payload(token: str, aes_key: bytes) -> bytes:
     if not token.startswith(PAYLOAD_PREFIX):
         raise ValueError("Not a gcm2$ payload token.")
     try:
-        raw = base64.urlsafe_b64decode(token[len(PAYLOAD_PREFIX):].encode("ascii"))
+        raw = _b64decode(token[len(PAYLOAD_PREFIX):])
     except Exception as exc:
         raise ValueError(f"Malformed gcm2$ token: {exc}") from exc
 

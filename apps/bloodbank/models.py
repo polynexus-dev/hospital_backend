@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.encryption import fill_search_indexes
-from apps.core.fields import EncryptedCharField, EncryptedDateField
+from apps.core.fields import EncryptedCharField, EncryptedDateField, EncryptedTextField
 from apps.core.models import TenantScopedModel
 from apps.ipd.models import Admission
 from apps.patients.models import Patient
@@ -115,7 +115,7 @@ class Transfusion(TenantScopedModel):
     admission = models.ForeignKey(Admission, on_delete=models.SET_NULL, null=True, blank=True, related_name="transfusions")
     issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     transfused_at = models.DateTimeField(default=timezone.now)
-    reaction_notes = models.TextField(blank=True)
+    reaction_notes = EncryptedTextField(blank=True)
     # COP.3.d safe transfusion + haemovigilance.
     bedside_verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", help_text="Second person for the two-person bedside check.")
     pre_vitals = models.JSONField(default=dict, blank=True)

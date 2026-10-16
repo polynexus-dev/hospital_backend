@@ -14,21 +14,34 @@ KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
 AT="${BACKUP_TIME:-02:00}"
 export PGPASSWORD="$POSTGRES_PASSWORD"
 
+# With BACKUP_PASSPHRASE set (.env), the dump and the files archive are
+# encrypted (AES-256, key from the passphrase via PBKDF2) and only the .enc
+# files are kept. Keep the passphrase somewhere other than the backup drive:
+# without it the backups can't be restored. Restore:
+#   openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in X.enc -out X
+encrypt_in_place() {
+  openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_PASSPHRASE -in "$1" -out "$1.enc.partial"     && mv "$1.enc.partial" "$1.enc" && rm -f "$1"
+}
+
 run_backup() {
   stamp=$(date +%Y%m%d-%H%M)
   partial="$DEST/.hms-db-$stamp.dump.partial"
-  if pg_dump -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "$partial" \
-     && pg_restore --list "$partial" >/dev/null \
-     && mv "$partial" "$DEST/hms-db-$stamp.dump" \
-     && tar -czf "$DEST/hms-files-$stamp.tar.gz" -C /hms-media .; then
+  db="$DEST/hms-db-$stamp.dump"
+  files="$DEST/hms-files-$stamp.tar.gz"
+  if [ -n "${BACKUP_PASSPHRASE:-}" ] && ! command -v openssl >/dev/null 2>&1; then
+    echo "$(date '+%Y-%m-%d %H:%M') FAILED - BACKUP_PASSPHRASE is set but openssl is missing in the backup container" > "$DEST/LAST-BACKUP.txt"
+    echo "Backup FAILED: openssl not available to encrypt (refusing to write unencrypted backups)" >&2
+    return 1
+  fi
+  if pg_dump -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "$partial"      && pg_restore --list "$partial" >/dev/null      && mv "$partial" "$db"      && tar -czf "$files" -C /hms-media .      && { [ -z "${BACKUP_PASSPHRASE:-}" ] || { encrypt_in_place "$db" && encrypt_in_place "$files"; }; }; then
     [ -f /config/license.lic ] && cp /config/license.lic "$DEST/license-$stamp.lic"
-    find "$DEST" -maxdepth 1 -type f \( -name 'hms-db-*.dump' -o -name 'hms-files-*.tar.gz' -o -name 'license-*.lic' \) \
-      -mtime +"$KEEP_DAYS" -delete
-    echo "$(date '+%Y-%m-%d %H:%M') OK hms-db-$stamp.dump" > "$DEST/LAST-BACKUP.txt"
-    echo "Backup OK: hms-db-$stamp.dump ($(du -h "$DEST/hms-db-$stamp.dump" | cut -f1))"
+    find "$DEST" -maxdepth 1 -type f \( -name 'hms-db-*.dump*' -o -name 'hms-files-*.tar.gz*' -o -name 'license-*.lic' \)       -mtime +"$KEEP_DAYS" -delete
+    name=$(basename "$(ls "$db"* | head -1)")
+    echo "$(date '+%Y-%m-%d %H:%M') OK $name" > "$DEST/LAST-BACKUP.txt"
+    echo "Backup OK: $name ($(du -h "$DEST/$name" | cut -f1))"
     return 0
   fi
-  rm -f "$partial"
+  rm -f "$partial" "$db" "$files" "$db.enc.partial" "$files.enc.partial"
   echo "$(date '+%Y-%m-%d %H:%M') FAILED - see: docker compose logs backup" > "$DEST/LAST-BACKUP.txt"
   echo "Backup FAILED" >&2
   return 1

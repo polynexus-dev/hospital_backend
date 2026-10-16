@@ -8,7 +8,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5435:5432"
+      # localhost only: reach it over an SSH tunnel, never from the internet
+      - "${DB_BIND:-127.0.0.1}:5435:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
       interval: 5s
@@ -18,7 +19,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6381:6379"
+      - "${REDIS_BIND:-127.0.0.1}:6381:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -30,7 +31,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
-    command: python manage.py runserver 0.0.0.0:8000
+    # production: WEB_COMMAND="gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --worker-class gthread --timeout 120"
+    command: ${WEB_COMMAND:-python manage.py runserver 0.0.0.0:8000}
     volumes:
       - .:/app
       # Licence signing key, kept outside the repo on the SaaS server only.
@@ -41,7 +43,8 @@ services:
       - "8001:8000"
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # production: DJANGO_SETTINGS_MODULE=config.settings.prod in .env (needs real keys, see deploy/SAAS_VM_HARDENING.md)
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.dev}
       ALLOWED_HOSTS: ".hms.polynexus.in,localhost,127.0.0.1"
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
@@ -66,7 +69,8 @@ services:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # production: DJANGO_SETTINGS_MODULE=config.settings.prod in .env (needs real keys, see deploy/SAAS_VM_HARDENING.md)
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.dev}
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}
@@ -92,7 +96,8 @@ services:
       - .:/app
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # production: DJANGO_SETTINGS_MODULE=config.settings.prod in .env (needs real keys, see deploy/SAAS_VM_HARDENING.md)
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.dev}
       # Overrides .env's localhost values — inside the compose network the
       # DB and broker are reachable by service name, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hospital_crm}

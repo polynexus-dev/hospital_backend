@@ -10,6 +10,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import TenantScopedModel
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 
 USER = settings.AUTH_USER_MODEL
 
@@ -83,7 +84,7 @@ class SurgicalOncologyRecord(TenantScopedModel):
     procedure_name = models.CharField(max_length=200)
     extent = models.CharField(max_length=20, blank=True, help_text="curative | debulking | palliative | biopsy")
     frozen_section = models.TextField(blank=True)
-    hpr_findings = models.TextField(blank=True, help_text="Histopathology report findings")
+    hpr_findings = EncryptedTextField(blank=True, help_text="Histopathology report findings")
     margins = models.CharField(max_length=20, blank=True, help_text="R0 | R1 | R2")
     lymph_nodes = models.CharField(max_length=40, blank=True, help_text="e.g. 3/18 positive")
     pathological_stage = models.CharField(max_length=20, blank=True, help_text="pTNM")
@@ -235,9 +236,9 @@ class TumorBoardCase(TenantScopedModel):
     case = models.ForeignKey(CancerCase, on_delete=models.CASCADE, related_name="board_reviews")
     presented_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
     question = models.TextField(blank=True, help_text="What the board is asked to decide.")
-    discussion_summary = models.TextField(blank=True)
+    discussion_summary = EncryptedTextField(blank=True)
     recommendation = models.TextField(blank=True)
-    treatment_plan = models.CharField(max_length=200, blank=True, help_text="e.g. NACT → surgery → RT")
+    treatment_plan = EncryptedCharField(max_length=200, blank=True, help_text="e.g. NACT → surgery → RT")
     follow_up = models.TextField(blank=True)
     is_consensus = models.BooleanField(default=True)
 

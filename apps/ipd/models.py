@@ -6,6 +6,7 @@ from apps.core.models import Department, FinalizableModel, TenantScopedModel
 from apps.facilities.models import Bed
 from apps.opd.models import Encounter
 from apps.patients.models import Patient
+from apps.core.fields import EncryptedTextField
 
 
 class Admission(TenantScopedModel):
@@ -35,7 +36,7 @@ class Admission(TenantScopedModel):
 
     admission_type = models.CharField(max_length=16, choices=AdmissionType.choices, default=AdmissionType.PLANNED)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.ADMITTED)
-    admission_diagnosis = models.TextField(blank=True)
+    admission_diagnosis = EncryptedTextField(blank=True)
 
     admitted_at = models.DateTimeField(auto_now_add=True)
     discharged_at = models.DateTimeField(null=True, blank=True)
@@ -97,7 +98,7 @@ class DoctorProgressNote(TenantScopedModel, FinalizableModel):
 
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="progress_notes")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="ipd_progress_notes")
-    note = models.TextField()
+    note = EncryptedTextField()
 
     class Meta:
         ordering = ["-created_at"]
@@ -122,11 +123,11 @@ class DischargeSummary(TenantScopedModel, FinalizableModel):
         DECEASED = "deceased", "Deceased"
 
     admission = models.OneToOneField(Admission, on_delete=models.CASCADE, related_name="discharge_summary")
-    final_diagnosis = models.TextField(blank=True)
+    final_diagnosis = EncryptedTextField(blank=True)
     procedures_performed = models.TextField(blank=True)
-    treatment_summary = models.TextField(blank=True)
+    treatment_summary = EncryptedTextField(blank=True)
     discharge_medications = models.TextField(blank=True)
-    follow_up_instructions = models.TextField(blank=True)
+    follow_up_instructions = EncryptedTextField(blank=True)
     discharge_type = models.CharField(max_length=16, choices=DischargeType.choices, default=DischargeType.ROUTINE)
     prepared_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 

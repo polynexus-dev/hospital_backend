@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 
@@ -20,9 +21,8 @@ _ENCRYPTION_BYPASS_PATHS = frozenset([
     "/api/v1/site/",  # public website form & chat widget (no staff session)
     "/api/v1/leads/",  # Meta / Google ad-lead webhooks
     "/api/v1/mobile-upload/",  # QR-code document upload from a phone (signed token, no session)
-    "/api/v1/auth/login/",
-    "/api/v1/auth/refresh/",
-    "/api/v1/auth/logout/",
+    # Not auth/login|refresh|logout: the handshake needs no login, so passwords and
+    # tokens are encrypted too. Clients without X-Session-Id still get plain JSON.
     "/api/schema/",
     "/api/schema/swagger-ui/",
     "/admin/",
@@ -39,12 +39,36 @@ PATIENT_RECORD_READ_PREFIXES = (
     "/api/v1/patients/",
     "/api/v1/documents/",
     "/api/v1/prescriptions/",
+    # the clinical / financial record itself, wherever it is read from
+    "/api/v1/opd/",
+    "/api/v1/ipd/",
+    "/api/v1/laboratory/",
+    "/api/v1/radiology/",
+    "/api/v1/nursing/",
+    "/api/v1/emergency/",
+    "/api/v1/ot/",
+    "/api/v1/icu/",
+    "/api/v1/clinical/",
+    "/api/v1/pharmacy/",
+    "/api/v1/billing/",
+    "/api/v1/tpa/",
+    "/api/v1/mrd/",
+    "/api/v1/oncology/",
+    "/api/v1/cathlab/",
+    "/api/v1/telemedicine/",
+    "/api/v1/dietary/",
+    "/api/v1/infection-control/",
+    "/api/v1/bloodbank/",
+    "/api/v1/schemes/",
+    "/api/v1/abdm/",
 )
 
 
 def get_subdomain_from_request(request):
     try:
         host = request.get_host().split(":")[0].lower()
+        if host.replace(".", "").isdigit():  # an IP address (192.168.1.156) is never a hospital subdomain
+            return None
         parts = host.split(".")
         if len(parts) >= 3 and parts[0] not in ("www", "api"):
             return parts[0]
@@ -193,8 +217,12 @@ class PayloadEncryptionMiddleware:
                 enc_token = wrapper.get("enc", "")
                 if enc_token:
                     plaintext = decrypt_payload(enc_token, aes_key)
-                    # Overwrite the cached body Django uses for parsing.
+                    # Replace both the cached body and the stream: reading request.body
+                    # above already pointed request._stream at the *encrypted* bytes,
+                    # and DRF parses from the stream, not from _body.
                     request._body = plaintext
+                    request._stream = io.BytesIO(plaintext)
+                    request.META["CONTENT_LENGTH"] = str(len(plaintext))
                     request.content_type = "application/json"
             except (json.JSONDecodeError, ValueError) as exc:
                 logger.warning("PayloadEncryptionMiddleware: failed to decrypt request: %s", exc)

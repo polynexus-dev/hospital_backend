@@ -6,6 +6,7 @@ from apps.appointments.models import Doctor
 from apps.core.models import FinalizableModel, TenantScopedModel
 from apps.ipd.models import Admission
 from apps.patients.models import Patient
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 
 
 class SurgeryRequest(TenantScopedModel):
@@ -112,14 +113,14 @@ class PreOpChecklist(TenantScopedModel):
 
     # COP.6.b pre-operative assessment & patient preparation.
     asa_grade = models.CharField(max_length=4, blank=True, help_text="I–VI (E for emergency)")
-    airway_assessment = models.CharField(max_length=100, blank=True, help_text="e.g. Mallampati II")
+    airway_assessment = EncryptedCharField(max_length=100, blank=True, help_text="e.g. Mallampati II")
     comorbidities = models.TextField(blank=True)
     investigations_reviewed = models.BooleanField(default=False)
     blood_arranged = models.BooleanField(default=False)
     npo_since = models.DateTimeField(null=True, blank=True)
     premedication = models.TextField(blank=True)
     fit_for_surgery = models.BooleanField(null=True)
-    assessment_notes = models.TextField(blank=True)
+    assessment_notes = EncryptedTextField(blank=True)
 
     def __str__(self):
         return f"PreOp Checklist for {self.surgery_request}"
@@ -132,7 +133,7 @@ class OperativeNote(FinalizableModel, TenantScopedModel):
 
     ot_schedule = models.OneToOneField(OTSchedule, on_delete=models.CASCADE, related_name="operative_note")
     procedure_performed = models.TextField()
-    findings = models.TextField(blank=True)
+    findings = EncryptedTextField(blank=True)
     surgeon = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="operative_notes")
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
@@ -153,7 +154,7 @@ class AnaesthesiaRecord(FinalizableModel, TenantScopedModel):
 
     ot_schedule = models.OneToOneField(OTSchedule, on_delete=models.CASCADE, related_name="anaesthesia_record")
     anaesthesia_type = models.CharField(max_length=120)
-    intra_op_notes = models.TextField(blank=True)
+    intra_op_notes = EncryptedTextField(blank=True)
     anaesthetist = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="anaesthesia_records")
 
     # COP.6.f — anaesthesia / procedural sedation details.

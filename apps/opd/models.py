@@ -4,6 +4,7 @@ from django.db import models
 from apps.appointments.models import Appointment, Doctor
 from apps.core.models import Department, FinalizableModel, TenantScopedModel
 from apps.patients.models import Patient
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 
 
 class Encounter(TenantScopedModel):
@@ -44,14 +45,14 @@ class OPDTriage(TenantScopedModel):
         EMERGENCY = "emergency", "Emergency — see now"
 
     encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name="triage")
-    chief_complaint = models.CharField(max_length=500, blank=True)
+    chief_complaint = EncryptedCharField(max_length=500, blank=True)
     complaint_duration = models.CharField(max_length=60, blank=True, help_text="e.g. 3 days")
     respiratory_rate = models.PositiveSmallIntegerField(null=True, blank=True)
     blood_sugar_mg_dl = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Random capillary glucose, if checked")
     pain_score = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Numeric pain scale 0-10")
     allergies_checked = models.BooleanField(default=False)
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
-    notes = models.TextField(blank=True)
+    notes = EncryptedTextField(blank=True)
     vitals = models.OneToOneField("VitalsReading", on_delete=models.SET_NULL, null=True, blank=True, related_name="triage")
     pain_assessment = models.ForeignKey("clinical.RiskAssessment", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -89,9 +90,9 @@ class ClinicalNote(TenantScopedModel, FinalizableModel):
 
     encounter = models.OneToOneField(Encounter, on_delete=models.CASCADE, related_name="clinical_note")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="clinical_notes")
-    chief_complaints = models.TextField(blank=True)
-    history = models.TextField(blank=True)
-    examination_findings = models.TextField(blank=True)
+    chief_complaints = EncryptedTextField(blank=True)
+    history = EncryptedTextField(blank=True)
+    examination_findings = EncryptedTextField(blank=True)
 
     class Meta:
         permissions = [

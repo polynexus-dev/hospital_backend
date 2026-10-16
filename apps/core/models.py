@@ -85,6 +85,9 @@ class Hospital(TimeStampedModel):
     timezone = models.CharField(max_length=64, default="Asia/Kolkata")
     primary_language = models.CharField(max_length=8, default="mr")
     is_on_premise = models.BooleanField(default=False)
+    # SaaS console switch: stop right-click / F12 / view-source in this hospital's
+    # browsers (a deterrent; the data itself is protected by payload encryption).
+    block_devtools = models.BooleanField(default=False, help_text="Block right-click and browser inspect shortcuts for this hospital's staff.")
     is_active = models.BooleanField(default=True)
     enabled_modules = models.JSONField(
         default=default_enabled_modules,

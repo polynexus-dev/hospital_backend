@@ -6,6 +6,7 @@ from apps.appointments.models import Doctor
 from apps.core.models import FinalizableModel, TenantScopedModel
 from apps.facilities.models import Bed
 from apps.ipd.models import Admission
+from apps.core.fields import EncryptedTextField
 
 
 class ICUAdmission(TenantScopedModel):
@@ -80,7 +81,7 @@ class ICUDailyProgressNote(FinalizableModel, TenantScopedModel):
 
     icu_admission = models.ForeignKey(ICUAdmission, on_delete=models.CASCADE, related_name="progress_notes")
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="icu_progress_notes")
-    note = models.TextField()
+    note = EncryptedTextField()
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

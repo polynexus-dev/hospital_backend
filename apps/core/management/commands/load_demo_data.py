@@ -80,6 +80,10 @@ class Command(BaseCommand):
         from apps.governance.models import SecurityPolicy
 
         SecurityPolicy.objects.filter(pk=SecurityPolicy.for_hospital(h).pk).update(idle_lock_enabled=False)
+        # the demo seeds ~55 staff logins; leave room to add users from Admin → Users
+        from apps.saas_admin.models import TenantSubscription
+
+        TenantSubscription.objects.filter(hospital=h, max_staff_users__gt=0, max_staff_users__lt=100).update(max_staff_users=100)
         core.fix_base_roles(h)
         core.tidy_base_doctors(h)
         depts = core.departments(h)

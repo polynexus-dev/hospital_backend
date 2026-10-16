@@ -38,6 +38,22 @@ class BaseReportView(APIView):
         raise NotImplementedError
 
 
+class LiveDashboardView(APIView):
+    """Owner dashboard: live KPIs with previous-period comparison. Unlike the
+    other reports, ``end`` is inclusive (end=today includes today)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        start, end = _parse_window(request)
+        if request.query_params.get("end"):
+            end += timedelta(days=1)
+        dept = request.query_params.get("department") or None
+        doctor = request.query_params.get("doctor") or None
+        return Response(services.live_dashboard(request.user.hospital, start, end, department_id=dept, doctor_id=doctor))
+
+
 class CallPerformanceView(BaseReportView):
     def build_report(self, hospital, start, end):
         return services.call_performance(hospital, start, end)

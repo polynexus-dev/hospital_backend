@@ -193,6 +193,10 @@ PERMISSION_TEMPLATES = {
         "opd": ["view", "add", "change"],
     },
     "surgeon": {
+        # their own OPD clinic: appointments + clinical records (scoped to their
+        # patients by Role.data_scope=assigned_only)
+        "appointments": ["view", "change"],
+        "clinical": ["view", "add", "change"],
         "ot": ["view", "add", "change", "delete"],
         "cathlab": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
@@ -203,6 +207,10 @@ PERMISSION_TEMPLATES = {
         "radiology": ["view"],
     },
     "anaesthetist": {
+        # their own OPD clinic: appointments + clinical records (scoped to their
+        # patients by Role.data_scope=assigned_only)
+        "appointments": ["view", "change"],
+        "clinical": ["view", "add", "change"],
         "ot": ["view", "add", "change", "delete"],
         "cathlab": ["view", "add", "change", "delete"],
         "patients": ["view", "add", "change"],
@@ -328,6 +336,14 @@ def baseline_view_permissions() -> list:
     return list(Permission.objects.filter(query))
 
 
+ADMIN_MASTER_TEMPLATES = frozenset({"owner", "admin", "hospital_administrator"})
+DOCTOR_MASTER_CODENAMES = frozenset({"add_doctor", "change_doctor", "delete_doctor"})
+
+# Clinician roles that, by default, see only their own appointments, patients,
+# OPD visits and admissions (Role.data_scope = assigned_only).
+OWN_RECORDS_TEMPLATES = frozenset({"doctor", "surgeon", "anaesthetist"})
+
+
 def apply_permission_template(group, template: str) -> None:
     """Assigns every Django `add_<model>`/`change_<model>`/etc. permission
     implied by `template` to `group`, across every model in each listed
@@ -359,6 +375,12 @@ def template_permissions(template: str) -> list:
                     to_assign.append(perm)
             elif codename.startswith("finalize_") or codename.startswith("approve_") or codename.startswith("triage_"):
                 to_assign.append(perm)
+
+    # Doctor profiles are master data: only hospital admins add, edit or remove
+    # them. Every other template with write access to "appointments" (doctor,
+    # front desk, CRM, call centre…) keeps appointments, slots and waitlists.
+    if template not in ADMIN_MASTER_TEMPLATES:
+        to_assign = [p for p in to_assign if not (p.content_type.app_label == "appointments" and p.codename in DOCTOR_MASTER_CODENAMES)]
 
     to_assign += [p for p in baseline_view_permissions() if p not in to_assign]
 

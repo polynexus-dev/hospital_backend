@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import TenantScopedModel
+from apps.core.fields import EncryptedTextField
 
 USER = settings.AUTH_USER_MODEL
 
@@ -108,7 +109,7 @@ class AntimicrobialApproval(TenantScopedModel):
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="antimicrobial_approvals")
     prescription = models.ForeignKey("patients.Prescription", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     drug = models.CharField(max_length=150)
-    indication = models.TextField()
+    indication = EncryptedTextField()
     culture_sent = models.BooleanField(default=False)
     culture_report = models.TextField(blank=True)
     planned_duration_days = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -116,7 +117,7 @@ class AntimicrobialApproval(TenantScopedModel):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
     decided_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     decided_at = models.DateTimeField(null=True, blank=True)
-    decision_notes = models.TextField(blank=True)
+    decision_notes = EncryptedTextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -13,6 +13,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import TenantScopedModel
+from apps.core.fields import EncryptedTextField
 
 
 def _room():
@@ -48,7 +49,7 @@ class TeleConsultation(TenantScopedModel):
     patient_joined_at = models.DateTimeField(null=True, blank=True)
     doctor_joined_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
-    clinical_notes = models.TextField(blank=True)
+    clinical_notes = EncryptedTextField(blank=True)
     prescription = models.ForeignKey("patients.Prescription", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     link_sent_at = models.DateTimeField(null=True, blank=True)
     fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)

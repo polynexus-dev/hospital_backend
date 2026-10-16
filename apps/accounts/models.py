@@ -123,6 +123,10 @@ class Role(TimeStampedModel):
     def save(self, *args, **kwargs):
         is_new = not self.group_id
         if is_new:
+            from .permission_templates import OWN_RECORDS_TEMPLATES
+
+            if self.template in OWN_RECORDS_TEMPLATES and self.data_scope == self.DataScope.ALL:
+                self.data_scope = self.DataScope.ASSIGNED_ONLY  # clinicians see their own patients; admins can widen it
             self.group = Group.objects.create(name=f"{self.hospital_id}:{self.name}")
         super().save(*args, **kwargs)
         if is_new and self.template:
@@ -199,6 +203,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # NABH DOM.4.a/c — see apps.governance.services for the policy logic.
     password_changed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # set when an admin issues a temporary password; sign-in then demands a new one (DOM.4.a flow)
+    must_change_password = models.BooleanField(default=False, editable=False)
     failed_login_attempts = models.PositiveSmallIntegerField(default=0, editable=False)
     locked_until = models.DateTimeField(null=True, blank=True, editable=False)
     is_blocked = models.BooleanField(default=False, help_text="Administratively blocked — cannot sign in until unblocked.")

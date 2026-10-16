@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import TenantScopedModel
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 
 MEALS = [
     ("early_morning", "Early morning"), ("breakfast", "Breakfast"), ("mid_morning", "Mid-morning"),
@@ -55,8 +56,8 @@ class DietOrder(TenantScopedModel):
     calories = models.PositiveIntegerField(null=True, blank=True)
     protein_g = models.PositiveIntegerField(null=True, blank=True)
     fluid_restriction_ml = models.PositiveIntegerField(null=True, blank=True)
-    food_allergies = models.CharField(max_length=255, blank=True)
-    instructions = models.TextField(blank=True)
+    food_allergies = EncryptedCharField(max_length=255, blank=True)
+    instructions = EncryptedTextField(blank=True)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.ACTIVE)
     start_date = models.DateField(default=timezone.localdate)
     end_date = models.DateField(null=True, blank=True)
@@ -75,8 +76,8 @@ class DietConsultation(TenantScopedModel):
     weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     bmi = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, editable=False)
     nutritional_risk = models.CharField(max_length=20, blank=True, help_text="low | moderate | high")
-    assessment = models.TextField()
-    plan = models.TextField()
+    assessment = EncryptedTextField()
+    plan = EncryptedTextField()
     follow_up_on = models.DateField(null=True, blank=True)
     dietitian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
 

@@ -304,3 +304,115 @@ def render_daily_mis_text(hospital, summary: dict) -> str:
         f"No-shows: {summary['no_show']['no_shows']} ({summary['no_show']['recall_tasks_done']} recalled)\n"
         f"Pending callbacks: {summary['pending_callbacks']}"
     )
+
+
+SERVICE_LABELS = {
+    "consultation": "Consultation", "pharmacy": "Pharmacy", "bed_charge": "Bed charges", "lab": "Laboratory",
+    "laboratory": "Laboratory", "radiology": "Radiology", "procedure": "Procedures", "ot": "OT", "package": "Packages",
+    "pharmacy_return": "Pharmacy returns", "": "Other",
+}
+
+
+def _pct_change(now, before):
+    if not before:
+        return None
+    return round((now - before) / before * 100, 1)
+
+
+def live_dashboard(hospital, start, end, department_id=None, doctor_id=None):
+    """Owner dashboard, every figure from live records. ``end`` is exclusive.
+    The comparison period is the same length immediately before ``start``.
+    Department/doctor filters apply to OPD, revenue and department volume;
+    calls, enquiries and the lab/radiology queues are hospital-wide."""
+    from django.db.models import DurationField, ExpressionWrapper, F
+
+    from apps.billing.models import Bill, BillItem
+    from apps.core.models import Department
+    from apps.laboratory.models import LabOrder
+    from apps.radiology.models import RadiologyOrder
+
+    prev_start, prev_end = start - (end - start), start
+
+    def scoped(qs, doctor_field="doctor"):
+        if doctor_id:
+            qs = qs.filter(**{f"{doctor_field}_id": doctor_id})
+        if department_id:
+            qs = qs.filter(**{f"{doctor_field}__department_id": department_id})
+        return qs
+
+    appointments = scoped(Appointment.objects.filter(hospital=hospital))
+
+    def opd(s, e):
+        completed = appointments.filter(status=Appointment.Status.COMPLETED, completed_at__gte=s, completed_at__lt=e).count()
+        encounters = appointments.filter(checked_in_at__gte=s, checked_in_at__lt=e).count()  # OPD visits that arrived
+        wait = appointments.filter(checked_in_at__gte=s, checked_in_at__lt=e, consult_started_at__isnull=False).aggregate(
+            avg=Avg(ExpressionWrapper(F("consult_started_at") - F("checked_in_at"), output_field=DurationField()))
+        )["avg"]
+        return completed, encounters, (round(wait.total_seconds() / 60, 1) if wait else None)
+
+    completed, encounters, tat = opd(start, end)
+    p_completed, p_encounters, p_tat = opd(prev_start, prev_end)
+    calls_now = call_performance(hospital, start, end)
+    calls_prev = call_performance(hospital, prev_start, prev_end)
+
+    today_start, today_end = _today_range()
+    lab_open = [LabOrder.Status.ORDERED, LabOrder.Status.SAMPLE_COLLECTED, LabOrder.Status.PROCESSING]
+    rad_open = [RadiologyOrder.Status.ORDERED, RadiologyOrder.Status.SCHEDULED, RadiologyOrder.Status.ARRIVED,
+                RadiologyOrder.Status.IN_PROGRESS, RadiologyOrder.Status.COMPLETED]
+
+    stages = enquiry_funnel(hospital, start, end)
+
+    items = scoped(
+        BillItem.objects.filter(bill__hospital=hospital, bill__created_at__gte=start, bill__created_at__lt=end)
+        .exclude(bill__status=Bill.Status.CANCELLED)
+    )
+    revenue = {}
+    for row in items.values("source").annotate(amount=Sum("total_price"), tax=Sum("tax_amount")):
+        label = SERVICE_LABELS.get(row["source"], row["source"].replace("_", " ").title())
+        revenue[label] = revenue.get(label, Decimal("0")) + (row["amount"] or 0) + (row["tax"] or 0)
+
+    by_doctor = items.filter(doctor__isnull=False).aggregate(amount=Sum("total_price"), tax=Sum("tax_amount"))
+    doctor_billed = (by_doctor["amount"] or 0) + (by_doctor["tax"] or 0)
+
+    volume = (
+        appointments.filter(slot__date__gte=start.date(), slot__date__lt=end.date())
+        .exclude(status__in=[Appointment.Status.CANCELLED, Appointment.Status.RESCHEDULED])
+        .values("doctor__department_id", "doctor__department__name").annotate(count=Count("id")).order_by("-count")
+    )
+
+    return {
+        "window": {"start": start.isoformat(), "end": end.isoformat(), "previous_start": prev_start.isoformat()},
+        "generated_at": timezone.now().isoformat(),
+        "calls": {
+            key: {"value": calls_now[key] or 0, "change_pct": _pct_change(calls_now[key] or 0, calls_prev[key] or 0)}
+            for key in ("received", "answered", "missed")
+        },
+        "opd": {
+            "completed": {"value": completed, "change_pct": _pct_change(completed, p_completed)},
+            "encounters": {"value": encounters, "change_pct": _pct_change(encounters, p_encounters)},
+            "avg_wait_minutes": {"value": tat, "change_minutes": (round(tat - p_tat, 1) if tat is not None and p_tat is not None else None)},
+        },
+        "now": {  # point-in-time queues, not bound to the date range
+            "waiting": appointments.filter(status=Appointment.Status.CHECKED_IN).count(),
+            "in_consultation": appointments.filter(status=Appointment.Status.IN_CONSULT).count(),
+            "consults_done_today": appointments.filter(status=Appointment.Status.COMPLETED, completed_at__gte=today_start, completed_at__lt=today_end).count(),
+            "lab_pending": LabOrder.objects.filter(hospital=hospital, status__in=lab_open).count(),
+            "radiology_pending": RadiologyOrder.objects.filter(hospital=hospital, status__in=rad_open).count(),
+        },
+        "enquiries": {
+            "new": stages.get(Enquiry.Stage.NEW, 0),
+            "contacted": stages.get(Enquiry.Stage.CONTACTED, 0),
+            "follow_up": stages.get(Enquiry.Stage.FOLLOW_UP, 0),
+            "converted": stages.get(Enquiry.Stage.COMPLETED, 0) + stages.get(Enquiry.Stage.VISITED, 0),
+            "total": sum(stages.values()),
+        },
+        "doctor_billed": str(doctor_billed),  # bill lines attributed to a doctor (consultations, procedures)
+        "revenue_by_service": [{"service": k, "amount": str(v)} for k, v in sorted(revenue.items(), key=lambda kv: -kv[1])],
+        "department_volume": [
+            {"department_id": r["doctor__department_id"], "department": r["doctor__department__name"] or "Unassigned", "count": r["count"]}
+            for r in volume
+        ],
+        "filters": {
+            "departments": list(Department.objects.filter(hospital=hospital, is_active=True).order_by("name").values("id", "name")),
+        },
+    }

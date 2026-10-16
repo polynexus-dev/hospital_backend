@@ -101,6 +101,8 @@ class HospitalScopedTokenObtainPairSerializer(TokenObtainPairSerializer):
         # DOM.4.a — an expired password can't be used to start a session;
         # the client must go through /auth/password/expired-change/.
         if gov.password_is_expired(self.user):
+            if self.user.must_change_password:  # admin-issued one-time password
+                return {"password_expired": True, "temporary": True, "detail": "You signed in with a one-time password. Choose your own password to continue."}
             gov.log_security_event(SecurityEvent.EventType.PASSWORD_EXPIRED, request=request, user=self.user)
             return {"password_expired": True, "detail": "Your password has expired and must be changed before you can sign in."}
 
@@ -125,7 +127,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ["id", "hospital", "department", "name", "description", "template", "created_at", "permissions", "assignable"]
+        fields = ["id", "hospital", "department", "name", "description", "template", "data_scope", "created_at", "permissions", "assignable"]
         read_only_fields = ["hospital", "template"]
 
     def get_assignable(self, obj):
@@ -153,6 +155,12 @@ class UserSerializer(serializers.ModelSerializer):
     hospital_city = serializers.CharField(source="hospital.city", read_only=True)
     hospital_state = serializers.CharField(source="hospital.state", read_only=True)
     hospital_helpline = serializers.CharField(source="hospital.helpline_phone", read_only=True)
+    hospital_block_devtools = serializers.BooleanField(source="hospital.block_devtools", read_only=True, default=False)
+    # owner / admin roles pass every model-permission check on the server (RoleBasedModelPermissions)
+    is_hospital_admin = serializers.SerializerMethodField()
+    # "assigned_only": screens show only this user's own records (e.g. a doctor's own calendar column)
+    data_scope = serializers.CharField(source="role.data_scope", read_only=True, default="all")
+    own_doctor_id = serializers.IntegerField(source="doctor_profile.id", read_only=True, default=None)
     available_hospitals = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     role_domain = serializers.SerializerMethodField()
@@ -165,14 +173,14 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "phone", "first_name", "last_name",
-            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state", "hospital_helpline",
+            "hospital", "hospital_name", "hospital_address", "hospital_city", "hospital_state", "hospital_helpline", "hospital_block_devtools", "is_hospital_admin", "data_scope", "own_doctor_id",
             "hospital_enabled_modules",
             "department", "role", "role_name", "role_domain", "permissions",
             "preferred_language", "is_active", "is_staff", "is_superuser", "is_saas_admin",
             "saas_role", "staff_code", "licence_role",
             "available_hospitals", "date_joined", "is_2fa_enabled", "requires_mfa",
             "password", "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts",
-            "password_changed_at", "password_expires_in_days", "signature_image", "registration_number",
+            "password_changed_at", "password_expires_in_days", "must_change_password", "signature_image", "registration_number",
         ]
         # `hospital` used to be writable here — perform_create already
         # silently overrides it on create regardless of what's posted, but
@@ -201,7 +209,7 @@ class UserSerializer(serializers.ModelSerializer):
             # Blocking/unblocking and lockout only change through
             # UserViewSet's block/unblock/unlock actions, which log a
             # SecurityEvent — never a bare PATCH.
-            "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts", "password_changed_at",
+            "is_blocked", "blocked_reason", "locked_until", "failed_login_attempts", "password_changed_at", "must_change_password",
             "staff_code",
         ]
 
@@ -241,6 +249,11 @@ class UserSerializer(serializers.ModelSerializer):
             from .models import assign_role
             assign_role(user, new_role)
         return user
+
+    def get_is_hospital_admin(self, obj) -> bool:
+        from .permission_catalog import is_hospital_admin
+
+        return bool(obj.is_superuser or is_hospital_admin(obj))
 
     def get_password_expires_in_days(self, obj):
         from apps.governance.services import password_expires_in_days

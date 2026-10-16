@@ -14,7 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
-from apps.core.fields import EncryptedTextField
+from apps.core.fields import EncryptedCharField, EncryptedTextField
 from apps.core.models import TenantScopedModel
 
 USER = settings.AUTH_USER_MODEL
@@ -72,7 +72,7 @@ class Allergy(TenantScopedModel):
         REFUTED = "refuted", "Refuted"
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="allergies")
-    allergen = models.CharField(max_length=150, help_text="For drugs, the generic name or class (e.g. 'penicillin').")
+    allergen = EncryptedCharField(max_length=150, help_text="For drugs, the generic name or class (e.g. 'penicillin').")
     allergen_type = models.CharField(max_length=16, choices=AllergenType.choices, default=AllergenType.DRUG)
     reaction = models.CharField(max_length=255, blank=True)
     severity = models.CharField(max_length=10, choices=Severity.choices, default=Severity.MODERATE)
@@ -150,10 +150,10 @@ class ClinicalAssessment(TenantScopedModel):
     template = models.ForeignKey(AssessmentTemplate, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     category = models.CharField(max_length=20, choices=AssessmentTemplate.Category.choices, default=AssessmentTemplate.Category.GENERAL)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.INITIAL)
-    chief_complaint = models.CharField(max_length=500, blank=True)
+    chief_complaint = EncryptedCharField(max_length=500, blank=True)
     history = EncryptedTextField(blank=True)
     examination = EncryptedTextField(blank=True)
-    provisional_diagnosis = models.CharField(max_length=500, blank=True)
+    provisional_diagnosis = EncryptedCharField(max_length=500, blank=True)
     data = models.JSONField(default=dict, blank=True, help_text="Answers to the template's fields.")
     assessed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     assessed_at = models.DateTimeField(default=timezone.now)
@@ -326,7 +326,7 @@ class ShiftHandover(TenantScopedModel):
     handed_over_to = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     situation = models.TextField()
     background = models.TextField(blank=True)
-    assessment = models.TextField(blank=True, help_text="Current condition, vitals, recent changes.")
+    assessment = EncryptedTextField(blank=True, help_text="Current condition, vitals, recent changes.")
     recommendation = models.TextField(blank=True, help_text="Pending tasks, scheduled investigations/procedures, watch-outs.")
     vitals_snapshot = models.JSONField(default=dict, blank=True)
     handed_over_at = models.DateTimeField(default=timezone.now)
@@ -464,7 +464,7 @@ class NotifiableDiseaseReport(TenantScopedModel):
 
     patient = models.ForeignKey("patients.Patient", on_delete=models.CASCADE, related_name="notifiable_reports")
     disease = models.ForeignKey(NotifiableDisease, on_delete=models.PROTECT, related_name="reports")
-    diagnosis_text = models.CharField(max_length=255)
+    diagnosis_text = EncryptedCharField(max_length=255)
     icd_code = models.CharField(max_length=16, blank=True)
     detected_at = models.DateTimeField(default=timezone.now)
     due_by = models.DateTimeField(null=True, blank=True)
@@ -485,7 +485,7 @@ class ResultReview(TenantScopedModel):
     source_type = models.CharField(max_length=30, help_text="lab_result | radiology_report | document | external | ...")
     source_id = models.CharField(max_length=64, blank=True)
     summary = models.CharField(max_length=300, blank=True)
-    comment = models.TextField()
+    comment = EncryptedTextField()
     reviewed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
     class Meta:
@@ -554,7 +554,7 @@ class HomecareBooking(TenantScopedModel):
     address = EncryptedTextField()
     assigned_staff = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.BOOKED)
-    visit_notes = models.TextField(blank=True)
+    visit_notes = EncryptedTextField(blank=True)
     vitals = models.JSONField(default=dict, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     bill = models.ForeignKey("billing.Bill", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -617,7 +617,7 @@ class SpecialtyReferral(TenantScopedModel):
     to_department = models.ForeignKey("core.Department", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     to_doctor = models.ForeignKey("appointments.Doctor", on_delete=models.SET_NULL, null=True, blank=True, related_name="incoming_referrals")
     reason = models.TextField()
-    clinical_summary = models.TextField(blank=True)
+    clinical_summary = EncryptedTextField(blank=True)
     urgency = models.CharField(max_length=10, choices=Urgency.choices, default=Urgency.ROUTINE)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SENT)
     response = models.TextField(blank=True)

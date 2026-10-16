@@ -25,6 +25,8 @@ from .serializers import (
 class PatientViewSet(PatientRegistrationMixin, AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     queryset = Patient.objects.all()
+    # data_scope=assigned_only: a doctor sees patients they have an appointment, OPD visit or admission with
+    assignment_scope_field = ("appointments__doctor__user", "encounters__doctor__user", "admissions__admitting_doctor__user")
     # Who changed what on a patient record (DPDP / NABH): field-level diffs on
     # top of AuditMiddleware's per-request who/when/where log.
     audited_fields = (

@@ -4,6 +4,7 @@ from django.db import models
 from apps.core.models import FinalizableModel, TenantScopedModel
 from apps.opd.models import InvestigationOrder
 from apps.patients.models import Patient
+from apps.core.fields import EncryptedTextField
 
 
 class LabTest(TenantScopedModel):
@@ -84,7 +85,7 @@ class LabOrder(TenantScopedModel):
     # NABH AAC.3 / COP.1.f CPOE.
     order_number = models.CharField(max_length=40, blank=True, editable=False, db_index=True)
     priority = models.CharField(max_length=8, default="routine", help_text="routine | urgent | stat")
-    clinical_notes = models.TextField(blank=True)
+    clinical_notes = EncryptedTextField(blank=True)
     admission = models.ForeignKey("ipd.Admission", on_delete=models.SET_NULL, null=True, blank=True, related_name="lab_orders")
     patient_notified_at = models.DateTimeField(null=True, blank=True)
     # Set when every test on the order is in one department (always so when
@@ -178,7 +179,7 @@ class LabResult(TenantScopedModel, FinalizableModel):
     repeated_from = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="repeats")
     is_amended = models.BooleanField(default=False, editable=False)
     source = models.CharField(max_length=10, default="manual", help_text="manual | analyzer")
-    interpretation = models.TextField(blank=True)
+    interpretation = EncryptedTextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -237,7 +238,7 @@ class OutsourcedLabTest(TenantScopedModel):
     sent_at = models.DateTimeField(null=True, blank=True)
     expected_by = models.DateTimeField(null=True, blank=True)
     received_at = models.DateTimeField(null=True, blank=True)
-    result_text = models.TextField(blank=True)
+    result_text = EncryptedTextField(blank=True)
     result_file = models.FileField(upload_to="outsourced_reports/%Y/%m/", blank=True)
 
     class ReportType(models.TextChoices):

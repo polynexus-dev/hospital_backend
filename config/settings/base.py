@@ -397,6 +397,11 @@ CORS_ALLOWED_ORIGINS = env.list(
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://([a-zA-Z0-9-]+\.)?hms\.polynexus\.in(:[0-9]+)?$",
 ]
+# X-Session-Id carries the payload-encryption session (PayloadEncryptionMiddleware);
+# without it here a cross-origin browser drops the header and traffic goes out plain.
+from corsheaders.defaults import default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*default_headers, "x-session-id")
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 

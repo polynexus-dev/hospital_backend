@@ -3,6 +3,7 @@ from django.db import models
 
 from apps.core.models import TenantScopedModel
 from apps.patients.models import Prescription
+from apps.core.fields import EncryptedTextField
 
 
 class Supplier(TenantScopedModel):
@@ -189,7 +190,7 @@ class MedicationReconciliation(TenantScopedModel):
     items = models.JSONField(default=list)
     discrepancies_found = models.PositiveSmallIntegerField(default=0, editable=False)
     reconciled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    notes = models.TextField(blank=True)
+    notes = EncryptedTextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]

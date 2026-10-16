@@ -124,16 +124,10 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             raise PermissionDenied(denied.data["detail"])
         self._check_role_assignment(serializer.validated_data.get("role"))
         hospital = getattr(self.request.user, "hospital", None)
-        if hospital:
-            from apps.saas_admin.models import TenantSubscription
-            from rest_framework.exceptions import ValidationError
-            sub = TenantSubscription.objects.filter(hospital=hospital, status=TenantSubscription.Status.ACTIVE).first()
-            if sub and sub.max_staff_users > 0:
-                current_count = User.objects.filter(hospital=hospital, is_active=True).count()
-                if current_count >= sub.max_staff_users:
-                    raise ValidationError({"detail": f"Hospital has reached its subscription staff limit of {sub.max_staff_users} users."})
-            if serializer.validated_data.get("is_active", True):
-                self._check_license_user_cap(hospital)
+        if hospital and serializer.validated_data.get("is_active", True):
+            from .provisioning import check_staff_capacity
+
+            check_staff_capacity(hospital)  # subscription staff limit + on-premise licence
         if str(self.request.data.get("saas_role", "")):
             created_user = serializer.save(hospital=None, is_saas_admin=True)
         else:
@@ -247,7 +241,10 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _require_user_admin(self, request):
-        if not (request.user.is_superuser or request.user.has_perm("accounts.change_user")):
+        from .permission_catalog import is_hospital_admin
+
+        # hospital owners/administrators manage their staff even without the explicit model permission
+        if not (request.user.is_superuser or request.user.has_perm("accounts.change_user") or is_hospital_admin(request.user)):
             return Response({"detail": "You do not have permission to manage users."}, status=status.HTTP_403_FORBIDDEN)
         return None
 
@@ -267,6 +264,23 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         target.save(update_fields=["password"])
         gov.record_password_change(target, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], url_path="temporary-password")
+    def temporary_password(self, request, pk=None):
+        """New login or forgotten password: issue a one-time password, shown to
+        the admin once. The user must set their own at first sign-in."""
+        denied = self._require_user_admin(request)
+        if denied:
+            return denied
+        target = self.get_object()
+        denied = self._require_saas_owner_for_platform_identity(request, target)
+        if denied:
+            return denied
+        self._check_role_assignment(None, target)  # e.g. only hospital admins may reset a hospital admin
+        if target.pk == request.user.pk:
+            return Response({"detail": "Change your own password from your profile instead."}, status=status.HTTP_400_BAD_REQUEST)
+        password = gov.issue_temporary_password(target, request=request)
+        return Response({"user_id": target.pk, "email": target.email, "temporary_password": password})
 
     @action(detail=True, methods=["post"])
     def block(self, request, pk=None):

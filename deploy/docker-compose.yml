@@ -106,6 +106,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       BACKUP_TIME: ${BACKUP_TIME:-02:00}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:-}
       TZ: ${BACKUP_TZ:-IST-5:30}
     volumes:
       - ./backup.sh:/backup.sh:ro

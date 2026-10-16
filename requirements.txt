@@ -36,7 +36,7 @@ prompt_toolkit==3.0.53
 pycparser==3.0
 psycopg==3.3.4
 psycopg-binary==3.3.4
-PyJWT==2.13.0
+PyJWT==2.15.1
 pyotp==2.10.0
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0

@@ -102,7 +102,7 @@ class SaaSHospitalSerializer(serializers.ModelSerializer):
         model = Hospital
         fields = [
             "id", "name", "slug", "city", "state", "address",
-            "primary_language", "is_active", "enabled_modules", "helpline_phone",
+            "primary_language", "is_active", "enabled_modules", "helpline_phone", "block_devtools",
             "subscription", "staff_count", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "subscription", "staff_count"]

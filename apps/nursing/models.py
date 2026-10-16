@@ -5,6 +5,7 @@ from django.db import models
 
 from apps.core.models import TenantScopedModel
 from apps.patients.models import Prescription
+from apps.core.fields import EncryptedTextField
 
 # Generic FK to whatever's under nursing care — apps.ipd.Admission today,
 # emergency.EDVisit / icu.ICUAdmission once Phase 6 ships. One model
@@ -20,7 +21,7 @@ class NursingNote(TenantScopedModel):
     content_object = GenericForeignKey("content_type", "object_id")
 
     nurse = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    note = models.TextField()
+    note = EncryptedTextField()
 
     class Meta:
         ordering = ["-created_at"]
@@ -44,7 +45,7 @@ class MedicationAdministration(TenantScopedModel):
     dose = models.CharField(max_length=100, blank=True)
     nurse = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     administered_at = models.DateTimeField(auto_now_add=True)
-    notes = models.TextField(blank=True)
+    notes = EncryptedTextField(blank=True)
 
     # eMAR (NABH MOM.3.a/b) — who the dose was actually given to, and how
     # that was confirmed at the bedside. `patient` is denormalised from the
@@ -86,7 +87,7 @@ class IntakeOutput(TenantScopedModel):
     intake_ml = models.PositiveIntegerField(null=True, blank=True)
     output_ml = models.PositiveIntegerField(null=True, blank=True)
     recorded_at = models.DateTimeField(auto_now_add=True)
-    notes = models.TextField(blank=True)
+    notes = EncryptedTextField(blank=True)
 
     class Meta:
         ordering = ["-recorded_at"]

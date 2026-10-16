@@ -4,10 +4,15 @@ from .models import Appointment, Doctor, Slot, SlotTemplate, Waitlist
 
 
 class DoctorSerializer(serializers.ModelSerializer):
+    # the linked login, if any ("Give login access" on the doctor form)
+    login_email = serializers.CharField(source="user.email", read_only=True, default=None)
+    login_must_change_password = serializers.BooleanField(source="user.must_change_password", read_only=True, default=None)
+
     class Meta:
         model = Doctor
-        fields = ["id", "department", "name", "speciality", "phone", "email", "pan", "default_consultation_minutes", "is_active"]
-        read_only_fields = ["id"]
+        fields = ["id", "department", "name", "speciality", "phone", "email", "pan", "default_consultation_minutes", "is_active",
+                  "user", "login_email", "login_must_change_password"]
+        read_only_fields = ["id", "user"]
 
     def validate_pan(self, value):
         import re

@@ -11,19 +11,28 @@ echo "Applying database migrations..."
 python manage.py migrate --noinput
 python manage.py import_pincodes --if-empty
 
-echo "Seeding demo data & accounts (idempotent)..."
-python manage.py seed_demo_data --admin-password changeme123 || true
+# Demo hospital, demo/SaaS logins with the well-known password changeme123, and the
+# password resets below: on by default only with development settings. A production
+# server (DJANGO_SETTINGS_MODULE=config.settings.prod) gets none of it unless
+# DEMO_ACCOUNTS=1 is set deliberately (e.g. a public demo instance).
+case "${DJANGO_SETTINGS_MODULE:-config.settings.dev}" in
+  *.prod) demo_default=0 ;;
+  *) demo_default=1 ;;
+esac
+if [ "${DEMO_ACCOUNTS:-$demo_default}" = "1" ]; then
+  echo "Seeding demo data & accounts (idempotent)..."
+  python manage.py seed_demo_data --admin-password changeme123 || true
 
-if [ "${LOAD_DEMO_DATA:-1}" = "1" ]; then
-  echo "Loading Polynexus demo dataset (first start only, ~3 min; skipped once loaded)..."
-  python manage.py load_demo_data || echo "WARNING: demo dataset not loaded - see the error above"
-fi
+  if [ "${LOAD_DEMO_DATA:-1}" = "1" ]; then
+    echo "Loading Polynexus demo dataset (first start only, ~3 min; skipped once loaded)..."
+    python manage.py load_demo_data || echo "WARNING: demo dataset not loaded - see the error above"
+  fi
 
-echo "Ensuring SaaS-company roles and accounts exist (idempotent)..."
-python manage.py seed_saas_company --password "${SAAS_SEED_PASSWORD:-changeme123}" || true
+  echo "Ensuring SaaS-company roles and accounts exist (idempotent)..."
+  python manage.py seed_saas_company --password "${SAAS_SEED_PASSWORD:-changeme123}" || true
 
-echo "Ensuring required portal login accounts exist..."
-python -c "
+  echo "Ensuring required portal login accounts exist..."
+  python -c "
 import django, os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.dev')
 django.setup()
@@ -64,7 +73,10 @@ for email, role_desc, h_slug, is_staff, is_super in users:
             u.set_password('changeme123')
         u.save()
         print(f'   [OK] Verified login account: {email} ({role_desc})')
-" || true
+  " || true
+else
+  echo "Production settings: skipping demo data and demo/SaaS accounts (set DEMO_ACCOUNTS=1 to load them)."
+fi
 
 echo "Starting backend process: $@"
 exec "$@"

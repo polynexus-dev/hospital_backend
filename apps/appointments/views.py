@@ -46,9 +46,18 @@ class DoctorViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     filterset_fields = ["department", "is_active"]
     search_fields = ["name", "speciality"]
 
+    def _own_doctor_only(self, doctor):
+        """A doctor whose role sees only their own records may act on their own profile only."""
+        role = getattr(self.request.user, "role", None)
+        if getattr(role, "data_scope", "all") == "assigned_only" and doctor.user_id != self.request.user.pk:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You can only manage your own schedule.")
+
     @action(detail=True, methods=["post"], url_path="block-leave")
     def block_leave(self, request, pk=None):
         doctor = self.get_object()
+        self._own_doctor_only(doctor)
         serializer = BlockDoctorSlotsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         result = block_doctor_slots(doctor, **serializer.validated_data)
@@ -57,6 +66,7 @@ class DoctorViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="unblock-leave")
     def unblock_leave(self, request, pk=None):
         doctor = self.get_object()
+        self._own_doctor_only(doctor)
         serializer = BlockDoctorSlotsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         unblocked = unblock_doctor_slots(
@@ -67,9 +77,38 @@ class DoctorViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def queue(self, request, pk=None):
         doctor = self.get_object()
+        self._own_doctor_only(doctor)
         date_param = request.query_params.get("date")
         date = datetime.strptime(date_param, "%Y-%m-%d").date() if date_param else timezone.localdate()
         return Response(DoctorQueueSerializer(doctor_queue(doctor, date)).data)
+
+    @action(detail=True, methods=["post"], url_path="grant-login")
+    def grant_login(self, request, pk=None):
+        """Give this doctor a login: created with the doctor's email and the
+        hospital's Consultant Doctor role, linked to this profile, with a
+        one-time password (shown once) they must change at first sign-in."""
+        from django.db import transaction
+
+        from apps.accounts.provisioning import create_login, doctor_role
+        from apps.governance.services import issue_temporary_password
+
+        from apps.accounts.permission_catalog import is_hospital_admin
+
+        if not (request.user.is_superuser or request.user.has_perm("accounts.add_user") or is_hospital_admin(request.user)):
+            return Response({"detail": "You do not have permission to create logins."}, status=status.HTTP_403_FORBIDDEN)
+        doctor = self.get_object()
+        if doctor.user_id:
+            return Response({"detail": f"This doctor already signs in as {doctor.user.email}. Use Reset password instead."}, status=status.HTTP_400_BAD_REQUEST)
+        email = (request.data.get("email") or doctor.email or "").strip().lower()
+        first, _, last = (doctor.name or "").replace("Dr. ", "").strip().partition(" ")
+        with transaction.atomic():
+            user = create_login(actor=request.user, hospital=doctor.hospital, email=email, first_name=first, last_name=last,
+                                role=doctor_role(doctor.hospital), department=doctor.department)
+            doctor.user = user
+            doctor.email = email
+            doctor.save(update_fields=["user", "email"])
+            password = issue_temporary_password(user, request=request)
+        return Response({"user_id": user.pk, "email": user.email, "role": user.role.name, "temporary_password": password}, status=status.HTTP_201_CREATED)
 
 
 class SlotTemplateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -88,6 +127,7 @@ class SlotTemplateViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class SlotViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = SlotSerializer
+    assignment_scope_field = "doctor__user"  # data_scope=assigned_only: a doctor's own slots
     queryset = Slot.objects.prefetch_related("appointments").all()
     filterset_fields = ["doctor", "date", "is_blocked"]
 
@@ -99,6 +139,7 @@ class SlotViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
 class AppointmentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
+    assignment_scope_field = "doctor__user"  # data_scope=assigned_only: a doctor sees their own appointments
     queryset = Appointment.objects.select_related("patient", "doctor", "slot").all()
     filterset_fields = ["status", "doctor", "patient", "source", "slot__date"]
 
@@ -152,6 +193,7 @@ class AppointmentViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
 class WaitlistViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = WaitlistSerializer
+    assignment_scope_field = "doctor__user"  # data_scope=assigned_only: patients waiting for this doctor
     queryset = Waitlist.objects.select_related("patient", "doctor", "department", "offered_slot").all()
     filterset_fields = ["doctor", "department", "status"]
 

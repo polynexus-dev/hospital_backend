@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from apps.core.models import TenantScopedModel
 from apps.patients.models import Patient
+from apps.core.fields import EncryptedTextField
 
 
 class EDVisit(TenantScopedModel):
@@ -17,7 +18,7 @@ class EDVisit(TenantScopedModel):
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="ed_visits")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TRIAGED)
-    chief_complaint = models.TextField(blank=True)
+    chief_complaint = EncryptedTextField(blank=True)
     arrived_at = models.DateTimeField(default=timezone.now)
 
     # COP.4.a — ED registration details (patients may arrive unidentified).
@@ -61,7 +62,7 @@ class Triage(TenantScopedModel):
 
     ed_visit = models.OneToOneField(EDVisit, on_delete=models.CASCADE, related_name="triage")
     triage_category = models.CharField(max_length=32, choices=Category.choices)
-    vitals_summary = models.TextField(blank=True)
+    vitals_summary = EncryptedTextField(blank=True)
     triaged_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     triaged_at = models.DateTimeField(default=timezone.now)
 
