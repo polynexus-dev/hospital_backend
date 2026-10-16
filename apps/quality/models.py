@@ -254,7 +254,7 @@ class KPISnapshot(TenantScopedModel):
     denominator = models.DecimalField(max_digits=14, decimal_places=2, null=True)
     value = models.DecimalField(max_digits=14, decimal_places=4, null=True)
     unit = models.CharField(max_length=30)
-    source = models.CharField(max_length=10, default="system", help_text="system | manual | unavailable")
+    source = models.CharField(max_length=16, default="system", help_text="system | manual | unavailable")
     note = models.CharField(max_length=300, blank=True)
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)

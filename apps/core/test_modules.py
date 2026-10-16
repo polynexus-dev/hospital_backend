@@ -10,6 +10,10 @@ from apps.core.models import ALL_MODULES, CRM_MODULES, Hospital, default_enabled
 
 FRONTEND = Path(__file__).resolve().parents[3] / "Frontend" / "src"
 
+# The frontend is a separate repo: these cross-repo checks run when it is checked
+# out next to Backend/ (local dev, the bundle build) and skip in backend-only CI.
+needs_frontend = pytest.mark.skipif(not FRONTEND.is_dir(), reason="Frontend/ not checked out next to Backend/")
+
 
 def _frontend_modules():
     text = (FRONTEND / "features" / "saas" / "TenantModulesModal.tsx").read_text(encoding="utf-8")
@@ -17,6 +21,7 @@ def _frontend_modules():
     return re.findall(r'\{ key: "([a-z_]+)", name:', block)
 
 
+@needs_frontend
 def test_saas_console_offers_exactly_the_backend_modules():
     offered = _frontend_modules()
     assert len(offered) == len(set(offered)), "duplicate module in the SaaS console list"
@@ -26,6 +31,7 @@ def test_saas_console_offers_exactly_the_backend_modules():
     assert set(re.findall(r'\{ key: "([a-z_]+)", name:', crm_block)) == set(CRM_MODULES)  # right suite
 
 
+@needs_frontend
 def test_every_menu_module_gate_is_a_real_module():
     nav = (FRONTEND / "app" / "navConfig.ts").read_text(encoding="utf-8")
     gates = set()
