@@ -113,7 +113,10 @@ class MedicalRecordFileViewSet(ClinicalCRUDViewSet):
     @action(detail=True, methods=["post"])
     def audit(self, request, pk=None):
         f = self.get_object()
-        checklist = {**completeness(f), **{k: bool(v) for k, v in (request.data.get("manual") or {}).items()}}
+        manual = request.data.get("manual") or {}
+        if not isinstance(manual, dict):
+            return Response({"manual": "An object of checklist items, e.g. {\"consent_signed\": true}."}, status=400)
+        checklist = {**completeness(f), **{k: bool(v) for k, v in manual.items()}}
         score = round(100 * sum(checklist.values()) / len(checklist), 1) if checklist else 0
         a = RecordAudit.objects.create(hospital_id=f.hospital_id, record_file=f, checklist=checklist, score_pct=score,
                                        deficiencies=", ".join(k for k, v in checklist.items() if not v), auditor=request.user)

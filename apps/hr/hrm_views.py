@@ -349,7 +349,14 @@ class TrainingProgramViewSet(TenantCRUDViewSet):
     @action(detail=True, methods=["post"])
     def record(self, request, pk=None):
         prog = self.get_object()
-        for row in request.data.get("attendees") or []:
+        rows = request.data.get("attendees") or []
+        if not isinstance(rows, list) or not all(isinstance(r, dict) and r.get("employee") for r in rows):
+            return Response({"attendees": 'A list like [{"employee": 12, "attended": true, "post_test_score": 8}].'}, status=400)
+        ids = {str(r["employee"]) for r in rows}
+        known = {str(pk) for pk in Employee.objects.filter(hospital_id=prog.hospital_id, pk__in=[i for i in ids if i.isdigit()]).values_list("pk", flat=True)}
+        if ids - known:
+            return Response({"attendees": f"Unknown employee(s): {', '.join(sorted(ids - known))}."}, status=400)
+        for row in rows:
             TrainingAttendance.objects.update_or_create(
                 hospital_id=prog.hospital_id, program=prog, employee_id=row["employee"],
                 defaults={k: row.get(k) for k in ("attended", "pre_test_score", "post_test_score", "feedback_rating", "feedback") if k in row},

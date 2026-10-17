@@ -1,0 +1,72 @@
+[
+ {
+  "method": "POST",
+  "path": "/api/v1/enquiries/151/add-note/",
+  "role": "owner@demo-hospital.example",
+  "error": "AttributeError: 'int' object has no attribute 'strip'",
+  "at": "\\apps\\enquiries\\views.py:73 add_note"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/calls/click-to-call/",
+  "role": "ganesh.pawar@demo.polynexus.in",
+  "error": "OperationalError: database is locked",
+  "at": "\\apps\\core\\models.py:231 save"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/opd/encounters/",
+  "role": "owner@demo-hospital.example",
+  "error": "IntegrityError: NOT NULL constraint failed: opd_encounter.appointment_id",
+  "at": "\\apps\\core\\viewsets.py:151 audited_save"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/ipd/admissions/1/initiate_discharge/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: 'int' object is not iterable",
+  "at": "\\apps\\ipd\\workflow.py:47 initiate_discharge"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/pharmacy/emergency-stock/1/check/",
+  "role": "owner@demo-hospital.example",
+  "error": "ValueError: invalid literal for int() with base 10: 'Example current quantity'",
+  "at": "\\apps\\pharmacy\\workflow.py:217 check"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/ot/surgery-requests/17/request-investigations/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: 'int' object is not iterable",
+  "at": "\\apps\\ot\\views.py:67 request_investigations"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/billing/bills/765/lock/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: 'int' object is not subscriptable",
+  "at": "\\apps\\billing\\adjustments.py:124 lock"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/inventory/consumption/request/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: 'int' object is not iterable",
+  "at": "\\apps\\inventory\\consumption.py:112 post"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/governance/incidents/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: unsupported format string passed to NoneType.__format__",
+  "at": "\\apps\\governance\\views.py:262 perform_create"
+ },
+ {
+  "method": "POST",
+  "path": "/api/v1/oncology/tumor-boards/1/record_attendance/",
+  "role": "owner@demo-hospital.example",
+  "error": "TypeError: string indices must be integers, not 'str'",
+  "at": "\\apps\\oncology\\views.py:223 record_attendance"
+ }
+]

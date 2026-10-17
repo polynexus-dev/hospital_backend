@@ -80,3 +80,13 @@ def test_recruitment_exit_training(auth_client, hospital, nurse):
 def test_appraisal_overall(auth_client, nurse):
     a = auth_client.post("/api/v1/hr/appraisals/", {"employee": nurse.pk, "period": "FY2025-26", "ratings": {"clinical": 4, "communication": 5, "teamwork": 3}}, format="json").json()
     assert Decimal(a["overall_rating"]) == Decimal("4.00")
+
+
+def test_training_attendance_rejects_malformed_rows_and_other_hospitals_staff(auth_client, nurse, other_hospital):
+    prog = auth_client.post("/api/v1/hr/trainings/", {"title": "Fire safety", "kind": "induction", "scheduled_at": timezone.now().isoformat()}, format="json").json()
+    url = f"/api/v1/hr/trainings/{prog['id']}/record/"
+    assert auth_client.post(url, {"attendees": "everyone"}, format="json").status_code == 400
+    assert auth_client.post(url, {"attendees": ["Neha"]}, format="json").status_code == 400
+    outsider = Employee.objects.create(hospital=other_hospital, employee_code="X9", designation="Clerk")
+    res = auth_client.post(url, {"attendees": [{"employee": outsider.pk, "attended": True}]}, format="json")
+    assert res.status_code == 400 and "Unknown employee" in res.json()["attendees"]

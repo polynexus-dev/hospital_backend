@@ -222,8 +222,13 @@ class PatientRegistrationMixin:
         online. Idempotent on offline_client_id; each row gets the same
         duplicate screening as an online registration."""
         rows = request.data.get("patients") or []
+        if not isinstance(rows, list):
+            return Response({"patients": "A list of patient registrations is required."}, status=400)
         results = []
         for row in rows[:200]:
+            if not isinstance(row, dict):
+                results.append({"status": "error", "error": "each registration must be an object"})
+                continue
             cid = str(row.get("offline_client_id", "")).strip()
             if not cid:
                 results.append({"status": "error", "error": "offline_client_id required"})

@@ -1,10 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
 class BasePatientAPIView(APIView):
     permission_classes = [IsAuthenticated]
     # In a full implementation, you'd restrict querysets to the logged-in user's linked Patient object(s).
+
+    def patient_id(self, request):
+        """The patient the mobile token was issued for; a staff login or
+        session has none, which is refused rather than read as "no patient"."""
+        auth = getattr(request, "auth", None)
+        patient_id = auth.get("patient_id") if auth is not None and hasattr(auth, "get") else None
+        if not patient_id:
+            raise PermissionDenied("No patient associated with token")
+        return patient_id
 
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
@@ -25,14 +35,14 @@ class HospitalSerializer(serializers.ModelSerializer):
 # Profile & Family
 class ProfileView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id") if hasattr(request, "auth") else None
+        patient_id = self.patient_id(request)
         if not patient_id:
             return Response({"error": "No patient associated with token"}, status=403)
         patient = get_object_or_404(Patient, pk=patient_id)
         return Response(PatientSerializer(patient).data)
 
     def patch(self, request):
-        patient_id = request.auth.get("patient_id") if hasattr(request, "auth") else None
+        patient_id = self.patient_id(request)
         if not patient_id:
             return Response({"error": "No patient associated with token"}, status=403)
         patient = get_object_or_404(Patient, pk=patient_id)
@@ -43,12 +53,12 @@ class ProfileView(BasePatientAPIView):
 
 class FamilyView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         family = Patient.objects.filter(guardian_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(PatientSerializer(family, many=True).data)
         
     def post(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         
         # Check if family member already exists
         first_name = request.data.get("first_name", "").strip()
@@ -69,7 +79,7 @@ class FamilyView(BasePatientAPIView):
 
 class FamilyDetailView(BasePatientAPIView):
     def patch(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         member = get_object_or_404(Patient, pk=pk, guardian_id=patient_id, hospital_id=request.user.hospital_id)
         serializer = PatientSerializer(member, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -77,7 +87,7 @@ class FamilyDetailView(BasePatientAPIView):
         return Response(serializer.data)
         
     def delete(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         member = get_object_or_404(Patient, pk=pk, guardian_id=patient_id, hospital_id=request.user.hospital_id)
         member.is_active = False
         member.save(update_fields=["is_active"])
@@ -85,7 +95,7 @@ class FamilyDetailView(BasePatientAPIView):
 
 class PreferencesView(BasePatientAPIView):
     def patch(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         patient = get_object_or_404(Patient, pk=patient_id)
         
         # We only allow updating preference fields here
@@ -176,7 +186,7 @@ from rest_framework import status
 # Appointments
 class AppointmentListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Appointment.objects.filter(hospital_id=request.user.hospital_id, patient_id=patient_id).order_by("-created_at")
         if "status" in request.query_params:
             if request.query_params["status"] == "upcoming":
@@ -186,7 +196,7 @@ class AppointmentListView(BasePatientAPIView):
         return Response(AppointmentSerializer(qs, many=True).data)
 
     def post(self, request):
-        logged_in_patient_id = request.auth.get("patient_id")
+        logged_in_patient_id = self.patient_id(request)
         
         serializer = BookAppointmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -213,13 +223,13 @@ class AppointmentListView(BasePatientAPIView):
 
 class AppointmentDetailView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         appointment = get_object_or_404(Appointment, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(AppointmentSerializer(appointment).data)
 
 class AppointmentRescheduleView(BasePatientAPIView):
     def post(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         appointment = get_object_or_404(Appointment, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         
         serializer = RescheduleAppointmentSerializer(data=request.data)
@@ -235,14 +245,14 @@ class AppointmentRescheduleView(BasePatientAPIView):
 
 class AppointmentCancelView(BasePatientAPIView):
     def post(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         appointment = get_object_or_404(Appointment, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         cancelled_apt = cancel(appointment)
         return Response(AppointmentSerializer(cancelled_apt).data)
 
 class AppointmentQueueView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         appointment = get_object_or_404(Appointment, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response({
             "queue_status": appointment.status, 
@@ -251,7 +261,7 @@ class AppointmentQueueView(BasePatientAPIView):
 
 class AppointmentCheckinView(BasePatientAPIView):
     def post(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         appointment = get_object_or_404(Appointment, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         
         if appointment.status in ["cancelled", "rescheduled", "no_show", "completed"]:
@@ -279,13 +289,13 @@ class PaymentWebhookView(APIView):
 
 class BillListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         bills = Bill.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(BillSerializer(bills, many=True).data)
 
 class BillDetailView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         bill = get_object_or_404(Bill, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(BillSerializer(bill).data)
 
@@ -301,43 +311,43 @@ from apps.patients.serializers import PrescriptionSerializer, DocumentSerializer
 
 class PrescriptionListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Prescription.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id).order_by("-created_at")
         return Response(PrescriptionSerializer(qs, many=True).data)
 
 class PrescriptionDetailView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         prescription = get_object_or_404(Prescription, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(PrescriptionSerializer(prescription).data)
 
 class ReportListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Document.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id, category="lab_report").order_by("-created_at")
         return Response(DocumentSerializer(qs, many=True).data)
 
 class ReportFileView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         doc = get_object_or_404(Document, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response({"file_url": doc.file.url if doc.file else None})
 
 class VisitListView(BasePatientAPIView):
     def get(self, request):
         # Return completed appointments as visits
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Appointment.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id, status="completed").order_by("-created_at")
         return Response(AppointmentSerializer(qs, many=True).data)
 
 class DocumentListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Document.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id).order_by("-created_at")
         return Response(DocumentSerializer(qs, many=True).data)
         
     def post(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         serializer = DocumentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(patient_id=patient_id, hospital_id=request.user.hospital_id, uploaded_by=request.user)
@@ -373,7 +383,7 @@ class CampListView(BasePatientAPIView):
 
 class CampRegisterView(BasePatientAPIView):
     def post(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         patient = get_object_or_404(Patient, pk=patient_id)
         camp = get_object_or_404(Campaign, pk=pk, hospital_id=request.user.hospital_id, campaign_type=Campaign.CampaignType.HEALTH_CAMP)
         
@@ -407,7 +417,7 @@ from apps.communications.serializers import MessageSerializer
 class CallbackRequestView(BasePatientAPIView):
     def post(self, request):
         from apps.telephony.models import CallbackTask
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         patient = get_object_or_404(Patient, pk=patient_id)
         
         task = CallbackTask.objects.create(
@@ -421,13 +431,13 @@ class CallbackRequestView(BasePatientAPIView):
 
 class NotificationListView(BasePatientAPIView):
     def get(self, request):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         qs = Message.objects.filter(patient_id=patient_id, hospital_id=request.user.hospital_id).order_by("-created_at")
         return Response(MessageSerializer(qs, many=True).data)
 
 class NotificationReadView(BasePatientAPIView):
     def patch(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         msg = get_object_or_404(Message, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         msg.status = "read"
         msg.save(update_fields=["status"])
@@ -436,7 +446,7 @@ class NotificationReadView(BasePatientAPIView):
 class FeedbackView(BasePatientAPIView):
     def post(self, request):
         from apps.feedback.models import Complaint
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         patient = get_object_or_404(Patient, pk=patient_id)
         
         description = request.data.get("description", "General feedback")
@@ -464,6 +474,6 @@ class InsuranceView(BasePatientAPIView):
 
 class PreauthStatusView(BasePatientAPIView):
     def get(self, request, pk):
-        patient_id = request.auth.get("patient_id")
+        patient_id = self.patient_id(request)
         preauth = get_object_or_404(PreAuthRequest, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
         return Response(PreAuthRequestSerializer(preauth).data)

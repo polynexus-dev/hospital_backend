@@ -16,6 +16,8 @@ class EDVisitWorkflowMixin:
         mlc_type = str(request.data.get("mlc_type", "")).strip()
         police_station = str(request.data.get("police_station", "")).strip()
         checklist = request.data.get("checklist") or {}
+        if not isinstance(checklist, dict):
+            return Response({"checklist": "An object of checklist items, e.g. {\"police_intimation_sent\": true}."}, status=400)
         missing = [f for f, v in (("mlc_type", mlc_type), ("police_station", police_station)) if not v]
         if missing:
             return Response({"detail": "Required for an MLC: " + ", ".join(missing)}, status=400)
