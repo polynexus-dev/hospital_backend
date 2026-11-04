@@ -168,6 +168,7 @@ MIDDLEWARE = [
     # Transparent no-op when PAYLOAD_ENCRYPTION_ENABLED=False.
     "apps.core.middleware.PayloadEncryptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.APIContentSecurityPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -212,6 +213,9 @@ ASGI_APPLICATION = "config.asgi.application"
 # Set True in production to hide all API payloads from browser DevTools.
 # Set False (default) in dev / Postman -- middleware becomes a no-op.
 PAYLOAD_ENCRYPTION_ENABLED = env.bool("PAYLOAD_ENCRYPTION_ENABLED", default=False)
+# Largest encrypted request body. Base64 adds a third, so this is what lets a
+# 25 MB upload through (nginx client_max_body_size matches).
+PAYLOAD_MAX_BODY_BYTES = env.int("PAYLOAD_MAX_BODY_BYTES", default=36 * 1024 * 1024)
 
 if env.bool("USE_SQLITE", default=False):
     DATABASES: dict[str, dict[str, Any]] = {
@@ -350,6 +354,10 @@ REST_FRAMEWORK = {
         # one-off use (running a report a few times while checking output)
         # but bounds the worst case.
         "heavy_ops": "20/hour",
+        # ABDM gateway callbacks and data pushes (apps.abdm.callbacks): no
+        # user to throttle per, and the gateway is bursty; still bounded.
+        "abdm_gateway": "600/minute",
+        "payload_handshake": "600/minute",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": (
@@ -401,7 +409,23 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 # without it here a cross-origin browser drops the header and traffic goes out plain.
 from corsheaders.defaults import default_headers  # noqa: E402
 
-CORS_ALLOW_HEADERS = (*default_headers, "x-session-id")
+# X-Auth-Cookie opts the browser app into the httpOnly refresh cookie
+# (apps.accounts.refresh_cookie); being a custom header, it also forces a
+# CORS preflight, which is what keeps other sites from spending the cookie.
+CORS_ALLOW_HEADERS = (*default_headers, "x-session-id", "x-auth-cookie", "x-enc-query")
+# Production serves the SPA and the API from one origin (nginx proxies
+# /api/), so the cookie never needs cross-origin credentials there. Dev
+# (Vite on :5173 -> runserver on :8000) does; see dev.py.
+CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS", default=False)
+
+# The browser app's refresh token (apps.accounts.refresh_cookie). Sent only
+# to the auth endpoints. Secure "auto" follows the request's scheme, so an
+# on-premise install still on plain HTTP keeps working; "true" forces it.
+REFRESH_COOKIE_NAME = "hms_refresh"
+REFRESH_COOKIE_PERSIST_NAME = "hms_refresh_keep"
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SAMESITE = env.str("REFRESH_COOKIE_SAMESITE", default="Strict")
+REFRESH_COOKIE_SECURE = env.str("REFRESH_COOKIE_SECURE", default="auto").lower()
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
@@ -481,6 +505,11 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_BEAT_SCHEDULE = {
+    # ABDM: records received from other providers are erased when their consent's dataEraseAt passes.
+    "purge-expired-abdm-records": {
+        "task": "apps.abdm.tasks.purge_expired_abdm_records",
+        "schedule": 3600.0,  # hourly
+    },
     # Insurance inbox: import new insurer / TPA emails.
     "poll-tpa-mailboxes": {
         "task": "apps.tpa.tasks.poll_tpa_mailboxes",
@@ -714,6 +743,8 @@ HODUPBX_TENANT_ID = env("HODUPBX_TENANT_ID", default="1048")
 HODUPBX_DEFAULT_EXTENSION = env("HODUPBX_DEFAULT_EXTENSION", default="101")
 # MD5 hash of the extension's web password — required by /api/info/click2call
 HODUPBX_EXTENSION_PASSWORD_MD5 = env("HODUPBX_EXTENSION_PASSWORD_MD5", default="")
+# A PBX on a private CA: path to that CA's certificate (PEM). TLS is never switched off.
+HODUPBX_CA_BUNDLE = env("HODUPBX_CA_BUNDLE", default="")
 
 # Browser softphone (WebRTC SIP). Served to signed-in telephony users by
 # /api/v1/telephony/webrtc-config/ — never built into the frontend bundle.
@@ -748,9 +779,9 @@ HIS_CONNECTOR = env("HIS_CONNECTOR", default="stub")
 # client_id/secret, HIP ID) is complete. See RealABDMGateway's own
 # docstring for exactly what's been verified against ABDM's sandbox vs.
 # still best-effort, and what's deliberately not implemented yet
-# (fetch_health_records — needs an async data-push callback + ABDM's
-# encryption scheme, not just an HTTP call). NHCX has no "real"
-# implementation yet — still stub-only.
+# The HIE-CM data flow (M2/M3) is apps.abdm.callbacks/hip/hiu, encrypted
+# per apps.abdm.fidelius. NHCX has no "real" implementation yet — still
+# stub-only.
 ABDM_GATEWAY = env("ABDM_GATEWAY", default="stub")
 ABDM_BASE_URL = env("ABDM_BASE_URL", default="")
 ABDM_CLIENT_ID = env("ABDM_CLIENT_ID", default="")
@@ -762,6 +793,17 @@ ABDM_HIP_ID = env("ABDM_HIP_ID", default="")
 # exchange, OTP init/verify, consent init/status). ABDM's own sandbox is
 # occasionally slow; this is a network-call timeout, not a UX budget.
 ABDM_TIMEOUT_SECONDS = env.int("ABDM_TIMEOUT_SECONDS", default=15)
+# Consent Manager id sent as X-CM-ID: "sbx" in the sandbox, "abdm" in production.
+ABDM_CM_ID = env("ABDM_CM_ID", default="sbx")
+# The gateway's public signing keys (JWKS) — every callback's JWT is checked against them.
+ABDM_JWKS_URL = env("ABDM_JWKS_URL", default=f"{ABDM_BASE_URL}/gateway/v3/certs" if ABDM_BASE_URL else "")
+# This deployment's public HTTPS origin (e.g. https://apollo.hms.polynexus.in):
+# the base of the dataPushUrl other providers send records to (M3).
+ABDM_CALLBACK_BASE_URL = env("ABDM_CALLBACK_BASE_URL", default="")
+# How long a patient-initiated link OTP is valid, in minutes.
+ABDM_LINK_OTP_MINUTES = env.int("ABDM_LINK_OTP_MINUTES", default=10)
+# How long records received from other providers may be kept (the consent's dataEraseAt), in days.
+ABDM_CONSENT_RETENTION_DAYS = env.int("ABDM_CONSENT_RETENTION_DAYS", default=30)
 
 NHCX_GATEWAY = env("NHCX_GATEWAY", default="stub")
 NHCX_BASE_URL = env("NHCX_BASE_URL", default="")
@@ -843,3 +885,18 @@ if LOG_DIR:
     LOGGING["root"]["handlers"].append("daily_file")
     for _logger in LOGGING["loggers"].values():
         _logger["handlers"].append("daily_file")
+
+# Error monitoring (WASA / ISO 27001 A.8.16) — off unless SENTRY_DSN is set.
+# Any Sentry-protocol server works; a self-hosted GlitchTip/Sentry keeps
+# events on our own infrastructure. Events never carry patient data: see
+# apps.core.monitoring.scrub_event.
+SENTRY_DSN = env.str("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    from apps.core.monitoring import init_sentry  # noqa: E402
+
+    init_sentry(
+        dsn=SENTRY_DSN,
+        environment=env.str("SENTRY_ENVIRONMENT", default="production"),
+        release=APP_VERSION,
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+    )

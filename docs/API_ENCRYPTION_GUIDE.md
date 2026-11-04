@@ -11,7 +11,7 @@ This doc explains the encryption layers the API uses, when they kick in, and exa
 | Layer | What | Where | Always on? |
 |---|---|---|---|
 | **1 — Transport** | HTTPS/TLS | Nginx/load balancer in front of Django | Yes, in every real environment |
-| **2 — Payload encryption** | ECDH-P256 handshake → AES-256-GCM encrypt/decrypt of request & response **bodies** | `apps.core.middleware.PayloadEncryptionMiddleware` | Only when `PAYLOAD_ENCRYPTION_ENABLED=True` (prod). Off by default in dev. |
+| **2 — Payload encryption** | ECDH-P256 handshake → AES-256-GCM encrypt/decrypt of request & response **bodies** | `apps.core.middleware.PayloadEncryptionMiddleware` | **Mandatory in production** (it refuses to start with `PAYLOAD_ENCRYPTION_ENABLED` off). Off by default in dev. |
 | **3 — Field-level encryption** | AES-256-GCM (legacy rows: Fernet) encryption of specific DB columns (Aadhaar/national ID, insurance policy number, phone, free-text clinical notes) | `apps.core.encryption` / `apps.core.fields` | Always, for the specific model fields that use `EncryptedCharField`/`EncryptedTextField`/`EncryptedJSONField` |
 
 **The important thing for day-to-day API work: Layer 3 is completely invisible to you.** It's encrypted in the database and decrypted back to plain values by the model field before it ever reaches a serializer or view. You never encode/decode it from client code — just read/write those fields as normal JSON strings.
@@ -24,7 +24,7 @@ This doc explains the encryption layers the API uses, when they kick in, and exa
 
 - **Local dev (`DEBUG=True`, default `.env`)**: `PAYLOAD_ENCRYPTION_ENABLED` defaults to `False`. The middleware is a transparent no-op — send/receive plain JSON exactly as you always have. Postman, curl, and the existing frontend all work with zero changes.
 - **Staging/production**: `PAYLOAD_ENCRYPTION_ENABLED=True`. Every request/response body (with a short bypass list, see §4) is wrapped in `{"enc": "gcm2$..."}`. You must do the ECDH handshake first.
-- **The React frontend already implements this for you** (`Frontend/src/api/payloadCrypto.ts` + `Frontend/src/api/client.ts`). If you're building a *new* client (mobile app, a script, a second frontend), read on.
+- **The React frontend already implements this for you** (`Frontend/src/api/payloadCrypto.ts`, and `secureFetch` in `Frontend/src/api/client.ts`, which every call goes through). If you're building a *new* client (mobile app, a script, a second frontend), read on.
 
 If you just want to call the API manually (Postman/curl) against a server with encryption enabled, see §6.
 
@@ -74,31 +74,24 @@ The `gcm2$` prefix is deliberate — it's distinct from the `gcm1$` prefix used 
 
 ---
 
-## 4. Endpoints that are NEVER encrypted (bypass list)
+## 4. What is enforced (updated 2026-11-04)
 
-These paths pass through as plain JSON even when `PAYLOAD_ENCRYPTION_ENABLED=True`, because they're the handshake itself or auth bootstrap (no session/user context yet):
+With `PAYLOAD_ENCRYPTION_ENABLED=True`, Layer 2 is a hard server-side requirement, not opt-in. On every `/api/` call outside the allow-list below:
 
-```
-/api/v1/session-key/
-/api/v1/auth/login/
-/api/v1/auth/refresh/
-/api/v1/auth/logout/
-/api/schema/
-/api/schema/swagger-ui/
-/admin/
-```
+| Rule | If broken |
+|---|---|
+| `X-Session-Id` from the handshake is required | `401`, `"Encryption session not found..."`: handshake, then retry |
+| The body must be `{"enc": "gcm2$..."}` | `400` |
+| The query string goes encrypted in the `X-Enc-Query` header (token of the raw `a=1&b=2` bytes), never in the URL | `400` |
+| Each token is single-use (replay protection): re-encrypt on every retry | `400` |
 
-Call these exactly as documented elsewhere (plain JSON in, plain JSON out) — don't wrap/unwrap them.
+**File uploads:** take the exact multipart bytes and send `{"enc": "<token of those bytes>", "ct": "multipart/form-data; boundary=..."}` with `Content-Type: application/json`. Limit: `PAYLOAD_MAX_BODY_BYTES` (36 MB encrypted, so about 25 MB of files).
 
-Also note: if a request simply **doesn't** carry `X-Session-Id` (e.g. you haven't done the handshake, or you're a third-party integration that doesn't know about this layer), the middleware passes it through unencrypted rather than failing. This exists so health checks / Postman / third-party webhooks don't break. **It does mean Layer 2 is opt-in per-request, not a hard server-side requirement** — don't rely on it as your only security control; Layer 1 (TLS) is what's mandatory.
+**Responses:** every response body is encrypted. JSON comes back as `{"enc": ...}`. Anything else (PDF, image, CSV, an error page) comes back as `{"enc": ..., "ct": "<original type>"}`: decrypt to bytes, and treat them as that type. `Content-Disposition` is removed, so choose the file name yourself. `204` and redirects have no body.
 
-If you *do* send `X-Session-Id` but the session has expired or was never created, you get:
+**Allow-list** (`_PLAINTEXT_ALLOWED` in `apps/core/middleware.py`): only callers that can't do a handshake: the handshake itself, health and licence status, webhooks and devices (each authenticated by its own signature or token), ABDM callbacks and data push, browser redirects (SSO, calendar, unsubscribe), and the widget on the hospital's own website. A call to one of these that does carry `X-Session-Id` gets all the rules above. New endpoints are encrypted by default.
 
-```json
-HTTP 401
-{ "detail": "Encryption session not found or expired. Re-initialise via POST /api/v1/session-key/." }
-```
-→ just redo the handshake and retry.
+Signed links in patient messages (lab report, payout statement) never return the file in plain: without a session they redirect to the app page `/r/<kind>/<token>`, which fetches it encrypted.
 
 ---
 

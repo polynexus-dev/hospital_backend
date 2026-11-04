@@ -111,7 +111,7 @@ def read_xlsx(data: bytes, max_rows=MAX_IMPORT_ROWS):
         raw = z.read(name)
         if b"<!DOCTYPE" in raw or b"<!ENTITY" in raw:
             raise SpreadsheetError("The file contains unsupported XML declarations.")
-        return ET.fromstring(raw)
+        return ET.fromstring(raw)  # DTD/entity declarations refused just above  # nosec B314
 
     shared = []
     if "xl/sharedStrings.xml" in names:

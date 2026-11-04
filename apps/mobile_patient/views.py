@@ -18,6 +18,7 @@ class BasePatientAPIView(APIView):
 
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 
 from apps.patients.models import Patient
 from apps.patients.serializers import PatientSerializer
@@ -331,7 +332,17 @@ class ReportFileView(BasePatientAPIView):
     def get(self, request, pk):
         patient_id = self.patient_id(request)
         doc = get_object_or_404(Document, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
-        return Response({"file_url": doc.file.url if doc.file else None})
+        # An authenticated download (same token), never a public /media/ URL (C3).
+        return Response({"file_url": request.build_absolute_uri(reverse("report-download", args=[doc.pk])) if doc.file else None})
+
+
+class ReportDownloadView(BasePatientAPIView):
+    def get(self, request, pk):
+        from apps.core.file_serving import stored_file_response
+
+        patient_id = self.patient_id(request)
+        doc = get_object_or_404(Document, pk=pk, patient_id=patient_id, hospital_id=request.user.hospital_id)
+        return stored_file_response(doc.file)
 
 class VisitListView(BasePatientAPIView):
     def get(self, request):

@@ -48,6 +48,7 @@ urlpatterns = [
     path("prescriptions/<int:pk>/", views.PrescriptionDetailView.as_view(), name="prescription-detail"),
     path("reports/", views.ReportListView.as_view(), name="report-list"),
     path("reports/<int:pk>/file/", views.ReportFileView.as_view(), name="report-file"),
+    path("reports/<int:pk>/download/", views.ReportDownloadView.as_view(), name="report-download"),
     path("visits/", views.VisitListView.as_view(), name="visit-list"),
     path("documents/", views.DocumentListView.as_view(), name="document-list"),
 

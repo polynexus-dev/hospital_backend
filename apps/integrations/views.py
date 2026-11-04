@@ -251,50 +251,16 @@ class ABDMHealthRecordView(APIView):
 
         if not RequiresClinicalDetailPermission().has_permission(request, self):
             return Response({"detail": "Clinical access required."}, status=403)
+        from apps.abdm import records
+
         from . import abdm_fhir as f
 
-        h = request.user.hospital_id
-        if hi_type == "prescription":
-            from apps.patients.models import Prescription
-
-            obj, build = Prescription.objects.filter(pk=pk, hospital_id=h).first(), f.prescription_bundle
-        elif hi_type == "lab":
-            from apps.laboratory.models import LabOrder
-
-            obj, build = LabOrder.objects.filter(pk=pk, hospital_id=h).first(), f.lab_report_bundle
-        elif hi_type == "imaging":
-            from apps.radiology.models import RadiologyReport
-
-            obj, build = RadiologyReport.objects.filter(pk=pk, hospital_id=h).first(), f.imaging_report_bundle
-        elif hi_type == "discharge":
-            from apps.ipd.models import DischargeSummary
-
-            obj, build = DischargeSummary.objects.filter(pk=pk, hospital_id=h).first(), f.discharge_summary_bundle
-        elif hi_type == "opd":
-            from apps.opd.models import Encounter
-
-            obj, build = Encounter.objects.filter(pk=pk, hospital_id=h).first(), f.op_consultation_bundle
-        elif hi_type == "immunization":
-            from apps.clinical.models import Immunization
-
-            obj, build = Immunization.objects.filter(pk=pk, hospital_id=h).first(), f.immunization_bundle
-        elif hi_type == "wellness":
-            from apps.opd.models import VitalsReading
-
-            obj, build = VitalsReading.objects.filter(pk=pk, encounter__hospital_id=h).first(), f.wellness_bundle
-        elif hi_type == "document":
-            from apps.patients.models import Document
-
-            obj, build = Document.objects.filter(pk=pk, hospital_id=h).first(), f.health_document_bundle
-        elif hi_type == "invoice":
-            from apps.billing.models import Bill
-
-            obj, build = Bill.objects.filter(pk=pk, hospital_id=h).first(), f.invoice_bundle
-        else:
-            return Response({"detail": "hi_type must be one of prescription, lab, imaging, discharge, opd, immunization, wellness, document, invoice"}, status=400)
+        if hi_type not in records.KINDS:
+            return Response({"detail": f"hi_type must be one of {', '.join(records.KINDS)}"}, status=400)
+        obj = records.get_record(request.user.hospital_id, hi_type, pk)
         if obj is None:
             return Response({"detail": "Not found."}, status=404)
-        bundle = build(obj)
+        bundle = records.build_bundle(records.KINDS[hi_type], obj)
         problems = f.validate_document_bundle(bundle)
         if problems:
             return Response({"detail": "Bundle failed validation.", "problems": problems}, status=500)

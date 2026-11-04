@@ -2,6 +2,8 @@
 
 This document outlines the API endpoints designed for the patient-facing mobile application. These endpoints are located in the `apps.mobile_patient` application and are exposed under the `/api/v1/mobile/` prefix.
 
+> **Required since 2026-11-04:** in production every call here must use Layer-2 payload encryption, including query strings, uploads and file responses. See `docs/API_ENCRYPTION_GUIDE.md` §4 and §5b. A plain call is refused.
+
 ## Architectural Notes
 
 - **Data Sourcing**: The patient data consumed by these endpoints maps directly to the central hospital models (e.g. `apps.patients.models.Patient`, `apps.appointments.models.Appointment`, etc.). There is no separate patient database for the mobile app.

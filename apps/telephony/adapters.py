@@ -65,6 +65,10 @@ class HoduPBXProvider(TelephonyProvider):
         self.tenant_id = getattr(settings, "HODUPBX_TENANT_ID", "1000")
         # MD5 of the extension's web password (from HoduPBX extension settings)
         self.extension_password_md5 = getattr(settings, "HODUPBX_EXTENSION_PASSWORD_MD5", "")
+        # Every call carries the API token (click2call also the extension
+        # password hash), so the PBX's certificate is always verified: against
+        # HODUPBX_CA_BUNDLE when the PBX uses a private CA, else the system store.
+        self.tls_verify = getattr(settings, "HODUPBX_CA_BUNDLE", "") or True
 
     def _parse_dt(self, val):
         if not val:
@@ -167,7 +171,7 @@ class HoduPBXProvider(TelephonyProvider):
         logger.info("HoduPBX click2call: extension %s → %s", ext_to_use, to_number[-4:].rjust(len(to_number), "*"))
         try:
             # 30s timeout — HoduPBX holds connection open while ringing extension
-            resp = requests.post(url, json=payload, timeout=30, verify=False)
+            resp = requests.post(url, json=payload, timeout=30, verify=self.tls_verify)
             data = resp.json()
             if data.get("status") == "SUCCESS":
                 result = data.get("data")
@@ -209,7 +213,7 @@ class HoduPBXProvider(TelephonyProvider):
             "callid": str(call_id),
         }
         try:
-            resp = requests.post(url, json=payload, timeout=5)
+            resp = requests.post(url, json=payload, timeout=5, verify=self.tls_verify)
             data = resp.json()
             if data.get("status") == "SUCCESS":
                 return data.get("data", {}).get("recordingPath", "")
@@ -230,7 +234,7 @@ class HoduPBXProvider(TelephonyProvider):
         url = f"{self.base_url}/api/info/TENANT/activeCalls"
         payload = {"token_id": self.token_id}
         try:
-            resp = requests.post(url, json=payload, timeout=5)
+            resp = requests.post(url, json=payload, timeout=5, verify=self.tls_verify)
             data = resp.json()
             if data.get("status") == "SUCCESS":
                 return data.get("data", [])
@@ -255,7 +259,7 @@ class HoduPBXProvider(TelephonyProvider):
             "extension_password": str(extension_password),
         }
         try:
-            resp = requests.post(url, json=payload, timeout=5)
+            resp = requests.post(url, json=payload, timeout=5, verify=self.tls_verify)
             data = resp.json()
             return data.get("status") == "SUCCESS"
         except Exception:

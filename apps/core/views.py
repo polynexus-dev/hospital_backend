@@ -45,21 +45,9 @@ class SessionKeyView(APIView):
 
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = []  # rate-limit via nginx/WAF upstream
-
-    def get(self, request):
-        """Provides a session key for frontend clients requesting /api/v1/session-key/."""
-        if not request.session.session_key:
-            request.session.create()
-        key = request.session.session_key
-        return Response(
-            {
-                "session_key": key,
-                "sessionKey": key,
-                "status": "success",
-            },
-            status=status.HTTP_200_OK,
-        )
+    # No login to gate it, and every call stores a key: bounded per IP, generous
+    # because a hospital's staff usually share one address.
+    throttle_scope = "payload_handshake"
 
     def post(self, request):
         if not getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False):

@@ -77,6 +77,13 @@ jobs:
           pip install pip-audit
           pip-audit -r requirements.txt
 
+      - name: Static security analysis (Bandit)
+        # Blocking. Medium+ severity and confidence: the OWASP-relevant
+        # classes (injection, eval, unsafe deserialisation/XML, TLS checks
+        # switched off, hard-coded secrets). A reviewed false positive gets a
+        # `# <reason>  # nosec Bxxx` on its line, never a blanket skip here.
+        run: bandit -r apps config -x "*/tests.py,*/test_*.py,*/migrations/*,*/conftest.py" --severity-level medium --confidence-level medium -q
+
       - name: Email test report
         # Fires on pass or fail (if: always()) with the full pytest output
         # attached — GitHub's own native run-status email (account

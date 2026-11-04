@@ -124,13 +124,13 @@ class RadiologyOrderWorkflowMixin:
             key = meta.get("series_instance_uid") or ("key-images" if not img.is_dicom else "unknown")
             s = series.setdefault(key, {"series_instance_uid": key, "description": meta.get("series_description") or "", "number": meta.get("series_number", 0),
                                         "modality": meta.get("modality") or img.modality, "images": []})
-            s["images"].append({"id": img.pk, "is_dicom": img.is_dicom, "url": img.file.url, **{k: v for k, v in meta.items() if k != "series_instance_uid"}})
+            s["images"].append({"id": img.pk, "is_dicom": img.is_dicom, "url": _image_file_path(order, img), **{k: v for k, v in meta.items() if k != "series_instance_uid"}})
         for s in series.values():
             s["images"].sort(key=lambda i: (i.get("instance_number") or 0, i.get("slice_location") or 0, i["id"]))
         return Response({
             "viewer_url": viewer_url(order), "study_instance_uid": order.study_instance_uid,
             "series": sorted(series.values(), key=lambda s: s["number"]),
-            "images": [{"id": i.pk, "url": i.file.url, "is_dicom": i.is_dicom} for i in order.images.all()],
+            "images": [{"id": i.pk, "url": _image_file_path(order, i), "is_dicom": i.is_dicom} for i in order.images.all()],
         })
 
     @action(detail=True, methods=["get"], url_path=r"images/(?P<image_id>\d+)/render")
@@ -156,6 +156,22 @@ class RadiologyOrderWorkflowMixin:
         resp = HttpResponse(png, content_type="image/png")
         resp["Cache-Control"] = "private, max-age=600"
         return resp
+
+
+    @action(detail=True, methods=["get"], url_path=r"images/(?P<image_id>\d+)/file")
+    def image_file(self, request, pk=None, image_id=None):
+        """The stored image (DICOM or key image) behind the order's permissions (C3)."""
+        from apps.core.file_serving import stored_file_response
+
+        img = self.get_object().images.filter(pk=image_id).first()
+        if img is None:
+            return Response({"detail": "Not an image of this study."}, status=404)
+        return stored_file_response(img.file)
+
+
+def _image_file_path(order, img):
+    """API path (relative to /api/v1) the viewer fetches with its token; never a /media/ URL."""
+    return f"/radiology/orders/{order.pk}/images/{img.pk}/file/"
 
 
 class RadiologyReportWorkflowMixin:

@@ -1,6 +1,9 @@
 from rest_framework import serializers
 
-from .models import AbhaLink, ConsentRequest, HealthRecordFetch, NHCXTransaction
+from .models import (
+    ABDMFacility, AbhaLink, CareContext, ConsentArtefact, ConsentRequest, DataTransfer, HealthRecordFetch, NHCXTransaction,
+    ReceivedHealthRecord,
+)
 
 
 class AbhaLinkSerializer(serializers.ModelSerializer):
@@ -103,3 +106,52 @@ class NHCXTransactionSerializer(serializers.ModelSerializer):
         if preauth_request and request and preauth_request.hospital_id != getattr(request.user, "hospital_id", None):
             raise serializers.ValidationError("Pre-auth request does not belong to your hospital.")
         return preauth_request
+
+
+class ABDMFacilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ABDMFacility
+        fields = ["id", "hip_id", "hiu_id", "name", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class CareContextSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CareContext
+        fields = ["id", "patient", "abha_link", "reference", "display", "hi_type", "status", "source", "linked_at", "created_at"]
+        read_only_fields = fields
+
+
+class LinkRecordsSerializer(serializers.Serializer):
+    references = serializers.ListField(child=serializers.CharField(max_length=64), min_length=1, max_length=100)
+
+
+class ConsentArtefactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsentArtefact
+        # `details` (the raw artefact, which names the patient) stays out of the API.
+        fields = [
+            "id", "role", "artefact_id", "consent_request", "patient", "status", "purpose", "hi_types",
+            "care_contexts", "date_from", "date_to", "expires_at", "counterparty_id", "created_at", "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class DataTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataTransfer
+        # Never the keys: private_key/public_key/nonce are transfer internals.
+        fields = [
+            "id", "role", "transaction_id", "artefact", "status", "date_from", "date_to",
+            "entry_count", "error", "requested_by", "completed_at", "created_at",
+        ]
+        read_only_fields = fields
+
+
+class ReceivedHealthRecordSerializer(serializers.ModelSerializer):
+    hip_id = serializers.CharField(source="transfer.artefact.counterparty_id", read_only=True)
+
+    class Meta:
+        model = ReceivedHealthRecord
+        fields = ["id", "patient", "transfer", "hip_id", "care_context_reference", "title", "checksum_ok", "bundle", "created_at"]
+        read_only_fields = fields

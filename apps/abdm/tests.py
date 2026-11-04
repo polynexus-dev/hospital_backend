@@ -117,14 +117,24 @@ def test_consent_request_full_flow_then_fetch_records(auth_client, hospital, use
         assert consent.consent_artifact_id == "ART-1"
         assert consent.responded_at is not None
 
-        get_gateway.return_value.fetch_health_records.return_value = {"resourceType": "Bundle", "entry": [{"x": 1}, {"x": 2}]}
+    # Records are requested asynchronously (M3, apps.abdm.hiu): the facility
+    # must be registered, and an artefact fetched, before anything is asked for.
+    no_facility = auth_client.post(f"/api/v1/abdm/consent-requests/{consent.id}/fetch_records/")
+    assert no_facility.status_code == 503
+
+    from django.test import override_settings
+
+    from .models import ABDMFacility, ConsentArtefact
+
+    ABDMFacility.objects.create(hospital=hospital, hip_id="HIP-1")
+    ConsentArtefact.objects.create(hospital=hospital, role="hiu", artefact_id="ART-1", consent_request=consent, patient=patient, counterparty_id="OTHER-HIP")
+    with override_settings(ABDM_CALLBACK_BASE_URL="https://apollo.hms.polynexus.in"), patch("apps.abdm.hiu.get_abdm_gateway") as hiu_gateway:
         fetch = auth_client.post(f"/api/v1/abdm/consent-requests/{consent.id}/fetch_records/")
-        assert fetch.status_code == 200
-        assert fetch.data["entry"] == [{"x": 1}, {"x": 2}]
+    assert fetch.status_code == 202
+    assert hiu_gateway.return_value.send.call_args.args[0] == "hi_request"
 
     log = HealthRecordFetch.objects.get(consent_request=consent)
     assert log.fetched_by_id == user.id
-    assert log.record_count == 2
 
 
 @pytest.mark.django_db
@@ -310,8 +320,25 @@ def test_create_consent_request_returns_gateway_request_id():
 
         assert result == {"gateway_request_id": "REQ-1"}
         payload = mock_post.call_args.kwargs["json"]["consent"]
-        assert payload["hip"] == {"id": "HIP-1"}
-        assert payload["permission"]["dateRange"] == {"from": "2026-01-01", "to": "2026-06-01"}
+        # we ask as HIU — not limited to our own HIP's records
+        assert payload["hiu"] == {"id": "HIP-1"} and "hip" not in payload
+        assert payload["permission"]["dateRange"] == {"from": "2026-01-01T00:00:00.000Z", "to": "2026-06-01T23:59:59.999Z"}
+        # kept for the retention period from now, not erased at the end of the record range
+        erase_at = datetime.datetime.strptime(payload["permission"]["dataEraseAt"], "%Y-%m-%dT%H:%M:%S.000Z")
+        assert erase_at > datetime.datetime.utcnow() + datetime.timedelta(days=29)
+
+
+def test_create_consent_request_without_a_synchronous_id_returns_our_request_id():
+    """v3 answers through the on-init callback, matched by our REQUEST-ID."""
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({})
+        result = RealABDMGateway().create_consent_request(
+            abha_address="asha@abdm", purpose="CAREMGT", hi_types=[], date_from=datetime.date(2026, 1, 1),
+            date_to=datetime.date(2026, 6, 1), request_id="OUR-REQ-1",
+        )
+    assert result == {"gateway_request_id": "OUR-REQ-1"}
+    assert mock_post.call_args.kwargs["headers"]["REQUEST-ID"] == "OUR-REQ-1"
 
 
 def test_fetch_consent_status_normalizes_status_to_lowercase():
@@ -328,12 +355,24 @@ def test_fetch_consent_status_normalizes_status_to_lowercase():
         assert result == {"status": "granted", "consent_artifact_id": "ART-1", "expires_at": "2026-07-01T00:00:00Z"}
 
 
-def test_fetch_health_records_still_raises_gateway_not_configured():
-    """Deliberately unimplemented — see RealABDMGateway's docstring
-    point 5. Callers (ConsentRequestViewSet.fetch_records) already
-    turn GatewayNotConfigured into a clean 503, same as the stub."""
+def test_hiecm_send_uses_the_path_table_and_facility_headers():
+    """The HIE-CM calls (apps.abdm.hip/hiu) go through one table of paths."""
+    from .gateway import HIECM_PATHS
+
+    cache.set("abdm_gateway:access_token", "TOKEN-1", timeout=60)
+    with patch("apps.abdm.gateway.requests.post") as mock_post:
+        mock_post.return_value = _fake_response({})
+        RealABDMGateway().send("hi_notify", {"notification": {}}, hip_id="HIP-1", request_id="R-1", headers={"X-LINK-TOKEN": "LT"})
+    assert mock_post.call_args.args[0].endswith(HIECM_PATHS["hi_notify"])
+    headers = mock_post.call_args.kwargs["headers"]
+    assert (headers["X-HIP-ID"], headers["REQUEST-ID"], headers["X-LINK-TOKEN"]) == ("HIP-1", "R-1", "LT")
+
+
+def test_stub_gateway_refuses_hiecm_calls():
+    from .gateway import StubABDMGateway
+
     with pytest.raises(GatewayNotConfigured):
-        RealABDMGateway().fetch_health_records(consent_artifact_id="ART-1")
+        StubABDMGateway().send("hi_notify", {})
 
 
 @pytest.mark.django_db

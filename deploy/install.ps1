@@ -126,6 +126,7 @@ $httpsPort = Select-Port "HTTPS_PORT" @(8443, 9443)
 Say "Starting all services"
 Compose up -d
 $firstHost = ($envVars["ALLOWED_HOSTS"] -split ",")[0]
-$portSuffix = if ($httpPort -eq "80") { "" } else { ":$httpPort" }
-Write-Host "`nDone. Open http://localhost$portSuffix/ on this PC, or http://$firstHost$portSuffix/ from the network, and sign in as $adminEmail."
+$portSuffix = if ($httpsPort -eq "443") { "" } else { ":$httpsPort" }
+Write-Host "`nDone. Open https://localhost$portSuffix/ on this PC, or https://$firstHost$portSuffix/ from the network, and sign in as $adminEmail."
+Write-Host "The certificate is self-signed for now, so browsers warn once. For a trusted one, run configure-domain."
 Write-Host "Status: docker compose ps    Logs: docker compose logs -f web"

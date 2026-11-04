@@ -73,7 +73,7 @@ SECRET_KEY=<new>
 FIELD_ENCRYPTION_KEY=<new fernet>
 FIELD_ENCRYPTION_KEY_V2=<new V2>
 FIELD_HASH_KEY=<new hash key>
-PAYLOAD_ENCRYPTION_ENABLED=True          # request/response bodies encrypted on top of HTTPS
+PAYLOAD_ENCRYPTION_ENABLED=True          # required: production refuses to start with it off
 POSTGRES_PASSWORD=<strong password>      # and the matching DATABASE_URL, see below
 # Behind an HTTPS proxy that sets X-Forwarded-Proto, leave SECURE_SSL_REDIRECT unset (True).
 # Only if TLS ends somewhere that does not send that header: SECURE_SSL_REDIRECT=False

@@ -9,3 +9,7 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # used up Postgres's 100 connections ("too many clients"). Close per request here;
 # production (gunicorn) keeps reusing connections.
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)  # noqa: F405
+
+# Vite (:5173) calls runserver (:8000) cross-origin; the refresh cookie needs
+# credentialed CORS for that. Production is same-origin (base.py).
+CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS", default=True)  # noqa: F405

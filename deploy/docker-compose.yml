@@ -71,8 +71,12 @@ services:
     environment:
       # How often nginx checks certs/ for a new or renewed certificate.
       CERT_CHECK_SECONDS: ${CERT_CHECK_SECONDS:-3600}
+      # Always HTTPS: names the self-signed certificate covers until a real one is installed.
+      TLS_HOSTS: ${ALLOWED_HOSTS:-localhost}
+      HTTPS_PUBLIC_PORT: ${HTTPS_PORT:-443}
     volumes:
-      - ./certs:/etc/nginx/certs:ro       # tls.crt + tls.key here turns HTTPS on
+      - ./certs:/etc/nginx/certs:ro       # tls.crt + tls.key here replace the self-signed certificate
+      - selfsigned:/etc/nginx/selfsigned  # kept across restarts, so browsers trust-once
       - acme:/var/www/acme:ro             # Let's Encrypt domain checks (configure-domain)
     depends_on:
       web:
@@ -160,6 +164,7 @@ services:
 volumes:
   pgdata:
   redisdata:
+  selfsigned:
   media:
   acme:
   letsencrypt:

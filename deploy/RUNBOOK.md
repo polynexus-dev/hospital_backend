@@ -123,11 +123,11 @@ No internet is needed. Copy `bundle-<version>.tar.gz` to the server and unpack i
 3. starts PostgreSQL and Redis;
 4. prints the **deployment ID** and **machine fingerprint** and saves them to `config/REQUEST-LICENCE.txt`. **Send that file to Polynexus**, and press Enter to stop.
 
-**Second run**, once you have `license.lic`: run the installer again and give the licence path (or copy it to `config/license.lic` first). It then creates the database, asks for the **administrator email** and password, activates the licence, creates the hospital, and starts everything. Open `http://<hostname>/` and sign in.
+**Second run**, once you have `license.lic`: run the installer again and give the licence path (or copy it to `config/license.lic` first). It then creates the database, asks for the **administrator email** and password, activates the licence, creates the hospital, and starts everything. Open `https://<hostname>/` and sign in. The site is always HTTPS, because the app's payload encryption needs it: until a real certificate is installed it uses a self-signed one, and browsers warn once.
 
 **Back up `.env` now** (and `config/`). Its keys decrypt patient data; losing it means losing the data.
 
-**HTTPS:** put `tls.crt` and `tls.key` in `certs/`, set `SECURE_SSL_REDIRECT=True` in `.env`, then `docker compose restart nginx web`.
+**Trusted certificate:** put `tls.crt` and `tls.key` in `certs/`, then `docker compose restart nginx`.
 
 ## 5. Renew a licence
 
@@ -198,7 +198,7 @@ To reach the system at a name such as `hms.hospital.com` instead of an IP:
    It asks for the domain and how to do HTTPS:
    - **1 — the hospital's own certificate:** give the paths of the certificate (PEM, including the intermediate chain) and its private key. nginx checks the pair before it's used; a wrong file changes nothing. A Windows `.pfx` must be converted to PEM first.
    - **2 — Let's Encrypt:** free and **renews automatically** (checked twice a day). Needs the public DNS record, port 80 open from the internet, and `HTTP_PORT=80`.
-   - **3 — no certificate for now:** plain HTTP, internal network only.
+   - **3 — no certificate for now:** self-signed HTTPS, internal network only.
 
    It updates `.env` (allowed hosts, HTTPS redirect) and restarts. Staff then open `https://hms.hospital.com/`.
 

@@ -5,16 +5,26 @@ from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.core.permissions import RequiresViewPermission, RoleBasedModelPermissions
+from apps.core.permissions import RequiresClinicalDetailPermission, RequiresViewPermission, RoleBasedModelPermissions
 from apps.core.viewsets import TenantScopedViewSetMixin
 
-from .gateway import GatewayNotConfigured, get_abdm_gateway, get_nhcx_gateway
-from .models import AbhaLink, ConsentRequest, HealthRecordFetch, NHCXTransaction
+from . import hip, hiu, records
+from .gateway import ABDMGatewayError, GatewayNotConfigured, get_abdm_gateway, get_nhcx_gateway
+from .models import (
+    ABDMFacility, AbhaLink, CareContext, ConsentArtefact, ConsentRequest, DataTransfer, HealthRecordFetch, NHCXTransaction,
+    ReceivedHealthRecord,
+)
 from .serializers import (
+    ABDMFacilitySerializer,
     AbhaLinkSerializer,
+    CareContextSerializer,
+    ConsentArtefactSerializer,
     ConsentRequestSerializer,
+    DataTransferSerializer,
     HealthRecordFetchSerializer,
+    LinkRecordsSerializer,
     NHCXTransactionSerializer,
+    ReceivedHealthRecordSerializer,
     VerifyAbhaOtpSerializer,
 )
 
@@ -37,6 +47,13 @@ class GatewayUnavailable(APIException):
 # docstring). apps.accounts.permission_templates decides who actually
 # holds "abdm" at all.
 ABDM_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission]
+
+
+def _facility(request):
+    facility = ABDMFacility.objects.filter(hospital_id=request.user.hospital_id).first()
+    if facility is None:
+        raise GatewayUnavailable("Register this hospital's ABDM facility (HIP id) first: POST /abdm/facility/.")
+    return facility
 
 
 class AbhaLinkViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -77,6 +94,36 @@ class AbhaLinkViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         link.save(update_fields=["status", "abha_number", "abha_address", "linked_at"])
         return Response(AbhaLinkSerializer(link).data)
 
+    @action(detail=True, methods=["get"])
+    def records(self, request, pk=None):
+        """The patient's records here and whether each is linked to the ABHA."""
+        link = self.get_object()
+        state = dict(CareContext.objects.filter(hospital_id=link.hospital_id, patient_id=link.patient_id).values_list("reference", "status"))
+        return Response([
+            {"reference": records.reference(rk.kind, r.pk), "display": records.display(rk, r), "hi_type": rk.hi_type,
+             "status": state.get(records.reference(rk.kind, r.pk), "unlinked")}
+            for rk, r in records.care_contexts_for(link.patient)
+        ])
+
+    @action(detail=True, methods=["post"])
+    def link_records(self, request, pk=None):
+        """M2 hospital-initiated linking: after a visit, link its records to
+        the patient's ABHA so they appear in the patient's PHR app."""
+        link = self.get_object()
+        if link.status != AbhaLink.Status.LINKED:
+            return Response({"detail": "Verify the ABHA first."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = LinkRecordsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refs = serializer.validated_data["references"]
+        if not all(hip._belongs(link.hospital, link, ref) for ref in refs):
+            return Response({"references": "Not this patient's records."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            hip.link_from_hospital(link, refs, _facility(request))
+        except (GatewayNotConfigured, ABDMGatewayError) as exc:
+            CareContext.objects.filter(hospital_id=link.hospital_id, reference__in=refs, status=CareContext.Status.PENDING).delete()
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({"detail": "Linking requested; ABDM confirms shortly."}, status=status.HTTP_202_ACCEPTED)
+
 
 class ConsentRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ConsentRequestSerializer
@@ -88,6 +135,7 @@ class ConsentRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         hospital = getattr(self.request.user, "hospital", None)
         data = serializer.validated_data
 
+        facility = ABDMFacility.objects.filter(hospital=hospital).first()
         try:
             result = get_abdm_gateway().create_consent_request(
                 abha_address=data["abha_link"].abha_address,
@@ -95,6 +143,8 @@ class ConsentRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                 hi_types=data.get("hi_types", []),
                 date_from=data["date_range_from"],
                 date_to=data["date_range_to"],
+                hiu_id=(facility.hiu_id or facility.hip_id) if facility else "",
+                requester_name=self.request.user.get_full_name() or self.request.user.email,
             )
         except GatewayNotConfigured as exc:
             raise GatewayUnavailable(str(exc)) from exc
@@ -122,26 +172,28 @@ class ConsentRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def fetch_records(self, request, pk=None):
-        """The actual health-record retrieval — only once GRANTED, so an
-        expired/denied/still-pending request can't be used to pull data
-        that was never actually authorized."""
+        """Ask the providers named in the granted consent for the records
+        (M3). They arrive encrypted at our data-push URL a little later and
+        appear under /abdm/received-records/ — this only starts the request.
+        Only once GRANTED, so a pending/denied/expired consent pulls nothing."""
         consent_request = self.get_object()
         if consent_request.status != ConsentRequest.Status.GRANTED:
             return Response({"detail": "Consent has not been granted yet."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            bundle = get_abdm_gateway().fetch_health_records(consent_artifact_id=consent_request.consent_artifact_id)
-        except GatewayNotConfigured as exc:
+            transfers = hiu.request_records(consent_request, user=request.user, facility=_facility(request))
+        except (GatewayNotConfigured, ABDMGatewayError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        if not transfers:
+            return Response({"detail": "No usable consent artefact yet — ABDM may still be sending it."}, status=status.HTTP_409_CONFLICT)
 
         HealthRecordFetch.objects.create(
             hospital=getattr(request.user, "hospital", None),
             consent_request=consent_request,
             fetched_by=request.user,
             hi_types_fetched=consent_request.hi_types,
-            record_count=len(bundle.get("entry", [])) if isinstance(bundle, dict) else 0,
         )
-        return Response(bundle)
+        return Response(DataTransferSerializer(transfers, many=True).data, status=status.HTTP_202_ACCEPTED)
 
 
 class HealthRecordFetchViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
@@ -190,3 +242,48 @@ class NHCXTransactionViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         transaction.gateway_response_summary = result.get("summary", "")
         transaction.save(update_fields=["status", "gateway_response_summary", "updated_at"])
         return Response(NHCXTransactionSerializer(transaction).data)
+
+
+class ABDMFacilityViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
+    """This hospital's ABDM identity (HFR id as HIP id, optional HIU id)."""
+
+    serializer_class = ABDMFacilitySerializer
+    queryset = ABDMFacility.objects.all()
+    permission_classes = ABDM_PERMISSION_CLASSES
+
+    def perform_create(self, serializer):
+        serializer.save(hospital=self.request.user.hospital)
+
+
+class CareContextViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = CareContextSerializer
+    queryset = CareContext.objects.all()
+    permission_classes = ABDM_PERMISSION_CLASSES
+    filterset_fields = ["patient", "status", "hi_type"]
+
+
+class ConsentArtefactViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    """Consents in force: what others may pull from us (hip), what we may pull (hiu)."""
+
+    serializer_class = ConsentArtefactSerializer
+    queryset = ConsentArtefact.objects.all()
+    permission_classes = ABDM_PERMISSION_CLASSES
+    filterset_fields = ["role", "patient", "consent_request", "status"]
+
+
+class DataTransferViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    serializer_class = DataTransferSerializer
+    queryset = DataTransfer.objects.select_related("artefact")
+    permission_classes = ABDM_PERMISSION_CLASSES
+    filterset_fields = ["role", "status", "artefact"]
+
+
+class ReceivedHealthRecordViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    """Records other providers sent under a consent (M3). Clinical content,
+    so clinical-detail permission too; every read is audit-logged
+    (apps.core.middleware.PATIENT_RECORD_READ_PREFIXES)."""
+
+    serializer_class = ReceivedHealthRecordSerializer
+    queryset = ReceivedHealthRecord.objects.select_related("transfer__artefact")
+    permission_classes = ABDM_PERMISSION_CLASSES + [RequiresClinicalDetailPermission]
+    filterset_fields = ["patient", "transfer"]

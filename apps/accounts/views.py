@@ -2,17 +2,19 @@ import pyotp
 from django.contrib.auth import update_session_auth_hash
 from django.core.signing import BadSignature
 from django.utils import timezone
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.serializers import TokenBlacklistSerializer, TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.viewsets import TenantScopedViewSetMixin
 
+from . import refresh_cookie
 from .models import AuthenticatorDevice, Role, User
 from .permission_catalog import ADMIN_TEMPLATES, apply_grant, role_assignment_error, catalog, codes_of, grantable_by, hospital_bounds, permission_objects
 from apps.governance import services as gov
@@ -63,7 +65,46 @@ class HospitalTokenObtainPairView(TokenObtainPairView):
             return Response(detail, status=exc.status_code)
         except TokenError as exc:
             raise InvalidToken(exc.args[0])
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return refresh_cookie.issue(request, response, remember=request.data.get("remember", True))
+
+
+class CookieTokenRefreshView(APIView):
+    """simplejwt's refresh, reading the token from the httpOnly cookie when
+    the browser app opted in (see apps.accounts.refresh_cookie) and from
+    the body otherwise. A rejected cookie is cleared so the browser stops
+    sending a dead token."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        token = request.data.get("refresh") or refresh_cookie.read(request)
+        serializer = TokenRefreshSerializer(data={"refresh": token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except (TokenError, InvalidToken, ValidationError) as exc:
+            detail = exc.args[0] if isinstance(exc, TokenError) else "Token is invalid or expired"
+            return refresh_cookie.clear(Response({"detail": str(detail), "code": "token_not_valid"}, status=status.HTTP_401_UNAUTHORIZED))
+        return refresh_cookie.issue(request, Response(serializer.validated_data))
+
+
+class CookieTokenBlacklistView(APIView):
+    """Logout: blacklists the refresh token (body or cookie) and always
+    clears the cookie, so a token that's been logged out of can't be replayed."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        token = request.data.get("refresh") or refresh_cookie.read(request)
+        if token:
+            serializer = TokenBlacklistSerializer(data={"refresh": token})
+            try:
+                serializer.is_valid(raise_exception=True)
+            except (TokenError, InvalidToken, ValidationError):
+                pass  # already expired or blacklisted: the outcome the caller wanted
+        return refresh_cookie.clear(Response({}, status=status.HTTP_200_OK))
 
 
 class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -470,7 +511,8 @@ class MFAVerifyView(APIView):
 
         gov.log_security_event(SecurityEvent.EventType.LOGIN_SUCCESS, request=request, user=user, details={"mfa": True})
         refresh = HospitalScopedTokenObtainPairSerializer.get_token(user)
-        return Response({"refresh": str(refresh), "access": str(refresh.access_token)})
+        response = Response({"refresh": str(refresh), "access": str(refresh.access_token)})
+        return refresh_cookie.issue(request, response, remember=request.data.get("remember", True))
 
 
 class RoleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):

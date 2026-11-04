@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from apps.core.crud import TenantCRUDViewSet, TenantModelSerializer
 from apps.core.permissions import RequiresViewPermission
 
-from . import sso
+from . import refresh_cookie, sso
 from .models_sso import SSOIdentity, SSOProvider
 
 
@@ -82,7 +82,8 @@ class SSOExchangeView(_Public):
 
     def post(self, request):
         try:
-            return Response(sso.exchange(request.data.get("code", "")))
+            response = Response(sso.exchange(request.data.get("code", "")))
+            return refresh_cookie.issue(request, response, remember=request.data.get("remember", True))
         except sso.SSOError as e:
             return Response({"detail": e.detail, "code": e.code}, status=status.HTTP_400_BAD_REQUEST)
 

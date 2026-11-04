@@ -72,3 +72,35 @@ CSRF_TRUSTED_ORIGINS = env.list(
         "http://hms.polynexus.in",
     ] + CORS_ALLOWED_ORIGINS,  # noqa: F405
 )
+
+# Django -> PostgreSQL over TLS (WASA / ISO 27001 A.8.20). DB_SSLMODE (or
+# ?sslmode= on DATABASE_URL) sets it. A database on this host or on the
+# compose network (localhost, a unix socket, a one-word service name such as
+# "postgres" or "db") never leaves the machine, so it may stay plain; any
+# other host carries credentials and patient data over a real network, and
+# production refuses to start until the connection is encrypted.
+_db = DATABASES["default"]  # noqa: F405
+if "postgresql" in _db.get("ENGINE", ""):
+    _db_options = _db.setdefault("OPTIONS", {})
+    _sslmode = env.str("DB_SSLMODE", default=_db_options.get("sslmode", ""))  # noqa: F405
+    if _sslmode:
+        _db_options["sslmode"] = _sslmode
+    _db_host = str(_db.get("HOST") or "")
+    _db_is_local = _db_host in ("", "localhost", "127.0.0.1", "::1") or _db_host.startswith("/") or "." not in _db_host and ":" not in _db_host
+    if not _db_is_local and _sslmode not in ("require", "verify-ca", "verify-full"):
+        raise RuntimeError(
+            f"The database at {_db_host} is reached over the network without TLS — set DB_SSLMODE=require "
+            "(or verify-full with the server's CA) before starting."
+        )
+
+# The OpenAPI schema and Swagger UI map every endpoint: staff only in
+# production (drf-spectacular's default is AllowAny). CI generates the
+# schema it scans with `manage.py spectacular` instead (.github/workflows/zap-scan.yml).
+SPECTACULAR_SETTINGS = {**SPECTACULAR_SETTINGS, "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"]}  # noqa: F405
+
+# Layer 2 (apps.core.middleware.PayloadEncryptionMiddleware) is not optional in
+# production: without it, the only protection between the browser and Django
+# is TLS, which ends at the proxy.
+PAYLOAD_ENCRYPTION_ENABLED = env.bool("PAYLOAD_ENCRYPTION_ENABLED", default=True)  # noqa: F405
+if not PAYLOAD_ENCRYPTION_ENABLED:
+    raise RuntimeError("PAYLOAD_ENCRYPTION_ENABLED must be True in production.")

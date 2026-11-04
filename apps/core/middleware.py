@@ -1,10 +1,12 @@
+import hashlib
 import io
 import json
 import logging
+import re
 
 from django.conf import settings
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 
 from .models import AuditLog, RESERVED_HOSPITAL_SLUGS
 from .payload_crypto import decrypt_payload, encrypt_payload
@@ -14,19 +16,43 @@ from .tenancy import reset_current_hospital_id, set_current_hospital_id
 logger = logging.getLogger(__name__)
 
 _SESSION_CACHE_PREFIX = "payload_enc_session:"
+_SEEN_CACHE_PREFIX = "payload_enc_seen:"
+_SESSION_TTL_SECONDS = 60 * 60 * 12  # as the session itself (apps.core.views)
 
-# Endpoints that must NOT be encrypted (handshake + auth bootstrap).
-_ENCRYPTION_BYPASS_PATHS = frozenset([
-    "/api/v1/session-key/",
-    "/api/v1/site/",  # public website form & chat widget (no staff session)
-    "/api/v1/leads/",  # Meta / Google ad-lead webhooks
-    "/api/v1/mobile-upload/",  # QR-code document upload from a phone (signed token, no session)
-    # Not auth/login|refresh|logout: the handshake needs no login, so passwords and
-    # tokens are encrypted too. Clients without X-Session-Id still get plain JSON.
-    "/api/schema/",
-    "/api/schema/swagger-ui/",
-    "/admin/",
-])
+# With PAYLOAD_ENCRYPTION_ENABLED, every /api/ call must be encrypted except
+# these, which can't do the handshake. Each is a machine, a browser redirect or
+# a page on someone else's website, never the staff or patient app. Anything
+# new is encrypted by default: it only gets here by being added on purpose.
+_PLAINTEXT_ALLOWED = re.compile(r"^/api/(" + "|".join([
+    r"health/",
+    r"schema/",  # staff-only in production, no patient data
+    r"license/status/",  # operators' curl (RUNBOOK), no patient data
+    r"v1/session-key/",  # the handshake itself
+    # Servers and devices, authenticated by their own signature, token or secret:
+    r"v1/webhooks/",
+    r"v1/ivr/",
+    r"v1/leads/",
+    r"v1/enquiries/lead-webhook/",
+    r"v1/billing/payment-webhook/",
+    r"v1/laboratory/analyzer/",
+    r"v1/clinical/device-ingest/",
+    r"v1/support-services/ambulance-device/",
+    r"v1/abdm/callbacks/",  # gateway JWT
+    r"v1/abdm/data-push/",  # content is end-to-end encrypted (apps.abdm.fidelius)
+    # Plain browser navigation: no script runs, so no handshake is possible.
+    r"v1/auth/sso/\d+/start/",
+    r"v1/auth/sso/callback/",
+    r"v1/calendar/callback/",
+    r"v1/unsubscribe/",
+    # Links in patient messages: without a session these only redirect to the
+    # app (see shared_link_redirect), which fetches the file encrypted.
+    r"v1/laboratory/report-link/",
+    r"v1/finance/payout-statement/",
+    # The widget embedded on the hospital's own website, another origin.
+    r"v1/site/",
+]) + r")")
+
+_SESSION_REQUIRED = "Encryption session not found or expired. Re-initialise via POST /api/v1/session-key/."
 
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -58,6 +84,7 @@ PATIENT_RECORD_READ_PREFIXES = (
     "/api/v1/telemedicine/",
     "/api/v1/dietary/",
     "/api/v1/infection-control/",
+    "/api/v1/abdm/received-records/",
     "/api/v1/bloodbank/",
     "/api/v1/schemes/",
     "/api/v1/abdm/",
@@ -167,90 +194,173 @@ class AuditMiddleware:
 
 class PayloadEncryptionMiddleware:
     """
-    Application-layer payload encryption (Layer 2).
+    Application-layer payload encryption (Layer 2), on top of HTTPS.
 
-    When PAYLOAD_ENCRYPTION_ENABLED=True AND the request carries an
-    X-Session-Id header (set by the frontend after ECDH handshake):
+    With PAYLOAD_ENCRYPTION_ENABLED (always, in production) this is a hard
+    requirement, not an opt-in. For every /api/ call outside _PLAINTEXT_ALLOWED:
 
-    - Inbound:  Decrypts {"enc":"gcm2$..."} body back to plain JSON before
-                the view ever sees it, so all existing DRF view/serializer
-                code is completely unaware of the encryption.
+    - A session from the ECDH handshake (X-Session-Id) is required: without
+      one the call is refused, before any view runs.
+    - The body must be {"enc": "gcm2$..."}: JSON, or the raw bytes of a
+      multipart upload with its original type in "ct". A plain body is refused.
+    - The query string must travel in the X-Enc-Query header. A plain one
+      (search terms, patient ids) is refused.
+    - A token can only be used once, so a captured request can't be replayed.
+    - Every response body is encrypted: JSON as {"enc": ...}; anything else
+      (PDF, image, CSV, an error page) as {"enc": ..., "ct": original type},
+      with Content-Disposition removed. If encryption fails the client gets a
+      500, never the plain body.
 
-    - Outbound: Re-encrypts the JSON response body to {"enc":"gcm2$..."}
-                before it leaves the server.
-
-    When PAYLOAD_ENCRYPTION_ENABLED=False (default / dev / Postman):
-        Middleware is a transparent no-op -- all traffic passes through
-        as plain JSON exactly as before.
-
-    Must be placed FIRST in MIDDLEWARE (before SecurityMiddleware) so it
-    rewrites request.body before any other middleware reads it.
+    An allowed path that does carry a session gets all of the above too.
+    Must be FIRST in MIDDLEWARE so nothing reads the body before it is opened.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self.enabled = getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False)
 
     def __call__(self, request):
-        # Fast-path: feature flag off or bypass path.
-        if not self.enabled or self._is_bypass(request):
+        if (
+            not getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False)
+            or not request.path.startswith("/api/")
+            or request.method == "OPTIONS"  # CORS preflight: carries nothing
+            or request.path == "/api/v1/session-key/"
+        ):
             return self.get_response(request)
 
         session_id = request.headers.get("X-Session-Id", "")
         if not session_id:
-            # No session header -- client hasn't done ECDH yet or is Postman.
-            # Pass through without encryption to avoid breaking health checks
-            # and third-party integrations that don't know about this layer.
-            return self.get_response(request)
+            if _PLAINTEXT_ALLOWED.match(request.path):
+                return self.get_response(request)
+            return JsonResponse({"detail": _SESSION_REQUIRED}, status=401)
 
         aes_key = self._get_key(session_id)
         if aes_key is None:
-            return JsonResponse(
-                {"detail": "Encryption session not found or expired. Re-initialise via POST /api/v1/session-key/."},
-                status=401,
-            )
+            return JsonResponse({"detail": _SESSION_REQUIRED}, status=401)
 
-        # ── Decrypt request body ──────────────────────────────────────────────
-        if request.method in ("POST", "PUT", "PATCH") and request.body:
-            try:
-                wrapper = json.loads(request.body)
-                enc_token = wrapper.get("enc", "")
-                if enc_token:
-                    plaintext = decrypt_payload(enc_token, aes_key)
-                    # Replace both the cached body and the stream: reading request.body
-                    # above already pointed request._stream at the *encrypted* bytes,
-                    # and DRF parses from the stream, not from _body.
-                    request._body = plaintext
-                    request._stream = io.BytesIO(plaintext)
-                    request.META["CONTENT_LENGTH"] = str(len(plaintext))
-                    request.content_type = "application/json"
-            except (json.JSONDecodeError, ValueError) as exc:
-                logger.warning("PayloadEncryptionMiddleware: failed to decrypt request: %s", exc)
-                return JsonResponse({"detail": "Encrypted payload could not be decrypted."}, status=400)
+        try:
+            self._open_query(request, session_id, aes_key)
+            self._open_body(request, session_id, aes_key)
+        except _Refused as exc:
+            logger.warning("PayloadEncryptionMiddleware refused %s %s: %s", request.method, request.path, exc)
+            return JsonResponse({"detail": str(exc)}, status=exc.status)
 
-        response = self.get_response(request)
+        return self._seal(self.get_response(request), aes_key)
 
-        # ── Encrypt response body ─────────────────────────────────────────────
-        content_type = response.get("Content-Type", "")
-        if response.status_code != 204 and "application/json" in content_type:
-            try:
-                token = encrypt_payload(response.content, aes_key)
-                encrypted_body = json.dumps({"enc": token}).encode("utf-8")
-                response.content = encrypted_body
-                response["Content-Length"] = len(encrypted_body)
-            except Exception as exc:
-                # Log but don't crash -- returning unencrypted is safer than 500.
-                logger.error("PayloadEncryptionMiddleware: failed to encrypt response: %s", exc)
+    # ── Inbound ──────────────────────────────────────────────────────────────
 
-        return response
+    def _open(self, token, session_id, aes_key):
+        try:
+            plaintext = decrypt_payload(token, aes_key)
+        except ValueError as exc:
+            raise _Refused("Encrypted payload could not be decrypted.") from exc
+        seen = hashlib.sha256(token.encode("ascii", "replace")).hexdigest()
+        if not cache.add(f"{_SEEN_CACHE_PREFIX}{session_id}:{seen}", 1, timeout=_SESSION_TTL_SECONDS):
+            raise _Refused("This encrypted request was already used.")
+        return plaintext
+
+    def _open_query(self, request, session_id, aes_key):
+        token = request.headers.get("X-Enc-Query", "")
+        if request.META.get("QUERY_STRING"):
+            raise _Refused("Send the query string encrypted, in X-Enc-Query.")
+        if token:
+            request.META["QUERY_STRING"] = self._open(token, session_id, aes_key).decode("utf-8")
+            request.__dict__.pop("GET", None)  # cached_property: re-read from META
+
+    def _open_body(self, request, session_id, aes_key):
+        try:
+            length = int(request.META.get("CONTENT_LENGTH") or 0)
+        except ValueError:
+            length = 0
+        if length > settings.PAYLOAD_MAX_BODY_BYTES:
+            raise _Refused("Request is too large.", status=413)
+        # .read(), not .body: an encrypted upload is legitimately larger than
+        # DATA_UPLOAD_MAX_MEMORY_SIZE, and .body refuses that.
+        raw = request.read() if length else b""
+        if not raw:
+            return
+        try:
+            wrapper = json.loads(raw)
+            token = wrapper["enc"]
+            content_type = str(wrapper.get("ct") or "application/json")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise _Refused("The request body must be encrypted.") from exc
+        if not content_type.startswith(("application/json", "multipart/form-data")):
+            raise _Refused("Unsupported encrypted content type.")
+        plaintext = self._open(token, session_id, aes_key)
+        # Replace both the cached body and the stream: DRF parses from the stream.
+        request._body = plaintext
+        request._stream = io.BytesIO(plaintext)
+        request._read_started = False
+        request.META["CONTENT_LENGTH"] = str(len(plaintext))
+        request.META["CONTENT_TYPE"] = content_type
+        request._set_content_type_params(request.META)
+
+    # ── Outbound ─────────────────────────────────────────────────────────────
+
+    def _seal(self, response, aes_key):
+        if response.status_code == 204 or 300 <= response.status_code < 400:
+            return response  # no body
+        try:
+            if response.streaming:
+                content = b"".join(response.streaming_content)
+                response.close()
+            else:
+                content = response.content
+            if not content:
+                return response
+            content_type = response.get("Content-Type", "")
+            wrapper = {"enc": encrypt_payload(content, aes_key)}
+            if "application/json" not in content_type:
+                wrapper["ct"] = content_type
+            sealed = HttpResponse(json.dumps(wrapper).encode("utf-8"), status=response.status_code, content_type="application/json")
+            for name, value in response.items():
+                if name.lower() not in ("content-type", "content-length", "content-disposition"):
+                    sealed[name] = value
+            sealed.cookies = response.cookies
+            return sealed
+        except Exception:
+            # Never fall back to the plain body.
+            logger.exception("PayloadEncryptionMiddleware: failed to encrypt a response")
+            return JsonResponse({"detail": "The response could not be encrypted."}, status=500)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
-
-    def _is_bypass(self, request) -> bool:
-        return any(request.path.startswith(p) for p in _ENCRYPTION_BYPASS_PATHS)
 
     def _get_key(self, session_id: str):
         hex_key = cache.get(f"{_SESSION_CACHE_PREFIX}{session_id}")
         if not hex_key:
             return None
         return bytes.fromhex(hex_key)
+
+
+class _Refused(Exception):
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.status = status
+
+
+def shared_link_redirect(request, app_path):
+    """A signed link from a patient message, opened in a browser: there is no
+    session to encrypt the file for, so send the browser to the app page that
+    has one instead of returning the document. None when no redirect applies."""
+    if getattr(settings, "PAYLOAD_ENCRYPTION_ENABLED", False) and not request.headers.get("X-Session-Id"):
+        return HttpResponseRedirect(f"{settings.PUBLIC_APP_URL.rstrip('/')}{app_path}")
+    return None
+
+
+class APIContentSecurityPolicyMiddleware:
+    """A JSON API response is data, never a page: a strict CSP on it means
+    that if a browser is ever tricked into rendering one (a reflected value,
+    a sniffed content type), nothing in it can run or be framed. The SPA's
+    own policy is set by nginx (Frontend nginx/security-headers.inc); the
+    Django admin and Swagger UI pages are HTML and keep their own."""
+
+    POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if "application/json" in response.get("Content-Type", "") and "Content-Security-Policy" not in response:
+            response["Content-Security-Policy"] = self.POLICY
+        return response

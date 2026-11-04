@@ -617,8 +617,13 @@ class LabReportLinkView(APIView):
     authentication_classes = []
 
     def get(self, request, token):
+        from apps.core.middleware import shared_link_redirect
+
         from .lab_extras import order_from_token
 
+        redirect = shared_link_redirect(request, f"/r/lab/{token}")
+        if redirect:
+            return redirect
         order = order_from_token(token)
         if order is None:
             return HttpResponse("This link has expired. Please ask the hospital for your report.", status=404, content_type="text/plain")

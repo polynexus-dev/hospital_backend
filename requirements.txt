@@ -19,7 +19,7 @@ django-cors-headers==4.9.0
 django-environ==0.14.0
 django-filter==25.1
 django-timezone-field==7.2.2
-djangorestframework==3.17.2
+djangorestframework==3.18.2
 djangorestframework_simplejwt==5.5.1
 drf-spectacular==0.30.0
 gunicorn==26.0.0
@@ -31,7 +31,7 @@ kombu==5.6.2
 narwhals==2.26.0
 numpy==2.5.3
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 prompt_toolkit==3.0.53
 pycparser==3.0
 psycopg==3.3.4
@@ -48,6 +48,7 @@ requests==2.34.2
 rpds-py==2026.6.3
 scikit-learn==1.9.1
 scipy==1.18.1
+sentry-sdk==2.73.0
 six==1.17.0
 sqlparse==0.6.0
 threadpoolctl==3.6.0

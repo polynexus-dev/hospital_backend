@@ -1,0 +1,69 @@
+name: OWASP ZAP scan
+
+# Dynamic application security testing (DAST) against a running deployment,
+# the same kind of scan a WASA auditor starts with: missing headers, cookie
+# flags, injection probes, information leaks.
+#
+# Point it at STAGING, never production: the API scan sends attack payloads.
+# Set the repository variable ZAP_TARGET_URL (e.g. https://staging.hms.polynexus.in),
+# or pass target_url when running it by hand (Actions → OWASP ZAP scan → Run).
+#
+# Unauthenticated: it covers the login surface, public endpoints and the
+# headers on every response. An authenticated pass (a dedicated low-privilege
+# staging user) is the next step before the audit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Staging URL to scan (no trailing slash)"
+        required: false
+  schedule:
+    - cron: "41 2 * * 0" # weekly
+
+permissions:
+  contents: read
+  issues: write # the ZAP actions file their report as an issue
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ inputs.target_url || vars.ZAP_TARGET_URL }}
+    steps:
+      - name: Require a target
+        run: |
+          if [ -z "$TARGET" ]; then echo "Set the ZAP_TARGET_URL repository variable or pass target_url." >&2; exit 1; fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Generate the OpenAPI schema
+        # Built from the code, not fetched: the deployed /api/schema/ is staff-only.
+        env:
+          USE_SQLITE: "1"
+        run: |
+          pip install -r requirements.txt
+          python manage.py spectacular --file openapi.yml
+
+      - name: Baseline scan (the web app)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ env.TARGET }}
+          fail_action: true
+          allow_issue_writing: true
+          artifact_name: zap-baseline
+
+      - name: API scan (every endpoint in the schema)
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: openapi.yml
+          format: openapi
+          cmd_options: "-O ${{ env.TARGET }}"
+          fail_action: true
+          allow_issue_writing: true
+          artifact_name: zap-api

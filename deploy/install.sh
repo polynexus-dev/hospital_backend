@@ -102,7 +102,8 @@ select_port HTTPS_PORT 8443 9443
 say "Starting all services"
 $COMPOSE up -d
 HOST=$(echo "$ALLOWED_HOSTS" | cut -d, -f1)
-SUFFIX=$([ "$HTTP_PORT" = "80" ] || echo ":$HTTP_PORT")
+SUFFIX=$([ "$HTTPS_PORT" = "443" ] || echo ":$HTTPS_PORT")
 echo
-echo "Done. Open http://${HOST}${SUFFIX}/ and sign in as ${ADMIN_EMAIL}."
+echo "Done. Open https://${HOST}${SUFFIX}/ and sign in as ${ADMIN_EMAIL}."
+echo "The certificate is self-signed for now, so browsers warn once. For a trusted one, run configure-domain."
 echo "Status: $COMPOSE ps    Logs: $COMPOSE logs -f web"

@@ -1,10 +1,9 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from . import sso_views
 from .signature_views import MySignatureView
-from .views import ExpiredPasswordChangeView, HospitalTokenObtainPairView, MFAVerifyView, RoleViewSet, UserViewSet
+from .views import CookieTokenBlacklistView, CookieTokenRefreshView, ExpiredPasswordChangeView, HospitalTokenObtainPairView, MFAVerifyView, RoleViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
@@ -13,11 +12,12 @@ router.register("sso-providers", sso_views.SSOProviderViewSet, basename="ssoprov
 
 urlpatterns = [
     path("auth/login/", HospitalTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/refresh/", CookieTokenRefreshView.as_view(), name="token_refresh"),
     # Blacklists the refresh token (requires rest_framework_simplejwt.token_blacklist
     # in INSTALLED_APPS + BLACKLIST_AFTER_ROTATION — see SIMPLE_JWT in settings)
-    # so a token that's already been logged out of can't be replayed.
-    path("auth/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
+    # so a token that's already been logged out of can't be replayed. Both
+    # read the browser app's httpOnly cookie (apps.accounts.refresh_cookie).
+    path("auth/logout/", CookieTokenBlacklistView.as_view(), name="token_blacklist"),
     path("auth/mfa/verify/", MFAVerifyView.as_view(), name="mfa_verify"),
     path("auth/sso/providers/", sso_views.SSOProvidersView.as_view(), name="sso_providers"),
     path("auth/sso/<int:pk>/start/", sso_views.SSOStartView.as_view(), name="sso_start"),

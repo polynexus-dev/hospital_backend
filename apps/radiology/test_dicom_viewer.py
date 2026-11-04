@@ -127,3 +127,10 @@ def test_viewer_api_groups_series_and_renders(auth_client, hospital, tmp_path, s
     assert png_pixels(png.content).tolist() == [[0, 0], [128, 255]]
     assert auth_client.get(f"/api/v1/radiology/orders/{order['id']}/images/{img['id']}/render/", {"frame": 3}).status_code == 422
     assert auth_client.get(f"/api/v1/radiology/orders/{order['id']}/images/{img['id']}/render/", {"wc": "abc"}).status_code == 400
+
+    # C3: stored images come through the API (token + order permissions), never a /media/ URL
+    key = next(s for s in study["series"] if s["series_instance_uid"] == "key-images")["images"][0]
+    assert key["url"] == f"/radiology/orders/{order['id']}/images/{key['id']}/file/"
+    stored = auth_client.get(f"/api/v1{key['url']}")
+    assert stored.status_code == 200 and b"".join(stored.streaming_content).startswith(b"\xff\xd8")
+    assert all("/media/" not in i["url"] for i in study["images"])

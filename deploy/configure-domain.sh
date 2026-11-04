@@ -27,7 +27,7 @@ echo
 echo "How should HTTPS be set up?"
 echo "  1) The hospital's own certificate (files you already have)"
 echo "  2) Let's Encrypt — free, renews automatically (server must be reachable from the internet on port 80)"
-echo "  3) No certificate for now — plain HTTP (internal network only)"
+echo "  3) No certificate for now — self-signed HTTPS (internal network; browsers warn once)"
 read -rp "Choose 1, 2 or 3: " MODE
 
 say "Pointing the installation at $DOMAIN"
@@ -78,7 +78,7 @@ set -a; . ./.env; set +a
 $COMPOSE up -d
 $COMPOSE up -d --force-recreate web worker beat nginx
 
-if [ "$MODE" = 3 ]; then URL="http://$DOMAIN"; else URL="https://$DOMAIN"; fi
+URL="https://$DOMAIN"
 [ "$MODE" = 3 ] && [ "${HTTP_PORT:-80}" != "80" ] && URL="$URL:$HTTP_PORT"
 [ "$MODE" != 3 ] && [ "${HTTPS_PORT:-443}" != "443" ] && URL="$URL:$HTTPS_PORT"
 echo

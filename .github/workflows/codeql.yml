@@ -1,0 +1,28 @@
+name: CodeQL
+
+# Static analysis for security bugs (OWASP Top 10 classes: injection, XSS,
+# path traversal, SSRF, unsafe deserialisation...) with GitHub's
+# security-extended query suite. Findings appear under Security → Code
+# scanning; to block merges on them, make "CodeQL" a required check for main.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # weekly, so new queries also run over unchanged code
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3

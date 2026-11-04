@@ -47,9 +47,11 @@ class ABDMGateway(ABC):
     @abstractmethod
     def create_consent_request(
         self, *, abha_address: str, purpose: str, hi_types: list[str], date_from: date, date_to: date,
+        hiu_id: str = "", requester_name: str = "", request_id: str = "",
     ) -> dict:
-        """Relays a consent request to the patient's Consent Manager.
-        Returns {"gateway_request_id": str}."""
+        """Relays a consent request to the patient's Consent Manager, with us
+        as HIU. Returns {"gateway_request_id": str} — ABDM's consent request
+        id, or until its on-init callback arrives, our REQUEST-ID."""
 
     @abstractmethod
     def fetch_consent_status(self, *, gateway_request_id: str) -> dict:
@@ -57,11 +59,15 @@ class ABDMGateway(ABC):
         "consent_artifact_id": str | None, "expires_at": datetime | None}."""
 
     @abstractmethod
-    def fetch_health_records(self, *, consent_artifact_id: str) -> dict:
-        """Returns the HI (Health Information) bundle authorized by the
-        given consent artifact. Shape is FHIR-bundle-like; deliberately
-        untyped here since it's entirely gateway-defined until one is
-        actually implemented against ABDM's real response format."""
+    def send(self, endpoint: str, payload: dict, *, hip_id: str = "", hiu_id: str = "", request_id: str = "", headers: dict | None = None) -> dict:
+        """POSTs to one of the HIE-CM endpoints in HIECM_PATHS. These are
+        asynchronous: the gateway acknowledges, and the answer arrives later
+        at one of our callbacks (apps.abdm.callbacks). Returns the ack body."""
+
+    @abstractmethod
+    def push_health_information(self, *, url: str, payload: dict) -> None:
+        """As HIP: POSTs the encrypted bundles straight to the HIU's
+        dataPushUrl (not through the gateway)."""
 
 
 class StubABDMGateway(ABDMGateway):
@@ -71,13 +77,16 @@ class StubABDMGateway(ABDMGateway):
     def verify_abha_otp(self, *, txn_id: str, otp: str) -> dict:
         raise GatewayNotConfigured("ABDM is not connected yet — set ABDM_GATEWAY to a real implementation.")
 
-    def create_consent_request(self, *, abha_address, purpose, hi_types, date_from, date_to) -> dict:
+    def create_consent_request(self, *, abha_address, purpose, hi_types, date_from, date_to, hiu_id="", requester_name="", request_id="") -> dict:
         raise GatewayNotConfigured("ABDM is not connected yet — set ABDM_GATEWAY to a real implementation.")
 
     def fetch_consent_status(self, *, gateway_request_id: str) -> dict:
         raise GatewayNotConfigured("ABDM is not connected yet — set ABDM_GATEWAY to a real implementation.")
 
-    def fetch_health_records(self, *, consent_artifact_id: str) -> dict:
+    def send(self, endpoint, payload, *, hip_id="", hiu_id="", request_id="", headers=None):
+        raise GatewayNotConfigured("ABDM is not connected yet — set ABDM_GATEWAY to a real implementation.")
+
+    def push_health_information(self, *, url, payload):
         raise GatewayNotConfigured("ABDM is not connected yet — set ABDM_GATEWAY to a real implementation.")
 
 
@@ -98,6 +107,28 @@ class ABDMGatewayError(Exception):
 # hospital's ABDM sandbox credentials were only applied for today and
 # haven't arrived yet. See the module docstring in RealABDMGateway.
 _ABDM_TOKEN_CACHE_KEY = "abdm_gateway:access_token"
+
+# HIE-CM v3 endpoints we call (M2 as HIP, M3 as HIU), relative to
+# ABDM_BASE_URL like the consent paths below. One table so the first sandbox
+# run can correct a path in one place; same caveat as the field names: from
+# ABDM's published v3 collection, not yet exercised against the sandbox.
+HIECM_PATHS = {
+    # HIP — patient-initiated discovery and linking
+    "on_discover": "/user-initiated-linking/v3/patient/care-context/on-discover",
+    "link_on_init": "/user-initiated-linking/v3/link/care-context/on-init",
+    "link_on_confirm": "/user-initiated-linking/v3/link/care-context/on-confirm",
+    # HIP — hospital-initiated linking (after a visit)
+    "generate_link_token": "/v3/token/generate-token",
+    "link_care_context": "/hip/v3/link/carecontext",
+    # HIP — consent and data flow
+    "hip_consent_on_notify": "/consent/v3/request/hip/on-notify",
+    "hip_hi_on_request": "/data-flow/v3/health-information/hip/on-request",
+    "hi_notify": "/data-flow/v3/health-information/notify",
+    # HIU — consent and data flow
+    "hiu_consent_on_notify": "/consent/v3/request/hiu/on-notify",
+    "consent_fetch": "/consent/v3/fetch",
+    "hi_request": "/data-flow/v3/health-information/request",
+}
 
 # apps.abdm.models.AbhaLink.VerificationMethod -> ABDM's `loginHint` enum
 # for /v3/profile/login/request/otp. Best-effort mapping — confirm the
@@ -151,16 +182,11 @@ class RealABDMGateway(ABDMGateway):
        initiate_abha_verification against a sandbox test identifier (NHA's
        sandbox provides these), fix any field-name mismatches this
        surfaces, then move on to consent.
-    5. fetch_health_records is intentionally NOT implemented as a real
-       call yet (still raises GatewayNotConfigured) — ABDM's actual data
-       flow is asynchronous (HIU requests via
-       /data-flow/v3/health-information/request, then the HIP pushes an
-       ECDH-encrypted FHIR bundle to a callback endpoint this app doesn't
-       expose yet) rather than "call an endpoint, get the bundle back"
-       the way ConsentRequestViewSet.fetch_records currently assumes.
-       Wiring this for real needs: a data-push callback endpoint, and
-       implementing ABDM's key-exchange/encryption spec for that payload
-       — deliberately scoped out of this pass rather than half-built.
+    5. The HIE-CM data flow (2026-10-29): the callback endpoints are in
+       apps.abdm.callbacks, the encryption in apps.abdm.fidelius, the
+       HIP/HIU logic in apps.abdm.hip / apps.abdm.hiu. Register the bridge
+       URL https://<host>/api/v1/abdm/callbacks in the sandbox; the
+       gateway appends its own /api/v3/... paths to it.
     """
 
     def _get_access_token(self) -> str:
@@ -192,7 +218,7 @@ class RealABDMGateway(ABDMGateway):
         cache.set(_ABDM_TOKEN_CACHE_KEY, token, timeout=max(expires_in - 30, 30))
         return token
 
-    def _post(self, path: str, *, payload: dict) -> dict:
+    def _post(self, path: str, *, payload: dict, extra_headers: dict | None = None) -> dict:
         """Shared POST-with-bearer-token plumbing for every ABDM call
         below. Raises ABDMGatewayError on any failure — network, non-2xx,
         or an unexpected response shape — with ABDM's raw response body
@@ -201,10 +227,11 @@ class RealABDMGateway(ABDMGateway):
         LOGGING comment) so a field-name mismatch is diagnosable."""
         headers = {
             "Authorization": f"Bearer {self._get_access_token()}",
-            "X-CM-ID": "sbx",  # ABDM sandbox's fixed Consent Manager id; not applicable in production
+            "X-CM-ID": settings.ABDM_CM_ID,  # "sbx" in the sandbox
             "REQUEST-ID": _new_request_id(),
             "TIMESTAMP": _iso_timestamp(),
             "Content-Type": "application/json",
+            **(extra_headers or {}),
         }
         try:
             response = requests.post(f"{settings.ABDM_BASE_URL}{path}", json=payload, headers=headers, timeout=settings.ABDM_TIMEOUT_SECONDS)
@@ -237,27 +264,38 @@ class RealABDMGateway(ABDMGateway):
         except (KeyError, IndexError) as exc:
             raise ABDMGatewayError(f"Unexpected response shape from ABDM OTP-verify endpoint: missing {exc}") from exc
 
-    def create_consent_request(self, *, abha_address: str, purpose: str, hi_types: list[str], date_from: date, date_to: date) -> dict:
-        try:
-            data = self._post(
-                "/consent/v3/request/init",
-                payload={
-                    "consent": {
-                        "purpose": {"code": purpose},
-                        "patient": {"id": abha_address},
-                        "hiTypes": hi_types,
-                        "permission": {
-                            "dateRange": {"from": date_from.isoformat(), "to": date_to.isoformat()},
-                            "dataEraseAt": date_to.isoformat(),
-                            "frequency": {"unit": "HOUR", "value": 1, "repeats": 0},
-                        },
-                        "hip": {"id": settings.ABDM_HIP_ID} if settings.ABDM_HIP_ID else None,
+    def create_consent_request(self, *, abha_address: str, purpose: str, hi_types: list[str], date_from: date, date_to: date,
+                               hiu_id: str = "", requester_name: str = "", request_id: str = "") -> dict:
+        # We ask as HIU: `hiu` is us. (This used to send our own HIP id as
+        # `hip`, which would have limited the consent to records we already
+        # hold.) dataEraseAt is how long we may keep what arrives — from now,
+        # not the end of the record range, which is usually in the past.
+        from datetime import datetime, timedelta, timezone as tz
+
+        request_id = request_id or _new_request_id()
+        erase_at = datetime.now(tz.utc) + timedelta(days=settings.ABDM_CONSENT_RETENTION_DAYS)
+        data = self._post(
+            "/consent/v3/request/init",
+            payload={
+                "consent": {
+                    "purpose": {"code": purpose},
+                    "patient": {"id": abha_address},
+                    "hiu": {"id": hiu_id or settings.ABDM_HIP_ID},
+                    "requester": {"name": requester_name or "Hospital staff"},
+                    "hiTypes": hi_types,
+                    "permission": {
+                        "accessMode": "VIEW",
+                        "dateRange": {"from": f"{date_from.isoformat()}T00:00:00.000Z", "to": f"{date_to.isoformat()}T23:59:59.999Z"},
+                        "dataEraseAt": erase_at.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                        "frequency": {"unit": "HOUR", "value": 1, "repeats": 0},
                     },
                 },
-            )
-            return {"gateway_request_id": data["consentRequestId"]}
-        except KeyError as exc:
-            raise ABDMGatewayError(f"Unexpected response shape from ABDM consent-init endpoint: missing {exc}") from exc
+            },
+            extra_headers={"REQUEST-ID": request_id, **({"X-HIU-ID": hiu_id} if hiu_id else {})},
+        )
+        # v3 answers asynchronously (on-init callback, matched by our
+        # REQUEST-ID); an older synchronous reply carries the id directly.
+        return {"gateway_request_id": data.get("consentRequestId") or request_id}
 
     def fetch_consent_status(self, *, gateway_request_id: str) -> dict:
         try:
@@ -274,13 +312,25 @@ class RealABDMGateway(ABDMGateway):
         except KeyError as exc:
             raise ABDMGatewayError(f"Unexpected response shape from ABDM consent-status endpoint: missing {exc}") from exc
 
-    def fetch_health_records(self, *, consent_artifact_id: str) -> dict:
-        # Deliberately still not implemented as a real call — see this
-        # class's docstring, point 5.
-        raise GatewayNotConfigured(
-            "ABDM health-record fetch is not wired up yet — it needs an async data-push callback endpoint "
-            "and ABDM's key-exchange/encryption scheme, not just an HTTP call. See RealABDMGateway's docstring."
-        )
+    def send(self, endpoint, payload, *, hip_id="", hiu_id="", request_id="", headers=None):
+        headers = dict(headers or {})
+        if hip_id:
+            headers["X-HIP-ID"] = hip_id
+        if hiu_id:
+            headers["X-HIU-ID"] = hiu_id
+        if request_id:
+            headers["REQUEST-ID"] = request_id
+        return self._post(HIECM_PATHS[endpoint], payload=payload, extra_headers=headers)
+
+    def push_health_information(self, *, url, payload):
+        # Straight to the HIU, over TLS (verified); the content is already
+        # end-to-end encrypted for that HIU's key (apps.abdm.fidelius).
+        try:
+            response = requests.post(url, json=payload, timeout=settings.ABDM_TIMEOUT_SECONDS * 4)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            logger.error("ABDM data push to %s failed: %s", url.split("?")[0], exc)
+            raise ABDMGatewayError(f"Data push failed: {exc}") from exc
 
 
 def _new_request_id() -> str:
@@ -331,3 +381,32 @@ def get_nhcx_gateway() -> NHCXGateway:
     gateways = {"stub": StubNHCXGateway}
     gateway_cls = gateways.get(settings.NHCX_GATEWAY, StubNHCXGateway)
     return gateway_cls()
+
+
+# --- Verifying calls from the gateway --------------------------------------
+
+
+class GatewayAuthError(Exception):
+    pass
+
+
+_jwks_client = None
+
+
+def verify_gateway_token(authorization: str) -> dict:
+    """The gateway signs every callback with a JWT (RS256), its keys
+    published at ABDM_JWKS_URL. A callback without a valid one is refused:
+    anyone can reach our callback URLs, only ABDM holds the signing key."""
+    import jwt
+
+    global _jwks_client
+    token = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
+    if not token:
+        raise GatewayAuthError("Missing gateway token.")
+    try:
+        if _jwks_client is None:
+            _jwks_client = jwt.PyJWKClient(settings.ABDM_JWKS_URL, cache_keys=True, lifespan=3600)
+        key = _jwks_client.get_signing_key_from_jwt(token).key
+        return jwt.decode(token, key, algorithms=["RS256"], options={"require": ["exp"], "verify_aud": False})
+    except jwt.PyJWTError as exc:
+        raise GatewayAuthError(f"Invalid gateway token: {exc}") from exc

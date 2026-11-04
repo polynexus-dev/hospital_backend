@@ -202,6 +202,31 @@ def test_document_api_delete(auth_client, hospital, patient):
     assert not Document.objects.filter(pk=document.id).exists()
 
 
+# C3: the stored file only through the API, behind the same checks as the record.
+@pytest.mark.django_db
+def test_document_file_is_served_through_the_api_as_a_sandboxed_download(auth_client, hospital, patient, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    document = Document.objects.create(hospital=hospital, patient=patient, file=SimpleUploadedFile("scan.pdf", b"%PDF-1.4 scan", content_type="application/pdf"))
+
+    response = auth_client.get(f"/api/v1/documents/{document.id}/file/")
+
+    assert response.status_code == 200
+    assert b"".join(response.streaming_content) == b"%PDF-1.4 scan"
+    assert response["Content-Disposition"].startswith("attachment;")
+    assert "sandbox" in response["Content-Security-Policy"]
+    assert response["X-Content-Type-Options"] == "nosniff"
+
+
+@pytest.mark.django_db
+def test_document_file_of_another_hospital_or_without_login_is_refused(api_client, auth_client, other_hospital, other_patient, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    theirs = Document.objects.create(hospital=other_hospital, patient=other_patient, file=SimpleUploadedFile("secret.pdf", b"secret", content_type="application/pdf"))
+
+    assert auth_client.get(f"/api/v1/documents/{theirs.id}/file/").status_code == 404
+    auth_client.force_authenticate(user=None)
+    assert api_client.get(f"/api/v1/documents/{theirs.id}/file/").status_code == 401
+
+
 # --- Prescription: doctor auto-stamped to request.user, isolation ---------
 
 @pytest.mark.django_db

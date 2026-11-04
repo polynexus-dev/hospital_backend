@@ -66,7 +66,7 @@ def api_rows(api_key, out):
     while total is None or offset < total:
         query = urllib.parse.urlencode({"api-key": api_key, "format": "json", "limit": API_PAGE, "offset": offset})
         try:
-            with urllib.request.urlopen(f"https://api.data.gov.in/resource/{API_RESOURCE}?{query}", timeout=60) as resp:
+            with urllib.request.urlopen(f"https://api.data.gov.in/resource/{API_RESOURCE}?{query}", timeout=60) as resp:  # fixed https URL  # nosec B310
                 page = json.load(resp)
         except OSError as exc:
             raise CommandError(f"data.gov.in API request failed at offset {offset}: {exc}")

@@ -82,7 +82,7 @@ def test_unknown_session_asks_the_browser_to_rekey(encrypted_client):
     assert res.status_code == 401 and "Encryption session" in res.json()["detail"]
 
 
-def test_clients_without_a_session_still_get_plain_json(encrypted_client, user):
-    # mobile app, Postman, webhooks: no X-Session-Id, no encryption
+def test_clients_without_a_session_are_refused(encrypted_client, user):
+    # mandatory: a password never reaches the view in plain text (see test_payload_enforcement.py)
     res = encrypted_client.post("/api/v1/auth/login/", {"email": user.email, "password": "testpass123"}, content_type="application/json")
-    assert res.status_code == 200 and "access" in res.json()
+    assert res.status_code == 401 and "Encryption session" in res.json()["detail"]

@@ -34,8 +34,10 @@ def _stored_tokens(model, fields, pks):
     q = connection.ops.quote_name
     cols = ", ".join(q(f.column) for f in fields)
     pk = q(model._meta.pk.column)
+    pks = [model._meta.pk.get_db_prep_value(value, connection) for value in pks]  # a raw cursor gets no field conversion (UUIDs)
     with connection.cursor() as cur:
-        cur.execute(f"SELECT {pk}, {cols} FROM {q(model._meta.db_table)} WHERE {pk} IN ({', '.join(['%s'] * len(pks))})", pks)
+        # identifiers come from model metadata via quote_name; values are bound parameters
+        cur.execute(f"SELECT {pk}, {cols} FROM {q(model._meta.db_table)} WHERE {pk} IN ({', '.join(['%s'] * len(pks))})", pks)  # nosec B608
         return cur.fetchall()
 
 

@@ -385,6 +385,11 @@ class PayoutStatementLinkView(APIView):
     authentication_classes = []
 
     def get(self, request, token):
+        from apps.core.middleware import shared_link_redirect
+
+        redirect = shared_link_redirect(request, f"/r/statement/{token}")
+        if redirect:
+            return redirect
         payout = payout_statements.payout_from_token(token)
         if payout is None:
             return HttpResponse("This link has expired. Please ask the hospital's accounts team for a new statement.", status=404, content_type="text/plain")

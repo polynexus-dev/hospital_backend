@@ -88,7 +88,7 @@ def evaluate(formula, values, *, age=None, female=None):
     if female is not None:
         env["FEMALE"] = 1.0 if female else 0.0
     try:
-        return float(eval(compile(tree, "<formula>", "eval"), {"__builtins__": {}}, env))  # noqa: S307 - AST checked above
+        return float(eval(compile(tree, "<formula>", "eval"), {"__builtins__": {}}, env))  # noqa: S307 - AST allow-listed in _compile (numbers, arithmetic, named functions; no attributes), no builtins  # nosec B307
     except NameError:
         return None  # AGE/FEMALE used but unknown for this patient
     except (ArithmeticError, ValueError) as exc:

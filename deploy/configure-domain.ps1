@@ -37,7 +37,7 @@ Write-Host ""
 Write-Host "How should HTTPS be set up?"
 Write-Host "  1) The hospital's own certificate (PEM files you already have)"
 Write-Host "  2) Let's Encrypt - free, renews automatically (server must be reachable from the internet on port 80)"
-Write-Host "  3) No certificate for now - plain HTTP (internal network only)"
+Write-Host "  3) No certificate for now - self-signed HTTPS (internal network; browsers warn once)"
 $mode = Read-Host "Choose 1, 2 or 3"
 
 Say "Pointing the installation at $domain"
@@ -87,7 +87,7 @@ Compose up -d --force-recreate web worker beat nginx
 
 $envVars = Read-EnvVars
 if ($mode -eq "3") {
-    $url = "http://$domain"
+    $url = "https://$domain"
     if ($envVars["HTTP_PORT"] -and $envVars["HTTP_PORT"] -ne "80") { $url += ":" + $envVars["HTTP_PORT"] }
 } else {
     $url = "https://$domain"

@@ -221,6 +221,14 @@ class DocumentViewSet(AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantSc
         hospital = getattr(self.request.user, "hospital", None)
         serializer.save(hospital=hospital, uploaded_by=self.request.user)
 
+    @action(detail=True, methods=["get"], url_path="file")
+    def file(self, request, pk=None):
+        """The uploaded file itself, behind this viewset's permissions and
+        tenant scoping (C3). The read is audit-logged like any document read."""
+        from apps.core.file_serving import stored_file_response
+
+        return stored_file_response(self.get_object().file)
+
 
 class PrescriptionViewSet(AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.ModelViewSet):
     """CRUD viewset for OPD Doctor E-Prescriptions (e-Rx)."""
