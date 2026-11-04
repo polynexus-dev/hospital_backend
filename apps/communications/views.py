@@ -104,6 +104,10 @@ class InboundWebhookView(APIView):
     serializer_class = MessageSerializer
 
     def post(self, request, hospital_id, channel):
+        from apps.core.request_utils import webhook_secret_ok
+
+        if not webhook_secret_ok(request):
+            return Response({"detail": "Webhook authentication failed."}, status=status.HTTP_403_FORBIDDEN)
         payload = request.data
         address = payload.get("from", "")
         body = payload.get("body", "")

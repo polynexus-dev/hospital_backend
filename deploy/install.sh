@@ -42,6 +42,7 @@ if [ ! -f .env ]; then
       -e "s|__FERNET_KEY__|$(openssl rand -base64 32 | tr '+/' '-_')|" \
       -e "s|__GCM_KEY__|$(openssl rand -base64 32)|" \
       -e "s|__HASH_KEY__|$(openssl rand -hex 32)|" \
+      -e "s|__WEBHOOK_SECRET__|$(openssl rand -hex 32)|" \
       -e "s|__HOST_MACHINE_ID__|/etc/machine-id|" \
       -e "s|__HOST_PRODUCT_UUID__|/sys/class/dmi/id/product_uuid|" \
       env.template > .env

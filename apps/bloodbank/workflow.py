@@ -97,6 +97,7 @@ class PublicBloodStockView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_scope = "public_lookup"  # bound slug/subdomain enumeration
 
     def get(self, request):
         hospital = Hospital.objects.filter(slug=(request.GET.get("subdomain") or "").lower(), is_active=True).first()

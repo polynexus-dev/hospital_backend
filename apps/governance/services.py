@@ -297,7 +297,13 @@ def restore_backup(record, *, user=None):
         raise ValueError("Only a successful backup can be restored.")
     with gzip.open(record.file_path, "rb") as fh:
         payload = fh.read()
-    if record.checksum_sha256 and hashlib.sha256(payload).hexdigest() != record.checksum_sha256:
+    # A restore re-applies rows straight into the live database, so the file's
+    # integrity must be proven first. A record with no stored checksum can't be
+    # verified and is refused rather than trusted — otherwise a tampered or
+    # truncated backup file would be replayed wholesale.
+    if not record.checksum_sha256:
+        raise ValueError("This backup has no integrity checksum recorded and cannot be safely restored.")
+    if hashlib.sha256(payload).hexdigest() != record.checksum_sha256:
         raise ValueError("Backup file checksum mismatch — file is corrupted or was modified.")
     restored = 0
     with transaction.atomic():

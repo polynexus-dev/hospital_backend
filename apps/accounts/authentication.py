@@ -1,12 +1,24 @@
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 
 class ActiveUserJWTAuthentication(JWTAuthentication):
     """JWTAuthentication that re-checks the account on every request, so
     blocking someone (or deactivating them) ends their access immediately —
     not when their access token expires, nor when their refresh token runs out
-    hours later. Inactive accounts are already refused by simplejwt."""
+    hours later. Inactive accounts are already refused by simplejwt.
+
+    Patient-app tokens (which carry a `patient_id` claim, minted by
+    apps.mobile_patient.auth.VerifyOTPView) are refused here: they are valid
+    only on the patient mobile surface, never the staff API — otherwise an OTP
+    login would authenticate as a baseline-permissioned hospital user."""
+
+    def get_validated_token(self, raw_token):
+        token = super().get_validated_token(raw_token)
+        if token.get("patient_id"):
+            raise InvalidToken("This token is not valid for the staff API.")
+        return token
 
     def get_user(self, validated_token):
         user = super().get_user(validated_token)

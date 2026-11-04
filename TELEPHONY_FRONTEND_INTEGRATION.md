@@ -127,7 +127,7 @@ import { UserAgent, Registerer, SessionState } from 'sip.js';
 const CONFIG = {
   wsServer:    'wss://ecallpbx.konnectcom.in:8089/ws', // confirm port with HoduPBX support
   sipUri:      'sip:1048101@ecallpbx.konnectcom.in',
-  password:    'Hospital@123',
+  password:    'REPLACED__SET_WEBRTC_SIP_PASSWORD_IN_ENV',
   displayName: 'Reception',
 };
 
@@ -562,7 +562,7 @@ Add to your frontend `.env`:
 VITE_API_BASE_URL=http://localhost:8000
 VITE_SIP_SERVER=wss://ecallpbx.konnectcom.in:8089/ws
 VITE_SIP_URI=sip:1048101@ecallpbx.konnectcom.in
-VITE_SIP_PASSWORD=Hospital@123
+VITE_SIP_PASSWORD=REPLACED__SET_WEBRTC_SIP_PASSWORD_IN_ENV
 VITE_SIP_DISPLAY_NAME=Reception
 VITE_HOSPITAL_ID=973bb98e-263c-4893-9337-d80e2f9b77db
 ```

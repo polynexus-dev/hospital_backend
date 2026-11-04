@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from django.db.models import Avg, Count, Q
@@ -23,6 +24,8 @@ from .serializers import (
     IVRNodeSerializer,
     IVRRouteSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_window(request):
@@ -65,14 +68,12 @@ class CallViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         3. Once extension is answered, HoduPBX bridges to to_number and returns a UUID.
         4. Background thread updates provider_call_id on the Call record.
         """
-        import threading
         from django.conf import settings
 
         serializer = ClickToCallSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         operator = request.user
-        provider = get_telephony_provider()
 
         # Use operator's SIP extension if set, otherwise fall back to configured default
         from_ext = (
@@ -93,30 +94,17 @@ class CallViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
             provider_call_id=f"pending-{from_ext}-{serializer.validated_data['to_number']}",
         )
 
-        def _fire_click2call(call_id, from_number, to_number):
-            """Background thread: sends click2call to HoduPBX and updates the Call record."""
-            try:
-                uuid = provider.initiate_call(from_number=from_number, to_number=to_number)
-                # Real UUID — HoduPBX accepted the call, extension was answered
-                Call.objects.filter(id=call_id).update(
-                    provider_call_id=uuid,
-                    status=Call.Status.ANSWERED,
-                    answered_at=timezone.now(),
-                )
-                print(f"[click2call] Call {call_id} answered. provider_call_id={uuid}")
-            except Exception as exc:
-                print(f"[click2call] Call {call_id} failed: {type(exc).__name__}: {exc}")
-                Call.objects.filter(id=call_id).update(
-                    status=Call.Status.FAILED,
-                    provider_call_id=f"failed-{from_number}-{to_number}",
-                )
+        # Place the call on a Celery worker — not a per-request daemon thread,
+        # which is unbounded, dies with the gunicorn worker, and logged only to
+        # stdout. The Call row is already persisted (status RNR), so if the
+        # broker is momentarily unreachable the record simply stays pending and
+        # the API still returns 201 rather than 500.
+        from .tasks import place_click_to_call
 
-        thread = threading.Thread(
-            target=_fire_click2call,
-            args=(call.id, from_ext, serializer.validated_data["to_number"]),
-            daemon=True,
-        )
-        thread.start()
+        try:
+            place_click_to_call.delay(call.id, from_ext, serializer.validated_data["to_number"])
+        except Exception:
+            logger.exception("Could not queue click2call for call %s", call.id)
 
         return Response(CallSerializer(call).data, status=status.HTTP_201_CREATED)
 
@@ -324,6 +312,10 @@ class TelephonyWebhookView(APIView):
     serializer_class = CallSerializer
 
     def post(self, request, hospital_id):
+        from apps.core.request_utils import webhook_secret_ok
+
+        if not webhook_secret_ok(request):
+            return Response({"detail": "Webhook authentication failed."}, status=status.HTTP_403_FORBIDDEN)
         provider = get_telephony_provider()
         normalized = provider.normalize_webhook_payload(request.data)
 

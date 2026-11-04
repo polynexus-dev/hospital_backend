@@ -296,6 +296,11 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             return denied
         target = self.get_object()
+        # Resetting a password is a full takeover of that account, so it is
+        # bound by the same tier rule as role assignment: only a hospital
+        # admin may reset a hospital admin (otherwise e.g. an HR manager with
+        # accounts.change_user could reset the Owner and sign in as them).
+        self._check_role_assignment(None, target)
         serializer = AdminSetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         from django.contrib.auth.password_validation import validate_password
@@ -329,6 +334,9 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             return denied
         target = self.get_object()
+        # Only a hospital admin may block/lock a hospital admin — same tier
+        # rule as password reset and role assignment.
+        self._check_role_assignment(None, target)
         if target.pk == request.user.pk:
             return Response({"detail": "You cannot block your own account."}, status=status.HTTP_400_BAD_REQUEST)
         from .authentication import end_all_sessions
@@ -347,6 +355,7 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             return denied
         target = self.get_object()
+        self._check_role_assignment(None, target)
         target.is_blocked = False
         target.blocked_reason = ""
         target.save(update_fields=["is_blocked", "blocked_reason"])
@@ -359,6 +368,7 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
         if denied:
             return denied
         target = self.get_object()
+        self._check_role_assignment(None, target)
         gov.reset_failed_logins(target)
         gov.log_security_event(SecurityEvent.EventType.ACCOUNT_UNLOCKED, request=request, user=target, details={"by": request.user.email})
         target.refresh_from_db()
@@ -386,9 +396,17 @@ class UserViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                     role = Role.objects.get(id=role_id)
             except (Role.DoesNotExist, ValueError):
                 return Response({"role_id": ["Invalid role ID or role does not belong to this hospital."]}, status=status.HTTP_400_BAD_REQUEST)
-                
+
+        # Assigning a role hands over its permissions, so it is bound by the
+        # same ceiling as editing one (and as the serializer-driven create/
+        # update paths already enforce): you may only grant what you could
+        # grant yourself, and only a hospital admin may (re)assign a hospital
+        # admin. Without this, any accounts.change_user holder (e.g. an HR
+        # manager) could grant themselves the owner role.
+        self._check_role_assignment(role, target)
+
         assign_role(target, role)
-        
+
         return Response(UserSerializer(target).data)
 
 

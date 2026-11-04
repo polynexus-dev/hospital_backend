@@ -14,6 +14,7 @@ class PublicTenantBrandingView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_scope = "public_lookup"  # bound slug/subdomain enumeration
 
     def get(self, request):
         subdomain = request.GET.get("subdomain") or request.GET.get("hospital")

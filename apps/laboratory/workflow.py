@@ -554,6 +554,9 @@ class OutsourcedLabTestViewSet(ClinicalCRUDViewSet):
 class LabAnalyzerViewSet(TenantCRUDViewSet):
     serializer_class = model_serializer(LabAnalyzer, read_only=("api_token", "last_message_at"))
     queryset = LabAnalyzer.objects.all()
+    # The analyser token authenticates raw HL7 result pushes, so rotating it
+    # requires change_labanalyzer, not merely an authenticated session.
+    action_permissions = {"rotate_token": "laboratory.change_labanalyzer"}
 
     @action(detail=True, methods=["post"])
     def rotate_token(self, request, pk=None):

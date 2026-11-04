@@ -407,6 +407,15 @@ def verify_gateway_token(authorization: str) -> dict:
         if _jwks_client is None:
             _jwks_client = jwt.PyJWKClient(settings.ABDM_JWKS_URL, cache_keys=True, lifespan=3600)
         key = _jwks_client.get_signing_key_from_jwt(token).key
-        return jwt.decode(token, key, algorithms=["RS256"], options={"require": ["exp"], "verify_aud": False})
+        # Verify the audience when one is configured (ABDM_GATEWAY_AUDIENCE) so
+        # a validly-signed token issued for another facility is rejected;
+        # otherwise keep the signature-only check for sandbox setups that don't
+        # stamp a known aud.
+        audience = getattr(settings, "ABDM_GATEWAY_AUDIENCE", "") or ""
+        return jwt.decode(
+            token, key, algorithms=["RS256"],
+            audience=audience or None,
+            options={"require": ["exp"], "verify_aud": bool(audience)},
+        )
     except jwt.PyJWTError as exc:
         raise GatewayAuthError(f"Invalid gateway token: {exc}") from exc

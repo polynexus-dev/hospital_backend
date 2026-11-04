@@ -121,6 +121,10 @@ class MedicalDeviceViewSet(TenantCRUDViewSet):
     serializer_class = model_serializer(MedicalDevice, read_only=("api_token", "last_seen_at"))
     queryset = MedicalDevice.objects.select_related("bed")
     filterset_fields = ["kind", "is_active", "bed"]
+    # Minting a device token lets the holder post vitals as that device, so
+    # gate it on change_medicaldevice rather than leaving the custom action
+    # open to any authenticated hospital user.
+    action_permissions = {"rotate_token": "clinical.change_medicaldevice"}
 
     @action(detail=True, methods=["post"])
     def rotate_token(self, request, pk=None):

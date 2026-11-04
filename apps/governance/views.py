@@ -210,6 +210,7 @@ class PublicAccreditationsView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_scope = "public_lookup"  # bound slug/subdomain enumeration
 
     def get(self, request):
         slug = (request.GET.get("subdomain") or request.GET.get("hospital") or "").strip().lower()

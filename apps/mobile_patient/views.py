@@ -3,7 +3,13 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
+from .auth import PatientJWTAuthentication
+
 class BasePatientAPIView(APIView):
+    # Patient-app tokens only: the staff JWT/session must not reach the patient
+    # surface, and (critically) the OTP-minted patient token must not reach the
+    # staff API — see apps.mobile_patient.auth.PatientJWTAuthentication.
+    authentication_classes = [PatientJWTAuthentication]
     permission_classes = [IsAuthenticated]
     # In a full implementation, you'd restrict querysets to the logged-in user's linked Patient object(s).
 

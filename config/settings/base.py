@@ -299,6 +299,11 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# Reverse proxies the app trusts for X-Forwarded-For (see REST_FRAMEWORK
+# below and apps.core.request_utils.get_client_ip). 1 = a single nginx in
+# front of gunicorn, this project's default topology.
+NUM_PROXIES = env.int("NUM_PROXIES", default=1)
+
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -358,11 +363,29 @@ REST_FRAMEWORK = {
         # user to throttle per, and the gateway is bursty; still bounded.
         "abdm_gateway": "600/minute",
         "payload_handshake": "600/minute",
+        # Unauthenticated public lookups keyed on a hospital slug/subdomain
+        # (tenant branding, login-page accreditations, public blood stock).
+        # They legitimately return a hospital's own public details, so they
+        # can't hide a valid tenant's existence outright — but a per-IP
+        # ceiling stops them being used to enumerate every slug on the
+        # platform at speed. Generous enough for a real login page, which
+        # makes one or two of these calls per visit.
+        "public_lookup": "30/minute",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
     ),
+    # Trusted reverse proxies in front of the app. X-Forwarded-For is appended
+    # to by each hop, so the genuine client is the NUM_PROXIES-th entry from
+    # the right; this stops a request forging its source IP to defeat the
+    # login throttle below. The default (1) matches this project's topology:
+    # exactly one nginx in front of gunicorn (docker-compose.yml). Set
+    # NUM_PROXIES to the real hop count if a CDN/load-balancer sits ahead of
+    # nginx, or 0 if the app is reached directly. apps.core.request_utils.
+    # get_client_ip reads the same setting so throttling, audit and the
+    # per-account allowed_ip_ranges check all agree on the client IP.
+    "NUM_PROXIES": NUM_PROXIES,
 }
 
 SIMPLE_JWT = {
@@ -755,6 +778,15 @@ WEBRTC_SIP_AUTH_USER = env("WEBRTC_SIP_AUTH_USER", default="")
 WEBRTC_SIP_PASSWORD = env("WEBRTC_SIP_PASSWORD", default="")
 WEBRTC_SIP_DISPLAY_NAME = env("WEBRTC_SIP_DISPLAY_NAME", default="Reception")
 
+# Shared secret that authenticates the provider-driven webhooks that take an
+# unauthenticated body (apps.telephony.views.TelephonyWebhookView,
+# apps.communications.views.InboundWebhookView) — presented as the
+# X-Webhook-Secret header or a ?secret= query parameter in the callback URL
+# registered with the PBX / messaging provider. See
+# apps.core.request_utils.webhook_secret_ok: required when set, refused in
+# production when unset (fail closed), allowed in DEBUG for local dev/tests.
+WEBHOOK_SHARED_SECRET = env("WEBHOOK_SHARED_SECRET", default="")
+
 # data.gov.in Open Government Data API key: only for refreshing the bundled
 # PIN directory (import_pincodes --from-api). Lookups never call the API.
 DATA_GOV_IN_API_KEY = env("DATA_GOV_IN_API_KEY", default="")
@@ -797,6 +829,14 @@ ABDM_TIMEOUT_SECONDS = env.int("ABDM_TIMEOUT_SECONDS", default=15)
 ABDM_CM_ID = env("ABDM_CM_ID", default="sbx")
 # The gateway's public signing keys (JWKS) — every callback's JWT is checked against them.
 ABDM_JWKS_URL = env("ABDM_JWKS_URL", default=f"{ABDM_BASE_URL}/gateway/v3/certs" if ABDM_BASE_URL else "")
+# Expected `aud` claim on gateway-signed callback JWTs (this facility's
+# HIP/HIU identifier). When set, apps.abdm.gateway.verify_gateway_token
+# asserts it, so a validly-signed token minted for a *different* facility is
+# rejected (defence-in-depth on top of the JWKS signature check). Left empty
+# the audience isn't checked — set it once you've confirmed the exact aud the
+# gateway stamps for this facility, so a correct value doesn't start rejecting
+# live callbacks.
+ABDM_GATEWAY_AUDIENCE = env("ABDM_GATEWAY_AUDIENCE", default="")
 # This deployment's public HTTPS origin (e.g. https://apollo.hms.polynexus.in):
 # the base of the dataPushUrl other providers send records to (M3).
 ABDM_CALLBACK_BASE_URL = env("ABDM_CALLBACK_BASE_URL", default="")

@@ -1,8 +1,36 @@
+import logging
+
 from celery import shared_task
 from django.db.models import F
 from django.utils import timezone
 
-from .models import CallbackTask
+from .models import Call, CallbackTask
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task
+def place_click_to_call(call_id, from_number, to_number):
+    """Rings the operator's extension via the PBX and, once it answers,
+    bridges to the patient number — then stamps the real provider_call_id on
+    the Call. Runs in a Celery worker rather than a per-request daemon thread
+    (unbounded, dies with the process, logged only to stdout)."""
+    from .adapters import get_telephony_provider
+
+    try:
+        provider_call_id = get_telephony_provider().initiate_call(from_number=from_number, to_number=to_number)
+        Call.objects.filter(id=call_id).update(
+            provider_call_id=provider_call_id,
+            status=Call.Status.ANSWERED,
+            answered_at=timezone.now(),
+        )
+        logger.info("click2call %s answered (provider_call_id=%s)", call_id, provider_call_id)
+    except Exception:
+        logger.exception("click2call %s failed", call_id)
+        Call.objects.filter(id=call_id).update(
+            status=Call.Status.FAILED,
+            provider_call_id=f"failed-{from_number}-{to_number}",
+        )
 
 
 @shared_task

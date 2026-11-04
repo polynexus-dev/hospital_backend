@@ -83,6 +83,7 @@ if (-not (Test-Path .env)) {
         -replace "__FERNET_KEY__", ((B64 32).Replace("+", "-").Replace("/", "_")) `
         -replace "__GCM_KEY__", (B64 32) `
         -replace "__HASH_KEY__", (Hex 32) `
+        -replace "__WEBHOOK_SECRET__", (Hex 32) `
         -replace "__HOST_MACHINE_ID__", "./config/host-identity/machine-id" `
         -replace "__HOST_PRODUCT_UUID__", "./config/host-identity/product_uuid"
     Write-Utf8NoBom ".env" ($envText -replace "`r`n", "`n")

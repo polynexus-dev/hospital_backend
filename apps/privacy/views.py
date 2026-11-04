@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.core.permissions import RequiresViewPermission, RoleBasedModelPermissions
+from apps.core.permissions import ActionPermissionRequired, RequiresViewPermission, RoleBasedModelPermissions
 from apps.core.viewsets import AuditedModelViewSetMixin, SoftDeleteViewSetMixin, TenantScopedViewSetMixin
 
 from .models import ConsentNotice, ConsentPurpose, DataRightsRequest, GrievanceTicket, Nominee, PatientConsent
@@ -16,7 +16,15 @@ from .services import collect_patient_data, complete_erasure, current_consents, 
 # apps.accounts.permission_templates.PERMISSION_TEMPLATES — "privacy" only
 # ever appears in FULL_ACCESS_APPS), but RoleBasedModelPermissions alone
 # doesn't enforce that for list/retrieve — see RequiresViewPermission.
-PRIVACY_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission]
+# RoleBasedModelPermissions deliberately leaves custom @actions ungated (it
+# only keys off create/update/destroy), and RequiresViewPermission only covers
+# list/retrieve — so without ActionPermissionRequired the custom actions below
+# (verify / complete-with-erasure / reject / resolve) would be reachable by any
+# authenticated hospital user, not just a privacy administrator. The
+# action_permissions maps on each viewset close that: every write action
+# requires the same privacy.* permission the CRUD paths already demand (held
+# only by owner/admin/hospital_administrator — privacy is in FULL_ACCESS_APPS).
+PRIVACY_PERMISSION_CLASSES = [IsAuthenticated, RoleBasedModelPermissions, RequiresViewPermission, ActionPermissionRequired]
 
 
 class DataRightsRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -24,6 +32,12 @@ class DataRightsRequestViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     # select_related: DataRightsRequestSerializer.patient_name (source="patient.full_name")
     queryset = DataRightsRequest.objects.select_related("patient")
     permission_classes = PRIVACY_PERMISSION_CLASSES
+    action_permissions = {
+        "verify": "privacy.change_datarightsrequest",
+        "export": "privacy.view_datarightsrequest",
+        "complete": "privacy.change_datarightsrequest",
+        "reject": "privacy.change_datarightsrequest",
+    }
     filterset_fields = ["patient", "request_type", "status"]
 
     @action(detail=True, methods=["post"])
@@ -83,6 +97,7 @@ class GrievanceTicketViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     # select_related: GrievanceTicketSerializer.patient_name (source="patient.full_name")
     queryset = GrievanceTicket.objects.select_related("patient")
     permission_classes = PRIVACY_PERMISSION_CLASSES
+    action_permissions = {"resolve": "privacy.change_grievanceticket"}
     filterset_fields = ["patient", "status", "priority", "assigned_to"]
 
     @action(detail=True, methods=["post"])
@@ -99,6 +114,7 @@ class NomineeViewSet(SoftDeleteViewSetMixin, TenantScopedViewSetMixin, viewsets.
     serializer_class = NomineeSerializer
     queryset = Nominee.objects.all()
     permission_classes = PRIVACY_PERMISSION_CLASSES
+    action_permissions = {"verify": "privacy.change_nominee"}
     filterset_fields = ["patient", "is_active"]
 
     @action(detail=True, methods=["post"])

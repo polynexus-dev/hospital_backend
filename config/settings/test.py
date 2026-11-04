@@ -15,3 +15,12 @@ to stop brute-force guessing, not to constrain a comprehensive test run.
 from .dev import *  # noqa: F401,F403
 
 REST_FRAMEWORK = {**REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": ()}  # noqa: F405
+
+# The test suite drives the API in plaintext (APIClient never performs the
+# ECDH handshake), so payload encryption must be off here regardless of what
+# the developer's .env happens to set. Without this pin, a deployment .env
+# carrying PAYLOAD_ENCRYPTION_ENABLED=True turns PayloadEncryptionMiddleware
+# on under the test settings too, and every /api/ call 401s ("Encryption
+# session not found") before reaching the view — failing the whole suite for
+# an environment reason unrelated to the code under test.
+PAYLOAD_ENCRYPTION_ENABLED = False

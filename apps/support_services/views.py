@@ -31,6 +31,9 @@ class AmbulanceViewSet(TenantCRUDViewSet):
     filterset_fields = ["status", "kind"]
     search_fields = ["vehicle_number", "driver_name", "driver_phone"]
     audited_fields = ("vehicle_number", "status")
+    # The device token authenticates in-vehicle vitals/GPS feeds, so rotating
+    # it requires change_ambulance rather than any authenticated session.
+    action_permissions = {"rotate_device_token": "support_services.change_ambulance"}
 
     @action(detail=True, methods=["post"])
     def rotate_device_token(self, request, pk=None):
