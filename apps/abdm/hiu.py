@@ -148,7 +148,9 @@ def receive_push(payload):
     is refused. Returns the transfer."""
     transaction_id = str(payload.get("transactionId") or "")
     with transaction.atomic():
-        transfer = (DataTransfer.objects.select_for_update().select_related("artefact", "artefact__consent_request")
+        # of=("self",): consent_request is nullable, so its join is an outer join, and
+        # PostgreSQL refuses FOR UPDATE on the nullable side of one.
+        transfer = (DataTransfer.objects.select_for_update(of=("self",)).select_related("artefact", "artefact__consent_request")
                     .filter(role=DataTransfer.Role.HIU, transaction_id=transaction_id, status=DataTransfer.Status.ACKNOWLEDGED).exclude(transaction_id="").first())
         if transfer is None or not transfer.private_key:
             raise DataPushRejected("Unknown or closed transaction.")
