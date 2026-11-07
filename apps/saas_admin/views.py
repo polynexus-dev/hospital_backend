@@ -185,7 +185,7 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "slug", "city", "state"]
 
     def get_permissions(self):
-        if self.action == "generate_license":
+        if self.action in {"generate_license", "legal_agreement"}:
             return [IsAuthenticated(), IsSaaSAdmin()]  # the licence capability is checked inside
         if self.action in {"create", "update", "partial_update", "destroy", "update_modules", "toggle_status"} or (self.action == "permissions" and self.request.method != "GET"):
             return [IsAuthenticated(), CanManageSaaSTenants()]
@@ -305,6 +305,50 @@ class SaaSHospitalViewSet(viewsets.ModelViewSet):
         hospital.is_active = not hospital.is_active
         hospital.save(update_fields=["is_active"])
         return Response(SaaSHospitalSerializer(hospital).data)
+
+    @action(detail=True, methods=["get"], url_path="legal-agreement")
+    def legal_agreement(self, request, pk=None):
+        """
+        SaaS Owner-only dynamic contract generator endpoint.
+        Returns a customized, law-firm-grade Master Client Legal Agreement Suite
+        pre-populated with this tenant's real parameters, enabled modules, and commercials.
+        Supports:
+          - Default: JSON { html, filename, hospital_name, ... }
+          - ?raw=1: Direct HTML render for browser preview & printing
+          - ?download=1: Attachment download of populated HTML document
+        """
+        user = request.user
+        # Strict SaaS Owner / Superuser check — 403 Forbidden for everyone else, including hospital admins
+        is_owner = (
+            user.is_superuser
+            or (getattr(user, "is_saas_admin", False) and getattr(user, "saas_role", "") == "saas_owner")
+            or getattr(user, "has_saas_capability", lambda c: False)("billing_manage")
+        )
+        if not is_owner:
+            return Response(
+                {"detail": "Access restricted strictly to the SaaS Owner / Platform Superuser."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        hospital = self.get_object()
+        from .agreement_generator import generate_hospital_agreement_html
+        html_content = generate_hospital_agreement_html(hospital, current_user=user)
+        filename = f"{hospital.slug}_Polynexus_Legal_Agreement.html"
+
+        if request.query_params.get("raw") == "1":
+            return HttpResponse(html_content, content_type="text/html; charset=utf-8")
+        if request.query_params.get("download") == "1":
+            response = HttpResponse(html_content, content_type="text/html; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+
+        return Response({
+            "hospital_id": str(hospital.id),
+            "hospital_name": hospital.name,
+            "hospital_slug": hospital.slug,
+            "filename": filename,
+            "html": html_content,
+        })
 
 
 def license_file_response(record):

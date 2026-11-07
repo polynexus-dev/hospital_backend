@@ -427,3 +427,48 @@ def test_saas_admin_update_hospital_modules(saas_admin_client, hospital):
     hospital.refresh_from_db()
     assert hospital.enabled_modules == ["opd", "pharmacy"]
 
+
+# --- SaaS Owner Dynamic Legal Agreement Generator ----------------------
+
+@pytest.mark.django_db
+def test_saas_owner_can_generate_legal_agreement_json(saas_admin_client, hospital, subscription):
+    response = saas_admin_client.get(f"/api/v1/saas-admin/hospitals/{hospital.id}/legal-agreement/")
+    assert response.status_code == 200
+    data = response.data
+    assert data["hospital_name"] == hospital.name
+    assert data["hospital_slug"] == hospital.slug
+    assert "html" in data
+    assert "filename" in data
+    assert hospital.name in data["html"]
+    assert "Master Client Legal Agreement Suite" in data["html"]
+    assert "Part I — Master SaaS Subscription & Services Agreement (MSA)" in data["html"]
+    assert "Digital Personal Data Protection Act, 2023" in data["html"]
+    assert "Part IV — Service Level Agreement (SLA)" in data["html"]
+
+
+@pytest.mark.django_db
+def test_saas_owner_can_generate_legal_agreement_raw_html(saas_admin_client, hospital, subscription):
+    response = saas_admin_client.get(f"/api/v1/saas-admin/hospitals/{hospital.id}/legal-agreement/?raw=1")
+    assert response.status_code == 200
+    assert "text/html" in response["Content-Type"]
+    content = response.content.decode("utf-8")
+    assert hospital.name in content
+    assert "window.print()" in content
+
+
+@pytest.mark.django_db
+def test_saas_owner_can_download_legal_agreement(saas_admin_client, hospital, subscription):
+    response = saas_admin_client.get(f"/api/v1/saas-admin/hospitals/{hospital.id}/legal-agreement/?download=1")
+    assert response.status_code == 200
+    assert "text/html" in response["Content-Type"]
+    assert "attachment;" in response["Content-Disposition"]
+    assert hospital.slug in response["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_non_saas_owner_is_blocked_from_legal_agreement(auth_client, hospital):
+    # Regular hospital authenticated user must receive 403 Forbidden
+    response = auth_client.get(f"/api/v1/saas-admin/hospitals/{hospital.id}/legal-agreement/")
+    assert response.status_code == 403
+
+
